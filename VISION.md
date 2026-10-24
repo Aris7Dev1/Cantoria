@@ -44,7 +44,6 @@ Le **processus principal** (`main.js`) interroge GitHub Releases pour la mise à
 
 ## Questions ouvertes (ne pas trancher seul)
 
-- **Nom** : le produit s'appelle Cantoria, mais le code, l'installateur, l'`appId` et le dépôt portent encore « Carnet de Chant ». Un renommage globale est nécessaire.
 - **Paliers de vitesse** : l'interface propose ×0,25, ×0,5, ×1, ×1,25, ×1,5, ×2. Souhaite-t-on des paliers réguliers de 0,25 (ajout de ×0,75 et ×1,75) ?
 - **Stockage** : migrer vers des fichiers ou une base locale plutôt que le `localStorage` ?
 

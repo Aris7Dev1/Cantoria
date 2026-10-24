@@ -1,8 +1,8 @@
 {
-  "name": "carnet-de-chant",
+  "name": "cantoria",
   "version": "1.2.1",
-  "description": "Carnet de Chant — lecteur et gestionnaire de chansons hors-ligne",
-  "author": "Carnet de Chant",
+  "description": "Cantoria — lecteur et gestionnaire de chansons hors-ligne",
+  "author": "Cantoria <Aris7Dev1@users.noreply.github.com>",
   "license": "MIT",
   "private": true,
   "main": "main.js",
@@ -28,14 +28,14 @@
     "electron-updater": "6.8.9"
   },
   "build": {
-    "appId": "fr.carnetdechant.app",
-    "productName": "Carnet de Chant",
+    "appId": "fr.cantoria.app",
+    "productName": "Cantoria",
     "asar": true,
     "files": [
       "main.js",
       "preload.js",
       "update-config.json",
-      "carnet-de-chant-v4.html",
+      "cantoria.html",
       "package.json",
       "assets/**/*"
     ],
@@ -43,7 +43,7 @@
       "output": "dist",
       "buildResources": "assets"
     },
-    "artifactName": "Carnet-de-Chant-${version}-${os}-${arch}.${ext}",
+    "artifactName": "cantoria-${version}-${os}-${arch}.${ext}",
     "win": {
       "icon": "assets/icon.ico",
       "target": [
@@ -62,7 +62,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Carnet de Chant",
+      "shortcutName": "Cantoria",
       "deleteAppDataOnUninstall": false
     },
     "mac": {
@@ -86,7 +86,7 @@
       "category": "public.app-category.music"
     },
     "dmg": {
-      "title": "Carnet de Chant",
+      "title": "Cantoria",
       "iconSize": 96,
       "window": {
         "width": 660,
@@ -115,14 +115,14 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "VOTRE_COMPTE_GITHUB",
-      "repo": "carnet-de-chant",
+      "owner": "Aris7Dev1",
+      "repo": "Cantoria",
       "releaseType": "release",
       "publishAutoUpdate": true
     }
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/VOTRE_COMPTE_GITHUB/carnet-de-chant.git"
+    "url": "https://github.com/Aris7Dev1/Cantoria.git"
   }
 }

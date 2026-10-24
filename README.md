@@ -1,6 +1,6 @@
-# Carnet de Chant — version Electron
+# Cantoria — version Electron
 
-Application de bureau locale et hors-ligne basée sur votre `carnet-de-chant-v4.html`.
+Application de bureau locale et hors-ligne basée sur votre `cantoria.html`.
 
 ## Inclus
 
@@ -41,14 +41,14 @@ Les fichiers sont créés dans `dist/`.
 
 ## GitHub Releases et auto-update
 
-Le projet utilise `electron-builder` + `electron-updater` avec le provider **GitHub**. Le build produit les métadonnées nécessaires à l'auto-update et la Release GitHub contient à la fois les installateurs et ces métadonnées. `electron-updater` déclenche ensuite les événements `update-available`, `download-progress` et `update-downloaded` ; Carnet de Chant les transforme en bannière visible dans l'application.
+Le projet utilise `electron-builder` + `electron-updater` avec le provider **GitHub**. Le build produit les métadonnées nécessaires à l'auto-update et la Release GitHub contient à la fois les installateurs et ces métadonnées. `electron-updater` déclenche ensuite les événements `update-available`, `download-progress` et `update-downloaded` ; Cantoria les transforme en bannière visible dans l'application.
 
 ### 1. Créer le dépôt
 
 Créez un dépôt GitHub, par exemple :
 
 ```text
-https://github.com/VOTRE_COMPTE_GITHUB/carnet-de-chant
+https://github.com/Aris7Dev1/Cantoria
 ```
 
 Le workflow lit automatiquement le dépôt courant via `GITHUB_REPOSITORY` et exécute `npm run prepare:release` avant chaque build. Cela remplace les valeurs d'exemple du `package.json` par le propriétaire et le nom réels du dépôt.

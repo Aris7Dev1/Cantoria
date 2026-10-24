@@ -3,7 +3,7 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const { autoUpdater } = require("electron-updater");
 
-const APP_NAME = "Carnet de Chant";
+const APP_NAME = "Cantoria";
 const UPDATE_CONFIG_FILE = path.join(__dirname, "update-config.json");
 const UPDATE_CHECK_MIN_INTERVAL = 60 * 60 * 1000;
 
@@ -171,7 +171,7 @@ function createWindow() {
     mainWindow = null;
   });
 
-  mainWindow.loadFile(path.join(__dirname, "carnet-de-chant-v4.html"));
+  mainWindow.loadFile(path.join(__dirname, "cantoria.html"));
 }
 
 function registerIpc() {
@@ -179,7 +179,7 @@ function registerIpc() {
     if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
 
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: "Importer dans Carnet de Chant",
+      title: "Importer dans Cantoria",
       properties: ["openFile"],
       filters: [
         {
@@ -212,8 +212,8 @@ function registerIpc() {
 
     const result = await dialog.showSaveDialog(mainWindow, {
       title: "Exporter le carnet",
-      defaultPath: path.join(app.getPath("documents"), "carnet-de-chant.json"),
-      filters: [{ name: "Carnet de Chant (JSON)", extensions: ["json"] }],
+      defaultPath: path.join(app.getPath("documents"), "cantoria.json"),
+      filters: [{ name: "Cantoria (JSON)", extensions: ["json"] }],
     });
 
     if (result.canceled || !result.filePath) return { canceled: true };
@@ -253,7 +253,7 @@ function registerIpc() {
 }
 
 app.name = APP_NAME;
-app.setAppUserModelId("fr.carnetdechant.app");
+app.setAppUserModelId("fr.cantoria.app");
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {

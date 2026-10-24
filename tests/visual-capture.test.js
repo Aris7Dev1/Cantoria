@@ -42,7 +42,7 @@ test("collectMetrics détecte une régression réelle (police réduite, ligne co
   const browser = await pw.chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   try {
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 820 } })).newPage();
-    await page.goto("file://" + path.join(__dirname, "..", "carnet-de-chant-v4.html"));
+    await page.goto("file://" + path.join(__dirname, "..", "cantoria.html"));
     await resetState(page, "campfire");
     await page.locator(".song-card", { hasText: "Le chemin du retour" }).click();
     await page.waitForSelector("#player-view.active #stage-inner .line");

@@ -4,8 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
-const HTML_PATH = path.join(__dirname, "..", "carnet-de-chant-v4.html");
-const STORAGE_KEY = "carnet-de-chant-songs-v1";
+const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
+const STORAGE_KEY = "cantoria-songs-v1";
 const BACKUP_PREFIX = `${STORAGE_KEY}-corrupted-`;
 
 function loadApp(seed = {}) {

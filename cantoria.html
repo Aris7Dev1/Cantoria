@@ -3,7 +3,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Carnet de chant</title>
+<title>Cantoria</title>
 <style>
   :root{
     --font-display:Georgia,'Iowan Old Style','Palatino Linotype',serif;
@@ -350,7 +350,7 @@
   <section id="library-view" class="view active">
     <header>
       <div class="header-top">
-        <div class="eyebrow">Carnet de chant</div>
+        <div class="eyebrow">Cantoria</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="theme-picker" id="theme-picker">
             <button class="swatch" data-theme="spotlight" aria-label="Thème Sous les projecteurs" title="Sous les projecteurs" style="background:linear-gradient(135deg,#14161c 50%,#e2a25c 50%);"></button>
@@ -575,7 +575,7 @@
   <div class="update-icon">↻</div>
   <div class="update-copy">
     <div class="update-title" id="update-title">Nouvelle version disponible</div>
-    <div class="update-detail" id="update-detail">Une mise à jour de Carnet de Chant est en préparation.</div>
+    <div class="update-detail" id="update-detail">Une mise à jour de Cantoria est en préparation.</div>
   </div>
   <div class="update-actions">
     <button class="btn primary" id="update-action">Redémarrer</button>
@@ -606,7 +606,7 @@
      Electron persists localStorage in the app's Chromium profile.
      Keeping the data model in the renderer means the song library remains
      available even when the app is completely offline. */
-  var SONGS_STORAGE_KEY = "carnet-de-chant-songs-v1";
+  var SONGS_STORAGE_KEY = "cantoria-songs-v1";
 
   function normalizeSong(raw){
     raw = raw || {};
@@ -1299,7 +1299,7 @@
     var blob = new Blob([data], { type: "application/json;charset=utf-8" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "carnet-de-chant.json";
+    a.download = "cantoria.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1402,7 +1402,7 @@
   });
 
   /* ---------------- Settings ---------------- */
-  var SETTINGS_STORAGE_KEY = "carnet-de-chant-settings";
+  var SETTINGS_STORAGE_KEY = "cantoria-settings";
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
     cardTextScale: 1,
@@ -1501,7 +1501,7 @@
   });
 
   /* Theme picker */
-  var THEME_STORAGE_KEY = "carnet-de-chant-theme";
+  var THEME_STORAGE_KEY = "cantoria-theme";
   document.querySelectorAll(".theme-picker .swatch").forEach(function(btn){
     btn.addEventListener("click", function(){
       var theme = btn.getAttribute("data-theme");
@@ -1560,7 +1560,7 @@
       updateTitle.textContent = pendingVersion
         ? "Version " + pendingVersion + " prête"
         : "Mise à jour prête";
-      updateDetail.textContent = "Redémarre Carnet de Chant pour installer la mise à jour.";
+      updateDetail.textContent = "Redémarre Cantoria pour installer la mise à jour.";
       updateAction.disabled = false;
       updateAction.textContent = "Redémarrer";
       updateAction.onclick = function(){

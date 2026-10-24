@@ -60,7 +60,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: carnet-de-chant-${{ matrix.artifact }}
+          name: cantoria-${{ matrix.artifact }}
           path: dist/*
           if-no-files-found: error
 
@@ -73,7 +73,7 @@ jobs:
       - name: Download all platform builds
         uses: actions/download-artifact@v4
         with:
-          pattern: carnet-de-chant-*
+          pattern: cantoria-*
           path: release
           merge-multiple: true
 

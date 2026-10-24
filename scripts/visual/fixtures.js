@@ -2,9 +2,9 @@
  * Données fixes des captures : mêmes chansons, mêmes identifiants, mêmes dates à chaque exécution,
  * pour que deux captures ne diffèrent que si l'interface a changé.
  */
-const SONGS_KEY = "carnet-de-chant-songs-v1";
-const SETTINGS_KEY = "carnet-de-chant-settings";
-const THEME_KEY = "carnet-de-chant-theme";
+const SONGS_KEY = "cantoria-songs-v1";
+const SETTINGS_KEY = "cantoria-settings";
+const THEME_KEY = "cantoria-theme";
 const THEMES = ["spotlight", "guitar-case", "campfire"];
 
 const T0 = 1700000000000;
@@ -55,6 +55,6 @@ function seedEntries(theme) {
 const READY_SELECTOR = "#library-view.active .song-card";
 
 // Page chargée par le moteur « chromium » (le moteur « electron » passe par main.js).
-const ENTRY_HTML = "carnet-de-chant-v4.html";
+const ENTRY_HTML = "cantoria.html";
 
 module.exports = { ENTRY_HTML, READY_SELECTOR, SONGS, SONGS_KEY, SETTINGS_KEY, THEME_KEY, THEMES, seedEntries };

@@ -4,14 +4,14 @@ Lis `VISION.md` avant toute tâche. En cas de conflit, `VISION.md` l'emporte. Ne
 
 ## Projet
 
-Application de bureau Electron (Windows, macOS, Linux) : carnet de paroles et d'accords à défilement automatique, hors ligne. Nom historique encore présent dans le code : « Carnet de Chant ».
+Application de bureau Electron (Windows, macOS, Linux) : carnet de paroles et d'accords à défilement automatique, hors ligne.
 
 ## Structure
 
 ```
 main.js                    Processus principal : fenêtre, IPC, mise à jour automatique
 preload.js                 Pont sécurisé exposé au HTML (window.carnetDesktop)
-carnet-de-chant-v4.html    Toute l'interface (HTML + CSS + un seul <script>)
+cantoria.html             Toute l'interface (HTML + CSS + un seul <script>)
 update-config.json         Comportement de la mise à jour (pas d'URL de dépôt)
 scripts/prepare-release.js Injecte le dépôt GitHub dans package.json (CI uniquement)
 scripts/agent/             Runner de l'agent codeur (issue -> pull request) : zone protégée
@@ -68,8 +68,8 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 
 ## Données : règle d'or
 
-- Clé de stockage : `carnet-de-chant-songs-v1` (`localStorage`). Modèle normalisé par `normalizeSong`.
-- **Ne jamais écraser ou vider la bibliothèque sans copie de secours.** En cas de contenu illisible, `loadSongs` conserve les 3 dernières copies brutes sous `carnet-de-chant-songs-v1-corrupted-<horodatage>`.
+- Clé de stockage : `cantoria-songs-v1` (`localStorage`). Modèle normalisé par `normalizeSong`.
+- **Ne jamais écraser ou vider la bibliothèque sans copie de secours.** En cas de contenu illisible, `loadSongs` conserve les 3 dernières copies brutes sous `cantoria-songs-v1-corrupted-<horodatage>`.
 - Tout changement de modèle : rester compatible avec les carnets existants, prévoir la migration et un test avec un ancien format.
 - L'import et l'export JSON doivent rester compatibles entre versions.
 
