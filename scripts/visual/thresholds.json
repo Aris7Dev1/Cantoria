@@ -1,0 +1,8 @@
+{
+  "_note": "Seuils PROPOSÉS à partir du principe 3 de VISION.md (« texte grand, contraste fort, commandes accessibles d'un geste »), lecture à environ 1 m sur une fenêtre de 1280×820. VISION.md ne donne aucun chiffre : ce fichier est à valider ou corriger par le superviseur. Les agents ne doivent pas le modifier.",
+  "viewport": { "width": 1280, "height": 820 },
+  "stage": { "minLyricPx": 20, "minChordPx": 18, "minContrast": 7 },
+  "chrome": { "minTextPx": 12, "minContrast": 4.5, "minTargetPx": 32 },
+  "overflow": { "tolerancePx": 1 },
+  "pixel": { "maxChangedRatio": 0.02, "perChannelTolerance": 8 }
+}

@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "checkIntervalMs": 21600000,
+  "autoDownload": true
+}

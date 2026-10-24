@@ -1,0 +1,43 @@
+name: Tâche pour l'agent codeur
+description: Une tâche petite et bien délimitée, réalisable par l'agent (une issue = une pull request).
+title: "[Agent] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        L'agent ne travaille que sur une issue **que tu as créée** et sur laquelle tu as posé le label `agent-ok`.
+        Vise une tâche réalisable en moins de ~600 lignes modifiées. Au-delà, découpe-la.
+  - type: textarea
+    id: objectif
+    attributes:
+      label: Objectif
+      description: Quel problème résout-on, pour qui, et pourquoi maintenant ?
+    validations:
+      required: true
+  - type: textarea
+    id: criteres
+    attributes:
+      label: Critères d'acceptation
+      description: Une liste vérifiable. Chaque point doit pouvoir être couvert par un test.
+      placeholder: |
+        - [ ] Quand …, alors …
+        - [ ] Les tests couvrent …
+    validations:
+      required: true
+  - type: textarea
+    id: perimetre
+    attributes:
+      label: Fichiers ou zones concernés
+      description: Où l'agent doit regarder en premier (facultatif).
+  - type: textarea
+    id: hors-perimetre
+    attributes:
+      label: Hors périmètre
+      description: Ce que l'agent ne doit surtout pas toucher ou changer.
+  - type: checkboxes
+    id: vision
+    attributes:
+      label: Conformité
+      options:
+        - label: Cette tâche respecte `VISION.md` (données préservées, zéro réseau côté interface, périmètre).
+          required: true

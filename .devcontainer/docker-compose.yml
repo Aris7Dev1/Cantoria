@@ -1,0 +1,67 @@
+name: cantoria-dev
+
+services:
+  # Conteneur de développement : VS Code, Node, Mistral Vibe, ton code.
+  # Il ne reçoit PAS la vraie clé Mistral : seulement une clé factice, sans valeur hors du réseau Compose.
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    init: true
+    working_dir: /workspaces/cantoria
+    volumes:
+      - ..:/workspaces/cantoria:cached
+      # MASQUE : .devcontainer/.env contient la vraie clé Mistral et se trouve dans le dossier monté
+      # ci-dessus. Sans ce montage, tout ce qui s'exécute dans ce conteneur (y compris un test lancé
+      # par l'agent avec « node --test ») pourrait le lire. /dev/null le remplace par un fichier vide.
+      # Le fichier doit exister côté hôte (il est requis de toute façon pour démarrer la passerelle).
+      - /dev/null:/workspaces/cantoria/.devcontainer/.env:ro
+      - vibe-home:/home/node/.vibe
+      - agent-worktrees:/home/node/agent-worktrees
+      - agent-logs:/home/node/agent-logs
+    environment:
+      MISTRAL_API_KEY: via-passerelle
+      VIBE_HOME: /home/node/.vibe
+      GATEWAY_URL: http://mistral-gateway:8080
+    depends_on:
+      mistral-gateway:
+        condition: service_healthy
+    # Durcissement : aucune capacité Linux, pas d'élévation de privilèges.
+    # Si tu actives un pare-feu d'egress (voir README), il faudra NET_ADMIN et NET_RAW.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # Passerelle : seul service à connaître la vraie clé Mistral. Elle relaie uniquement
+  # POST /v1/chat/completions et GET /v1/models (voir gateway/server.js).
+  mistral-gateway:
+    image: ${GATEWAY_IMAGE:-node:22-alpine}
+    command: ["node", "/gateway/server.js"]
+    environment:
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:?Copie .devcontainer/.env.example vers .devcontainer/.env et renseigne MISTRAL_API_KEY}
+      GATEWAY_MAX_REQUESTS_PER_HOUR: ${GATEWAY_MAX_REQUESTS_PER_HOUR:-600}
+      GATEWAY_ALLOWED_MODELS: ${GATEWAY_ALLOWED_MODELS:-}
+    # On monte le DOSSIER, pas un fichier : un montage de fichier unique casse (« no such file or
+    # directory ») dès qu'un éditeur ou une copie remplace le fichier sous Docker Desktop/WSL.
+    volumes:
+      - ./gateway:/gateway:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    read_only: true
+    user: node
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Aucun port publié : seul le conteneur de dev (même réseau Compose) y accède.
+
+volumes:
+  vibe-home:
+  agent-worktrees:
+  agent-logs:

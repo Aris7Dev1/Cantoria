@@ -1,0 +1,121 @@
+############################################################################
+# Configuration de Mistral Vibe pour l'environnement de développement de Cantoria.
+#
+# Fichier de confiance : il vit dans .devcontainer/ (zone protégée), il est copié dans
+# ~/.vibe/config.toml à la création du conteneur et dans un VIBE_HOME dédié à chaque
+# exécution de l'agent. Les clés de premier niveau doivent rester AVANT les tables [...]
+# (en TOML, une clé placée après une table lui appartient).
+############################################################################
+
+# Modèle actif : alias défini plus bas dans [[models]].
+active_model = "large-4"
+
+# Agent par défaut : modifie les fichiers sans demander, tout le reste passe par la liste blanche.
+default_agent = "accept-edits"
+
+# Rien ne sort vers Mistral en dehors des requêtes de modèle (et celles-ci passent par la passerelle).
+enable_telemetry = false
+enable_otel = false
+enable_update_checks = false
+enable_auto_update = false
+enable_notifications = false
+enable_connectors = false
+
+# Pas de processus d'arrière-plan ni de sous-agents : moins de surface d'attaque, coût prévisible.
+enable_background_processes = false
+enable_subagents = false
+
+[experiments]
+enable = false
+
+# Le fournisseur « mistral » est redirigé vers la passerelle. La clé du conteneur est factice
+# (MISTRAL_API_KEY=via-passerelle) : la vraie clé n'existe que dans le service mistral-gateway.
+[[providers]]
+name = "mistral"
+api_base = "http://mistral-gateway:8080/v1"
+api_key_env_var = "MISTRAL_API_KEY"
+backend = "mistral"
+
+# ---------------------------------------------------------------------------------------
+# Modèle principal : Mistral Large 4.
+#
+# À vérifier de ton côté (je n'ai pas pu les confirmer auprès de Mistral) :
+#  - l'identifiant d'API exact : interroge la liste des modèles de ton compte (voir README) ;
+#  - les prix : ils pilotent le plafond --max-price (valeurs issues d'un article tiers, tarif
+#    catalogue en $ par million de tokens) ;
+#  - la fenêtre de contexte (sources discordantes : 1 M annoncée, 524 288 mesurée).
+#
+# Raisonnement : thinking = "low" envoie reasoning_effort = "none" (réponses plus rapides) ;
+# "high" envoie reasoning_effort = "high" (plus lent, plus de tokens). Si l'API refuse ce champ
+# pour Large 4 (erreur 400 qui mentionne reasoning_effort), remplace par :
+#   thinking = "off"   et supprime la ligne thinking_levels
+# (le champ n'est alors plus envoyé et c'est le réglage par défaut du serveur qui s'applique).
+# ---------------------------------------------------------------------------------------
+[[models]]
+name = "mistral-large-4"
+provider = "mistral"
+alias = "large-4"
+temperature = 0.2
+input_price = 1.36
+output_price = 4.18
+thinking = "low"
+thinking_levels = ["low", "high"]
+supports_images = true
+max_context_length = 262144
+
+# Même modèle avec raisonnement : à choisir avec /model pour les tâches difficiles.
+[[models]]
+name = "mistral-large-4"
+provider = "mistral"
+alias = "large-4-think"
+temperature = 0.2
+input_price = 1.36
+output_price = 4.18
+thinking = "high"
+thinking_levels = ["low", "high"]
+supports_images = true
+max_context_length = 262144
+
+# Autres modèles : décommente après avoir vérifié l'identifiant et les prix sur ton compte,
+# puis ajoute-les à GATEWAY_ALLOWED_MODELS si tu l'as renseigné.
+# [[models]]
+# name = "devstral-medium-latest"
+# provider = "mistral"
+# alias = "devstral"
+# temperature = 0.2
+# input_price = 0.4
+# output_price = 2.0
+# max_context_length = 262144
+
+# ---------------------------------------------------------------------------------------
+# Commandes shell : tout ce qui n'est pas listé ici est REFUSÉ en mode non interactif.
+# Vérifié avec Vibe 2.26.1 : substitutions $(...) et `...`, redirections, « git -c … » et
+# commandes hors liste sont refusés. Dans un enchaînement (« && », « ; », « | »), CHAQUE
+# commande est contrôlée : « echo a && echo b » passe, « git status; touch x » est refusé.
+# En mode interactif, Vibe te demande confirmation.
+#
+# ATTENTION : cette liste n'est PAS un bac à sable. « npm test » et « node --test » exécutent du
+# JavaScript écrit par l'agent, qui peut lire n'importe quel fichier lisible par l'utilisateur du
+# conteneur. La protection réelle des secrets, c'est qu'ils ne soient pas dans le conteneur
+# (clé Mistral : masquée, voir docker-compose.yml) et, plus tard, la restriction des sorties réseau.
+# ---------------------------------------------------------------------------------------
+[tools.bash]
+permission = "ask"
+allowlist = [
+  "npm test",
+  "npm run check",
+  "node --test",
+  "node --check",
+  "git status",
+  "git diff",
+  "git log",
+  "git add",
+  "git commit",
+  "echo",
+]
+denylist = [
+  "git push", "git remote", "git config", "git reset --hard", "git clean", "git checkout --",
+  "curl", "wget", "ssh", "scp", "nc ", "ncat", "socat",
+  "npm install", "npm i ", "npm ci", "npm publish", "npx", "pip", "pipx", "uv ",
+  "sudo", "su ", "chmod", "chown", "rm -rf", "docker", "gh ",
+]

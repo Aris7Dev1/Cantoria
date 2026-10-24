@@ -1,0 +1,128 @@
+{
+  "name": "carnet-de-chant",
+  "version": "1.2.1",
+  "description": "Carnet de Chant — lecteur et gestionnaire de chansons hors-ligne",
+  "author": "Carnet de Chant",
+  "license": "MIT",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check scripts/agent/lib.js && node --check scripts/agent/run-issue.js && node --check .devcontainer/gateway/server.js && node --check scripts/visual/checks.js && node --check scripts/visual/capture.js && node --check scripts/visual/judge.js && node --check scripts/visual/run.js && node --check scripts/visual/png.js",
+    "agent": "node scripts/agent/run-issue.js",
+    "test": "node --test \"tests/*.test.js\"",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
+    "prepare:release": "node scripts/prepare-release.js",
+    "visual": "xvfb-run -a node scripts/visual/run.js"
+  },
+  "devDependencies": {
+    "electron": "44.4.3",
+    "electron-builder": "26.16.1",
+    "jsdom": "29.1.1",
+    "playwright-core": "1.56.0"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
+  "build": {
+    "appId": "fr.carnetdechant.app",
+    "productName": "Carnet de Chant",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "update-config.json",
+      "carnet-de-chant-v4.html",
+      "package.json",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "artifactName": "Carnet-de-Chant-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Carnet de Chant",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.music"
+    },
+    "dmg": {
+      "title": "Carnet de Chant",
+      "iconSize": 96,
+      "window": {
+        "width": 660,
+        "height": 460
+      }
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "AudioVideo"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "VOTRE_COMPTE_GITHUB",
+      "repo": "carnet-de-chant",
+      "releaseType": "release",
+      "publishAutoUpdate": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VOTRE_COMPTE_GITHUB/carnet-de-chant.git"
+  }
+}
