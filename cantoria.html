@@ -561,7 +561,7 @@
       <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
         <div class="setting-text">
           <div class="setting-title">Copies de secours du carnet</div>
-          <div class="setting-desc">Conservées automatiquement quand le carnet local devient illisible (les 3 plus récentes). Restaurer remplace la bibliothèque actuelle, dont l'état est d'abord conservé en copie de secours.</div>
+          <div class="setting-desc">Conservées automatiquement quand le carnet local devient illisible (les 3 plus récentes). Télécharger exporte la copie telle quelle, sans toucher à la bibliothèque actuelle. Restaurer remplace la bibliothèque actuelle, dont l'état est d'abord conservé en copie de secours.</div>
         </div>
         <div id="backup-list"></div>
       </div>
@@ -698,6 +698,32 @@
     return "Contenu illisible";
   }
 
+  /* Télécharge une copie de secours telle quelle : le contenu brut sauvegardé,
+     sans aucune modification de la bibliothèque actuelle. Le fichier produit
+     est importable tel quel (même mécanisme que l'export du carnet). */
+  function downloadBackup(key){
+    var raw = localStorage.getItem(key);
+    if(raw === null) return;
+    var fileName = "cantoria-copie-secours-" + key.slice(SONGS_BACKUP_PREFIX.length) + ".json";
+    if(window.carnetDesktop && typeof window.carnetDesktop.saveJson === "function"){
+      window.carnetDesktop.saveJson(raw).then(function(result){
+        if(result && result.saved) toast("Copie de secours téléchargée");
+      }).catch(function(){
+        toast("Erreur pendant le téléchargement");
+      });
+      return;
+    }
+    var blob = new Blob([raw], { type: "application/json;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 0);
+    toast("Copie de secours téléchargée");
+  }
+
   function renderBackupList(){
     var container = $("#backup-list");
     if(!container) return;
@@ -717,8 +743,11 @@
           '<div class="setting-title" style="font-weight:400;font-size:13.5px;">'+esc(dateLabel)+'</div>'+
           '<div class="setting-desc">'+esc(describeBackup(b.raw))+'</div>'+
         '</div>'+
-        '<button class="btn">Restaurer</button>';
-      row.querySelector("button").addEventListener("click", function(){ restoreBackup(b.key); });
+        '<button class="btn ghost backup-download">Télécharger</button>'+
+        '<button class="btn backup-restore">Restaurer</button>';
+      var buttons = row.querySelectorAll("button");
+      buttons[0].addEventListener("click", function(){ downloadBackup(b.key); });
+      buttons[1].addEventListener("click", function(){ restoreBackup(b.key); });
       container.appendChild(row);
     });
   }
