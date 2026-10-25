@@ -21,9 +21,9 @@ enable_auto_update = false
 enable_notifications = false
 enable_connectors = false
 
-# Pas de processus d'arrière-plan ni de sous-agents : moins de surface d'attaque, coût prévisible.
+# Pas de processus d'arrière-plan ; sous-agents autorisés (explore, lecture seule) : coût modèle à surveiller.
 enable_background_processes = false
-enable_subagents = false
+enable_subagents = true
 
 [experiments]
 enable = false
