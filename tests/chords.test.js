@@ -219,3 +219,101 @@ test("les accords utilisés listés sous le titre suivent la transposition", () 
   transpose(window, 1, 1);
   assert.deepEqual(badges(), ["C#", "G#"]);
 });
+
+/* ---------- Contraste des accords du lecteur (WCAG 2.x, seuil 7:1) ---------- */
+
+// jsdom ne résout ni var() ni les dégradés de fond : on lit la feuille embarquée,
+// on résout les variables par thème et on applique la formule WCAG, comme le fait
+// scripts/visual/checks.js (pire cas retenu parmi les fonds de la scène).
+function styleSheet() {
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const m = /<style>([\s\S]*?)<\/style>/.exec(html);
+  assert.ok(m, "cantoria.html doit embarquer sa feuille de style");
+  return m[1];
+}
+
+function themeVars(css, theme) {
+  const re = new RegExp('html\\[data-theme="' + theme + '"\\]\\{([^}]*)\\}');
+  const m = re.exec(css);
+  assert.ok(m, `le thème « ${theme} » doit définir ses variables`);
+  const vars = {};
+  for (const decl of m[1].split(";")) {
+    const d = /--([\w-]+)\s*:\s*(.+)/.exec(decl.trim());
+    if (d) vars[d[1]] = d[2].trim();
+  }
+  return vars;
+}
+
+function ruleDecl(css, selector) {
+  // Ancré sur la fin de la règle précédente : distingue `.seg-chord{…}` de
+  // `… .line.focus-line .seg-chord{…}` (sélecteur composé, même suffixe).
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = new RegExp("(?:^|\\})\\s*" + escaped + "\\{([^}]*)\\}").exec(css);
+  assert.ok(m, `la règle « ${selector} » doit exister`);
+  return m[1];
+}
+
+function parseHex(str) {
+  const m = /^#([0-9a-f]{6})$/i.exec(str);
+  assert.ok(m, `couleur hex attendue, obtenu « ${str} »`);
+  return [1, 3, 5].map((i) => parseInt(m[1].slice(i - 1, i + 1), 16));
+}
+
+function resolveVar(value, vars) {
+  // Résout var(--x, fallback) récursivement (fallbacks imbriqués autorisés).
+  const m = /^var\(\s*(--[\w-]+)\s*(?:,(.*))?\)$/.exec(value);
+  assert.ok(m, `la couleur doit être un var(), obtenu « ${value} »`);
+  if (m[1].slice(2) in vars) return vars[m[1].slice(2)];
+  assert.ok(m[2], `la variable ${m[1]} doit être définie (pas de fallback)`);
+  return resolveVar(m[2].trim(), vars);
+}
+
+function luminance([r, g, b]) {
+  const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+function contrastRatio(c1, c2) {
+  const l1 = luminance(c1), l2 = luminance(c2);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function compositeOver(fg, alpha, bg) {
+  return fg.map((f, i) => f * alpha + bg[i] * (1 - alpha));
+}
+
+test("les accords du lecteur ont un contraste ≥ 7:1 pour les trois thèmes", () => {
+  // Le lecteur doit rendre les deux formes d'accords.
+  const window = loadApp([{
+    id: "s-1", title: "Contraste", artist: "",
+    body: "[Am]paroles en [G]musique\n[Am] [C] [G]",
+  }]);
+  openPlayer(window, "Contraste");
+  assert.ok(window.document.querySelector("#stage-inner .seg-chord"), "un accord au-dessus des paroles");
+  assert.ok(window.document.querySelector("#stage-inner .seg-chord.standalone"), "un accord standalone (ligne instrumentale)");
+
+  const css = styleSheet();
+  const chordColor = /color\s*:\s*([^;]+)/.exec(ruleDecl(css, ".seg-chord"))[1].trim();
+  const standaloneColor = /color\s*:\s*([^;]+)/.exec(ruleDecl(css, ".seg-chord.standalone"))[1].trim();
+  const instrumentalOpacity = parseFloat(/opacity\s*:\s*([\d.]+)/.exec(ruleDecl(css, ".line.instrumental"))[1]);
+
+  for (const theme of ["spotlight", "guitar-case", "campfire"]) {
+    const vars = themeVars(css, theme);
+    // Fonds de la scène : le dégradé radial du body va de --bg-glow (haut) à --bg ;
+    // le contrôle retient le pire cas, on teste donc les deux.
+    const backgrounds = [parseHex(vars.bg), parseHex(vars["bg-glow"])];
+
+    const chordFg = parseHex(resolveVar(chordColor, vars));
+    const chordRatios = backgrounds.map((bg) => contrastRatio(chordFg, bg));
+    assert.ok(Math.min(...chordRatios) >= 7,
+      `${theme} : contraste .seg-chord ${Math.min(...chordRatios).toFixed(2)}:1 < 7:1`);
+
+    // .seg-chord.standalone siège dans .line.instrumental (opacité réduite) :
+    // la couleur effective est composée avec le fond avant le calcul du ratio.
+    const standaloneFg = parseHex(resolveVar(standaloneColor, vars));
+    const standaloneRatios = backgrounds.map((bg) =>
+      contrastRatio(compositeOver(standaloneFg, instrumentalOpacity, bg), bg));
+    assert.ok(Math.min(...standaloneRatios) >= 7,
+      `${theme} : contraste .seg-chord.standalone ${Math.min(...standaloneRatios).toFixed(2)}:1 < 7:1`);
+  }
+});
