@@ -31,8 +31,8 @@ test("le HTML déclare une Content-Security-Policy stricte", () => {
   assert.match(policy, /default-src 'none'/, "default-src 'none' attendu");
   assert.match(policy, /script-src 'unsafe-inline'/, "script-src 'unsafe-inline' attendu (script inline unique)");
   assert.match(policy, /style-src 'unsafe-inline'/, "style-src 'unsafe-inline' attendu (style inline)");
-  assert.match(policy, /img-src data:/, "img-src data: attendu");
-  assert.match(policy, /font-src data:/, "font-src data: attendu");
+  assert.doesNotMatch(policy, /\bimg-src\b/, "aucun img-src ne doit figurer dans la politique (aucune image utilisée)");
+  assert.doesNotMatch(policy, /\bfont-src\b/, "aucun font-src ne doit figurer dans la politique (aucune police embarquée)");
   assert.doesNotMatch(policy, /connect-src/, "aucun connect-src ne doit être autorisé");
   assert.doesNotMatch(policy, /\bhttps?:/i, "aucun schéma http: ou https: ne doit figurer dans la politique");
 });
