@@ -189,6 +189,37 @@ test("le masquage ne s'applique pas pendant un décompte actif", async () => {
   window.close();
 });
 
+test("style : chaque commande du bandeau mesure au moins 32 px de côté", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  const selectors = [
+    "#play-toggle",
+    "#speed-down", "#speed-up",
+    "#tr-down", "#tr-up",
+    "#fs-down", "#fs-up",
+    "#btn-pin-controls",
+  ];
+  for (const btn of window.document.querySelectorAll("#countdown-picker button")) {
+    selectors.push("#countdown-picker button[data-seconds=\"" + btn.getAttribute("data-seconds") + "\"]");
+  }
+  const px = (v) => parseFloat(v) || 0;
+  for (const sel of selectors) {
+    const el = window.document.querySelector(sel);
+    assert.ok(el, sel + " présent");
+    const cs = window.getComputedStyle(el);
+    const padY = px(cs.paddingTop) + px(cs.paddingBottom);
+    const padX = px(cs.paddingLeft) + px(cs.paddingRight);
+    const borderY = px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+    const borderX = px(cs.borderLeftWidth) + px(cs.borderRightWidth);
+    const lineH = cs.lineHeight === "normal" ? px(cs.fontSize) * 1.2 : px(cs.lineHeight);
+    const height = Math.max(px(cs.height), px(cs.minHeight), padY + lineH + borderY);
+    const width = Math.max(px(cs.width), px(cs.minWidth), padX + borderX);
+    assert.ok(height >= 32, sel + " : hauteur calculée " + height + " px < 32 px");
+    assert.ok(width >= 32, sel + " : largeur calculée " + width + " px < 32 px");
+  }
+  window.close();
+});
+
 test("structure : les contrôles tiennent sur une seule ligne", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   const controls = window.document.querySelector("#controls");
