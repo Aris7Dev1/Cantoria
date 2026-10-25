@@ -103,7 +103,7 @@ test("restaurer une copie valide remplace la bibliothèque et conserve l'état a
     [`${BACKUP_PREFIX}1000`]: JSON.stringify([{ id: "s-2", title: "Secours", body: "" }]),
   });
   openSettings(window);
-  window.document.querySelector("#backup-list .setting-row button").click();
+  window.document.querySelector("#backup-list .setting-row .backup-restore").click();
   const restored = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
   assert.equal(restored.length, 1);
   assert.equal(restored[0].title, "Secours");
@@ -121,7 +121,7 @@ test("restaurer une copie illisible ne change rien", () => {
     [`${BACKUP_PREFIX}1000`]: "pas du json",
   });
   openSettings(window);
-  window.document.querySelector("#backup-list .setting-row button").click();
+  window.document.querySelector("#backup-list .setting-row .backup-restore").click();
   assert.equal(window.localStorage.getItem(STORAGE_KEY), JSON.stringify(current));
   assert.equal(backupKeys(window).length, 1);
   assert.ok(window.document.querySelector("#toast").classList.contains("show"));
@@ -135,7 +135,7 @@ test("annuler la restauration ne change rien", () => {
   });
   window.confirm = function () { return false; };
   openSettings(window);
-  window.document.querySelector("#backup-list .setting-row button").click();
+  window.document.querySelector("#backup-list .setting-row .backup-restore").click();
   assert.equal(window.localStorage.getItem(STORAGE_KEY), JSON.stringify(current));
   assert.equal(backupKeys(window).length, 1);
 });
