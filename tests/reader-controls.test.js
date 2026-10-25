@@ -1,0 +1,201 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { JSDOM } = require("jsdom");
+
+const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
+const SONGS_KEY = "cantoria-songs-v1";
+const SETTINGS_KEY = "cantoria-settings";
+
+function loadApp(seed = {}) {
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const dom = new JSDOM(html, {
+    url: "http://localhost/",
+    runScripts: "dangerously",
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      for (const [key, value] of Object.entries(seed)) {
+        window.localStorage.setItem(key, value);
+      }
+      window.confirm = function () { return true; };
+    },
+  });
+  return dom.window;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function song(overrides = {}) {
+  return Object.assign({ id: "s-1", title: "Test", artist: "", body: "[Am]la la la", speed: 1 }, overrides);
+}
+
+function openFirstSong(window) {
+  window.document.querySelector("#song-grid .song-card").click();
+}
+
+function speedVal(window) {
+  return window.document.querySelector("#speed-val").textContent;
+}
+
+function speedBadge(window) {
+  const badges = Array.from(window.document.querySelectorAll("#song-grid .badge")).map((b) => b.textContent);
+  return badges.find((t) => t.startsWith("×")) || null;
+}
+
+function storedSongs(window) {
+  return JSON.parse(window.localStorage.getItem(SONGS_KEY));
+}
+
+function storedSettings(window) {
+  return JSON.parse(window.localStorage.getItem(SETTINGS_KEY));
+}
+
+test("le bandeau contient un stepper vitesse et le sélecteur segmenté a disparu", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  assert.equal(window.document.querySelector("#speed-picker"), null);
+  assert.ok(window.document.querySelector("#speed-stepper"), "le stepper vitesse doit exister");
+  assert.ok(window.document.querySelector("#speed-down"), "bouton − présent");
+  assert.ok(window.document.querySelector("#speed-up"), "bouton + présent");
+  assert.equal(speedVal(window), "×1", "valeur courante ×1 par défaut");
+  window.close();
+});
+
+test("le stepper parcourt 8 paliers réguliers de 0,25", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.25 })]) });
+  openFirstSong(window);
+  const expected = ["×0,25", "×0,5", "×0,75", "×1", "×1,25", "×1,5", "×1,75", "×2"];
+  const seen = [speedVal(window)];
+  for (let i = 0; i < 7; i++) {
+    window.document.querySelector("#speed-up").click();
+    seen.push(speedVal(window));
+  }
+  assert.deepEqual(seen, expected);
+  window.close();
+});
+
+test("+ depuis ×1 passe à ×1,25, persiste la vitesse et met à jour le badge ; − depuis ×1 passe à ×0,75", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 1 })]) });
+  openFirstSong(window);
+  window.document.querySelector("#speed-up").click();
+  assert.equal(speedVal(window), "×1,25");
+  assert.equal(storedSongs(window)[0].speed, 1.25, "vitesse persistée dans la chanson");
+  assert.equal(speedBadge(window), "×1,25", "badge de la carte mis à jour");
+  window.document.querySelector("#speed-down").click();
+  window.document.querySelector("#speed-down").click();
+  assert.equal(speedVal(window), "×0,75");
+  assert.equal(storedSongs(window)[0].speed, 0.75);
+  assert.equal(speedBadge(window), "×0,75");
+  window.close();
+});
+
+test("bornes : à ×0,25 le bouton − est désactivé ; à ×2 le bouton + est désactivé", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.25 })]) });
+  openFirstSong(window);
+  assert.equal(window.document.querySelector("#speed-down").disabled, true);
+  assert.equal(window.document.querySelector("#speed-up").disabled, false);
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  window.document.querySelector("#speed-up").click();
+  assert.equal(speedVal(window), "×2");
+  assert.equal(window.document.querySelector("#speed-up").disabled, true);
+  assert.equal(window.document.querySelector("#speed-down").disabled, false);
+  window.close();
+});
+
+test("une vitesse hors paliers est affichée telle quelle ; +/− rejoignent le palier le plus proche", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 1.1 })]) });
+  openFirstSong(window);
+  assert.equal(speedVal(window), "×1,1");
+  assert.equal(window.document.querySelector("#speed-up").disabled, false);
+  assert.equal(window.document.querySelector("#speed-down").disabled, false);
+  window.document.querySelector("#speed-up").click();
+  assert.equal(speedVal(window), "×1,25", "+ rejoint le palier immédiatement supérieur");
+  window.close();
+
+  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 1.1 })]) });
+  openFirstSong(window2);
+  window2.document.querySelector("#speed-down").click();
+  assert.equal(speedVal(window2), "×1", "− rejoint le palier immédiatement inférieur");
+  window2.close();
+});
+
+test("sans réglage existant, le bandeau est épinglé et ne se masque jamais", async () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  const pin = window.document.querySelector("#btn-pin-controls");
+  assert.equal(pin.getAttribute("aria-pressed"), "true");
+  assert.equal(pin.getAttribute("aria-label"), "Désépingler le bandeau");
+  await sleep(3200);
+  assert.equal(window.document.querySelector("#controls").classList.contains("auto-hidden"), false);
+  window.close();
+});
+
+test("le bouton d'épinlage bascule l'état, persiste controlsPinned et met à jour aria-label", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  const pin = window.document.querySelector("#btn-pin-controls");
+  pin.click();
+  assert.equal(storedSettings(window).controlsPinned, false, "controlsPinned persisté à false");
+  assert.equal(pin.getAttribute("aria-pressed"), "false");
+  assert.equal(pin.getAttribute("aria-label"), "Épingler le bandeau");
+  pin.click();
+  assert.equal(storedSettings(window).controlsPinned, true, "controlsPinned persisté à true");
+  assert.equal(pin.getAttribute("aria-label"), "Désépingler le bandeau");
+  window.close();
+});
+
+test("non épinglé : le bandeau se masque après ~3 s et un mousemove sur #stage le réaffiche", async () => {
+  const window = loadApp({
+    [SONGS_KEY]: JSON.stringify([song()]),
+    [SETTINGS_KEY]: JSON.stringify({ controlsPinned: false }),
+  });
+  openFirstSong(window);
+  const controls = window.document.querySelector("#controls");
+  assert.equal(controls.classList.contains("auto-hidden"), false, "visible à l'ouverture");
+  await sleep(3200);
+  assert.equal(controls.classList.contains("auto-hidden"), true, "masqué après 3 s");
+  window.document.querySelector("#stage").dispatchEvent(new window.MouseEvent("mousemove", { bubbles: true }));
+  assert.equal(controls.classList.contains("auto-hidden"), false, "réaffiché immédiatement au mousemove");
+  await sleep(3200);
+  assert.equal(controls.classList.contains("auto-hidden"), true, "le délai de 3 s est réarmé");
+  window.close();
+});
+
+test("le masquage ne s'applique pas pendant un décompte actif", async () => {
+  const window = loadApp({
+    [SONGS_KEY]: JSON.stringify([song()]),
+    [SETTINGS_KEY]: JSON.stringify({ controlsPinned: false }),
+  });
+  openFirstSong(window);
+  window.document.querySelector('#countdown-picker button[data-seconds="5"]').click();
+  window.document.querySelector("#play-toggle").click();
+  assert.equal(window.document.querySelector("#countdown-overlay").classList.contains("show"), true);
+  await sleep(3200);
+  assert.equal(
+    window.document.querySelector("#controls").classList.contains("auto-hidden"),
+    false,
+    "pas de masquage pendant le décompte"
+  );
+  window.document.querySelector("#play-toggle").click(); // annule le décompte
+  assert.equal(window.document.querySelector("#countdown-overlay").classList.contains("show"), false);
+  window.close();
+});
+
+test("structure : les contrôles tiennent sur une seule ligne", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  const controls = window.document.querySelector("#controls");
+  assert.equal(window.document.querySelectorAll("#controls .ctrl-row").length, 1, "un seul .ctrl-row");
+  assert.equal(window.getComputedStyle(controls).flexDirection, "row", "#controls en flex row");
+  for (const id of ["play-toggle", "speed-stepper", "tr-up", "fs-up", "countdown-picker", "btn-pin-controls"]) {
+    assert.ok(window.document.querySelector("#controls #" + id), "#" + id + " présent dans le bandeau");
+  }
+  window.close();
+});
