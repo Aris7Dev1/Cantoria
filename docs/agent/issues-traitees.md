@@ -15,3 +15,4 @@ l'historique git.
 | 11 | Lecteur : bandeau compact épinglable, vitesse en stepper | #12 | Mergée |
 | 13 | Lecteur : taille du texte sous le seuil (accords, paroles) | #16 | Mergée |
 | 14 | Lecteur : contraste des accords sous le seuil | #17 | Mergée |
+| 15 | Bandeau lecteur : commandes sous le seuil de 32 px | #18 | Mergée |
