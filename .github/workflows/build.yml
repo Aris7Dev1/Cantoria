@@ -1,4 +1,4 @@
-name: Build and publish Carnet de Chant
+name: Build and publish Cantoria
 
 on:
   workflow_dispatch:
