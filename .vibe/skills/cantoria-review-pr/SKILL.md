@@ -21,6 +21,7 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 
 - `npm run check` et `npm test` passent (la CI « verify » le contrôle aussi, mais refais-les en local si tu doutes).
 - Tout comportement modifié ou corrigé est couvert par un test. Un test affaibli pour passer est un échec, pas une réussite.
+- Pour un comportement d'interface, le test charge `cantoria.html` dans jsdom (comme `tests/library-recovery.test.js`) et couvre le flux réel (événements, `FileReader`, toast affiché).
 
 ## 4. Principes produit (VISION.md)
 
@@ -28,6 +29,12 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 - **Données préservées** : clé de stockage `cantoria-songs-v1`, copies de secours en cas de contenu illisible, compatibilité import/export JSON entre versions, migration prévue pour tout changement de modèle.
 - **Français** : interface, messages, tests et commits.
 
-## 5. Verdict
+## 5. Points de contrôle spécifiques (leçons des PR relues)
+
+- **Content-Security-Policy** : chaque ouverture (`img-src`, `font-src`…) est justifiée par un usage réel ; pas d'`eval`/`new Function`/`import()` dynamique (`script-src 'unsafe-inline'` ne les couvre pas) ; les `blob:` URLs (`URL.createObjectURL`, ex. export) ne sont pas restreints par `default-src` mais sont à vérifier manuellement.
+- **Import** : la règle d'or — aucune chanson existante supprimée ni modifiée, les doublons ignorés (jamais fusionnés ni écrasés) ; le toast reflète le résultat.
+- **Validation manuelle** : quand l'UI change (rendu, toast, CSP), le superviseur lance l'app hors conteneur — jsdom n'applique pas la CSP et ne voit pas le rendu réel.
+
+## 6. Verdict
 
 Termine par « Prêt à merger » ou « À corriger », avec la liste des points bloquants s'il y en a.

@@ -17,6 +17,15 @@ description: "Charger cette skill pour vérifier un changement sur Cantoria avan
 - Ne valide jamais en « lançant l'app » : il n'y a pas d'écran dans le conteneur. Les tests sont la preuve.
 - Avant de proposer une pull request : `npm run check` et `npm test` doivent passer.
 
+## Avant une release ou un lancement du runner
+
+- **Audit de l'historique avant un tag** : un fichier commité reste dans l'historique même supprimé du dépôt. Vérifier qu'aucun fichier sensible (contenu sous copyright, secrets, données personnelles) n'y figure :
+  ```bash
+  git log --all --diff-filter=A --name-only --format='%h %s'
+  ```
+  En cas de doute, purger avant de taguer (voir la skill `cantoria-release`).
+- **Remote `origin` avant `npm run agent`** : le runner fait `git fetch origin` — le dépôt doit avoir un remote nommé `origin` (`git remote add origin <url>` si besoin ; `git remote` est refusé à l'agent, le superviseur le fait).
+
 ## Interprétation des résultats
 
 - `npm test` : relève pass / fail / skip. Tout échec est bloquant.
