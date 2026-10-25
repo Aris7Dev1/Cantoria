@@ -88,11 +88,10 @@ max_context_length = 262144
 # max_context_length = 262144
 
 # ---------------------------------------------------------------------------------------
-# Commandes shell : tout ce qui n'est pas listé ici est REFUSÉ en mode non interactif.
-# Vérifié avec Vibe 2.26.1 : substitutions $(...) et `...`, redirections, « git -c … » et
-# commandes hors liste sont refusés. Dans un enchaînement (« && », « ; », « | »), CHAQUE
-# commande est contrôlée : « echo a && echo b » passe, « git status; touch x » est refusé.
-# En mode interactif, Vibe te demande confirmation.
+# Commandes shell : mode « always » — aucune demande de permission, en interactif
+# comme dans le runner (où « ask » signifierait refus pur et simple, la session étant
+# non interactive). Seule la denylist ci-dessous s'applique, en refus catégorique.
+# L'allowlist est conservée mais inactive en mode « always ».
 #
 # ATTENTION : cette liste n'est PAS un bac à sable. « npm test » et « node --test » exécutent du
 # JavaScript écrit par l'agent, qui peut lire n'importe quel fichier lisible par l'utilisateur du
@@ -100,7 +99,7 @@ max_context_length = 262144
 # (clé Mistral : masquée, voir docker-compose.yml) et, plus tard, la restriction des sorties réseau.
 # ---------------------------------------------------------------------------------------
 [tools.bash]
-permission = "ask"
+permission = "always"
 allowlist = [
   "npm test",
   "npm run check",
