@@ -1,0 +1,24 @@
+# Garde-fous du projet Cantoria, chargés dans toute session Vibe d'un dossier de confiance.
+# Le runner agent (scripts/agent/) isole volontairement ses sessions (VIBE_HOME dédié,
+# worktree non approuvé) : ces hooks ne s'y appliquent pas — la protection des sessions
+# autonomes vient de .devcontainer/vibe/config.toml et de la politique du runner.
+# Voir docs/agent/README.md, section « Système agentique Vibe ».
+
+[[hooks]]
+name = "guard-bash"
+type = "pre_tool"
+# Nom qualifié de l'outil shell dans le harness unifié (file_system.bash) ; le motif
+# tolère aussi le nom court (bash) pour rester valable selon les versions de Vibe.
+match = "re:(file_system\\.)?bash"
+strict = true
+description = "Refuse les commandes destructives ou irréversibles (git push, reset --hard, rm -rf, merge de PR…)"
+command = "node .vibe/hooks/guard-bash.js"
+
+[[hooks]]
+name = "warn-protected"
+type = "post_tool"
+# Noms qualifiés : file_system.write_file et file_system.search_replace (l'outil « edit ») ;
+# le motif tolère aussi les noms courts (write_file, edit).
+match = "re:(file_system\\.)?(write_file|search_replace|edit)"
+description = "Rappelle qu'un fichier écrit est dans une zone protégée (AGENTS.md « Zones interdites »)"
+command = "node .vibe/hooks/warn-protected.js"

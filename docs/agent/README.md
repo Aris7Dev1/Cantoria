@@ -67,6 +67,33 @@ Options : `--dry-run` · `--no-pr` (pousse la branche sans ouvrir la PR) · `--b
 
 Variables d'environnement : `AGENT_REQUIRED_LABEL` (agent-ok) · `AGENT_MAX_DIFF_LINES` (600) · `AGENT_TIMEOUT_MIN` (30) · `AGENT_BUDGET_USD` (3) · `AGENT_MAX_TURNS` (60) · `AGENT_VIBE_CMD` (vibe) · `AGENT_VIBE_CONFIG` (par défaut `.devcontainer/vibe/config.toml`) · `AGENT_PASSTHROUGH_ENV` (variables à transmettre à l'agent, à utiliser avec prudence) · `AGENT_WORKTREES_DIR` · `AGENT_LOGS_DIR` (`~/agent-logs`) · `AGENT_ALLOW_OTHER_AUTHORS=1` (à éviter).
 
+## Système agentique Vibe (`.vibe/`)
+
+Le dossier `.vibe/` du dépôt complète le runner pour **tes sessions interactives** (`vibe` lancé dans `/workspaces/cantoria`, dossier de confiance). Il est versionné : toute modification passe par toi, comme le reste des zones protégées.
+
+```
+.vibe/
+├── skills/
+│   ├── cantoria-verify/       → /cantoria-verify : check + test + visual avant PR
+│   ├── cantoria-review-pr/    → /cantoria-review-pr : grille de relecture avant merge
+│   └── cantoria-new-issue/    → /cantoria-new-issue : gabarit d'issue actionnable
+├── agents/
+│   └── reviewer.toml          → vibe --agent reviewer : relecture de PR en lecture seule
+├── hooks.toml                 → garde-fous des sessions interactives
+└── hooks/
+    ├── guard-bash.js          → pre_tool bash : refuse git push, reset --hard, rm -r, gh pr merge…
+    └── warn-protected.js      → post_tool write/edit : rappelle les zones protégées
+```
+
+- **Skills.** Le modèle les charge à la demande (ou via `/nom-de-la-skill`) quand la tâche correspond à leur description. Le superviseur peut aussi les invoquer explicitement.
+- **Hooks.** `guard-bash` bloque les commandes destructives ou irréversibles avant exécution (décision `deny`), en complément de la liste noire de `.devcontainer/vibe/config.toml` — c'est la couche versionnée du dépôt, utile si une session tourne avec une configuration plus permissive. `warn-protected` ajoute un rappel après l'écriture d'un fichier d'une zone protégée (avertissement, pas de blocage).
+- **Agent `reviewer`.** Un profil que tu choisis délibérément (`vibe --agent reviewer « Relis la PR #N »`) : lecture seule, il refait `npm run check` et `npm test` lui-même et termine par un verdict « Prêt à merger » / « À corriger ».
+- **Subagents.** `enable_subagents` est activé dans la configuration Vibe du conteneur (`~/.vibe/config.toml`) : le modèle peut déléguer à `explore`, le subagent read-only intégré (grep, lecture, skills). Un subagent personnalisé se déclare avec `agent_type = "subagent"` dans `.vibe/agents/` — à n'ajouter que si un besoin récurrent apparaît.
+
+**Ce qui ne s'applique pas au runner.** Le runner isole volontairement ses sessions (VIBE_HOME dédié, worktree non approuvé) : `.vibe/` du dépôt, `AGENTS.md` et les hooks ne s'y chargent pas. La protection des sessions autonomes vient de `.devcontainer/vibe/config.toml` (liste blanche / noire), de la politique du runner (fichiers protégés, plafond de 600 lignes, `check` + `test` refaits) et de la CI. C'est volontaire : un dépôt compromis ne doit pas pouvoir modifier les garde-fous de l'agent. Si tu veux que les sessions du runner puissent spawner des subagents, il faut passer `enable_subagents = true` dans `.devcontainer/vibe/config.toml` (ta décision, zone protégée).
+
+**L'orchestration, en résumé.** Vibe n'a pas d'orchestrateur multi-agents intégré : l'orchestration de Cantoria, c'est le runner (entrée, isolation, politique) → la CI (porte « verify ») → **ton merge**, seule validation humaine. Les skills, hooks et profils ci-dessus outillent ton poste de superviseur.
+
 ## Codes de sortie
 
 | Code | Signification | Que faire |
