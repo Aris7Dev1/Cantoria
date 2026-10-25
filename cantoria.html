@@ -268,22 +268,29 @@
   html[data-theme="guitar-case"] .badge{border-style:dashed;border-radius:4px;}
 
   #controls{
-    padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    padding:8px 14px calc(9px + env(safe-area-inset-bottom));
     background:var(--bg-panel);border-top:1px solid var(--border);
-    display:flex;flex-direction:column;gap:10px;
+    display:flex;flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;
+    transition:opacity .3s ease, transform .3s ease;
   }
-  .ctrl-row{display:flex;align-items:center;gap:10px;}
+  #controls.auto-hidden{opacity:0;transform:translateY(8px);pointer-events:none;}
+  .ctrl-row{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap;}
   .ctrl-row .label{font-size:11px;color:var(--ink-mid);width:64px;flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
   input[type=range]{flex:1;accent-color:var(--gold);}
   #play-toggle{
-    width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,var(--primary-grad-light),var(--gold));
-    color:var(--primary-ink);font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    width:44px;height:44px;border-radius:50%;background:linear-gradient(180deg,var(--primary-grad-light),var(--gold));
+    color:var(--primary-ink);font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   }
   .stepper{display:flex;align-items:center;gap:6px;}
   .stepper button{
-    width:32px;height:32px;border-radius:8px;background:var(--bg-panel-2);border:1px solid var(--border);color:var(--ink-bright);font-size:16px;
+    width:30px;height:30px;border-radius:8px;background:var(--bg-panel-2);border:1px solid var(--border);color:var(--ink-bright);font-size:15px;
   }
-  .stepper .val{font-family:var(--font-chord);font-size:13px;min-width:40px;text-align:center;color:var(--gold);}
+  .stepper button:disabled{opacity:.35;cursor:default;}
+  .stepper .val{font-family:var(--font-chord);font-size:13px;min-width:44px;text-align:center;color:var(--gold);}
+  #controls .segmented{flex-shrink:0;}
+  #controls .segmented button{padding:5px 10px;font-size:13px;}
+  #btn-pin-controls.active{color:var(--gold);}
+  #btn-pin-controls.active svg{fill:var(--gold);}
 
   #import-input{display:none;}
   #toast{
@@ -450,19 +457,10 @@
     <div id="controls">
       <div class="ctrl-row">
         <button id="play-toggle">▶</button>
-        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div class="stepper" id="speed-stepper">
           <span class="label" style="width:auto;">Vitesse</span>
-          <div class="segmented" id="speed-picker">
-            <button data-speed="0.25">×0,25</button>
-            <button data-speed="0.5">×0,5</button>
-            <button data-speed="1" class="active">×1</button>
-            <button data-speed="1.25">×1,25</button>
-            <button data-speed="1.5">×1,5</button>
-            <button data-speed="2">×2</button>
-          </div>
+          <button id="speed-down" aria-label="Vitesse inférieure">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" aria-label="Vitesse supérieure">+</button>
         </div>
-      </div>
-      <div class="ctrl-row" style="justify-content:space-between;flex-wrap:wrap;">
         <div class="stepper">
           <span class="label" style="width:auto;">Transp.</span>
           <button id="tr-down">−</button><span class="val" id="tr-val">0</span><button id="tr-up">+</button>
@@ -471,8 +469,6 @@
           <span class="label" style="width:auto;">Texte</span>
           <button id="fs-down">A−</button><button id="fs-up">A+</button>
         </div>
-      </div>
-      <div class="ctrl-row">
         <span class="label" style="width:auto;">Décompte</span>
         <div class="segmented" id="countdown-picker">
           <button data-seconds="0" class="active">Aucun</button>
@@ -480,6 +476,10 @@
           <button data-seconds="10">10s</button>
           <button data-seconds="15">15s</button>
         </div>
+        <div class="spacer"></div>
+        <button class="btn icon ghost" id="btn-pin-controls" aria-label="Désépingler le bandeau" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"></path></svg>
+        </button>
       </div>
     </div>
   </section>
@@ -1100,7 +1100,7 @@
       saveSongs();
     }
     speedMultiplier = (s && s.speed) || 1;
-    updateSpeedPicker();
+    updateSpeedStepper();
     document.querySelectorAll("#countdown-picker button").forEach(function(b){
       b.classList.toggle("active", parseInt(b.getAttribute("data-seconds"),10) === selectedCountdown);
     });
@@ -1111,12 +1111,46 @@
     cancelCountdown();
     $("#play-toggle").textContent = "▶";
     $("#stage").scrollTop = 0;
+    armAutoHide();
   }
-  function updateSpeedPicker(){
-    document.querySelectorAll("#speed-picker button").forEach(function(b){
-      b.classList.toggle("active", parseFloat(b.getAttribute("data-speed")) === speedMultiplier);
-    });
+  /* Paliers de vitesse réguliers de 0,25, de ×0,25 à ×2. Une vitesse hors paliers
+     (chanson importée avec une valeur exotique) reste valide : elle est affichée
+     telle quelle et les boutons rejoignent le palier immédiatement supérieur/inférieur. */
+  var SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  function formatSpeed(v){
+    return "×" + String(v).replace(".", ",");
   }
+  function nextSpeedStep(v, direction){
+    var found = null;
+    for(var i = 0; i < SPEED_STEPS.length; i++){
+      if(direction > 0 && SPEED_STEPS[i] > v + 1e-9){ found = SPEED_STEPS[i]; break; }
+      if(direction < 0 && SPEED_STEPS[i] < v - 1e-9){ found = SPEED_STEPS[i]; }
+    }
+    return found;
+  }
+  function updateSpeedStepper(){
+    $("#speed-val").textContent = formatSpeed(speedMultiplier);
+    $("#speed-down").disabled = nextSpeedStep(speedMultiplier, -1) === null;
+    $("#speed-up").disabled = nextSpeedStep(speedMultiplier, 1) === null;
+  }
+  function setSpeed(v){
+    speedMultiplier = v;
+    var s = currentSong();
+    if(s){
+      s.speed = v;
+      saveSongs();
+    }
+    updateSpeedStepper();
+    renderLibrary();
+  }
+  $("#speed-up").addEventListener("click", function(){
+    var next = nextSpeedStep(speedMultiplier, 1);
+    if(next !== null) setSpeed(next);
+  });
+  $("#speed-down").addEventListener("click", function(){
+    var prev = nextSpeedStep(speedMultiplier, -1);
+    if(prev !== null) setSpeed(prev);
+  });
   function updateFavButton(){
     var s = currentSong();
     var btn = $("#btn-fav-current");
@@ -1204,18 +1238,6 @@
      max (not re-read from scrollTop, which browsers round to the pixel). */
   var BASE_SPEED = 22; // px/sec at ×1 speed and default text size
   var speedMultiplier = 1;
-  document.querySelectorAll("#speed-picker button").forEach(function(btn){
-    btn.addEventListener("click", function(){
-      speedMultiplier = parseFloat(btn.getAttribute("data-speed"));
-      document.querySelectorAll("#speed-picker button").forEach(function(b){ b.classList.remove("active"); });
-      btn.classList.add("active");
-      var s = currentSong();
-      if(s){
-        s.speed = speedMultiplier;
-        saveSongs();
-      }
-    });
-  });
   var lastFrameTs = null;
   function scrollFrame(ts){
     if(!scrolling) return;
@@ -1291,6 +1313,43 @@
     if(selectedCountdown > 0){ beginCountdown(selectedCountdown); }
     else { startScroll(); this.textContent = "❚❚"; }
   });
+
+  /* Épinglage du bandeau de contrôle : épinglé par défaut, il reste visible.
+     Non épinglé, il se masque 3 s après l'ouverture du lecteur et réapparaît
+     au mouvement de la souris sur la zone de lecture (jamais pendant un décompte). */
+  var AUTO_HIDE_DELAY = 3000;
+  var autoHideTimer = null;
+  function syncPinButton(){
+    var btn = $("#btn-pin-controls");
+    btn.classList.toggle("active", appSettings.controlsPinned);
+    btn.setAttribute("aria-pressed", appSettings.controlsPinned ? "true" : "false");
+    btn.setAttribute("aria-label", appSettings.controlsPinned ? "Désépingler le bandeau" : "Épingler le bandeau");
+  }
+  function cancelAutoHide(){
+    if(autoHideTimer){ clearTimeout(autoHideTimer); autoHideTimer = null; }
+    $("#controls").classList.remove("auto-hidden");
+  }
+  function armAutoHide(){
+    if(autoHideTimer){ clearTimeout(autoHideTimer); autoHideTimer = null; }
+    if(appSettings.controlsPinned || countdownActive) return;
+    autoHideTimer = setTimeout(function(){
+      autoHideTimer = null;
+      if(!appSettings.controlsPinned && !countdownActive) $("#controls").classList.add("auto-hidden");
+    }, AUTO_HIDE_DELAY);
+  }
+  $("#btn-pin-controls").addEventListener("click", function(){
+    appSettings.controlsPinned = !appSettings.controlsPinned;
+    saveSettings();
+    syncPinButton();
+    if(appSettings.controlsPinned) cancelAutoHide();
+    else armAutoHide();
+  });
+  $("#stage").addEventListener("mousemove", function(){
+    if(appSettings.controlsPinned) return;
+    cancelAutoHide();
+    armAutoHide();
+  });
+  $("#controls").addEventListener("click", function(){ armAutoHide(); });
 
   /* Spotlight effect, also runs on manual scroll */
   var stageEl;
@@ -1460,7 +1519,7 @@
   var SETTINGS_STORAGE_KEY = "cantoria-settings";
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-    cardTextScale: 1,
+    cardTextScale: 1, controlsPinned: true,
     cardFields: { key: true, capo: true, chords: true, speed: true }
   };
   (function loadSettings(){
@@ -1539,10 +1598,12 @@
     if(!confirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ? Tes chansons ne seront pas touchées.")) return;
     appSettings = {
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-      cardTextScale: 1,
+      cardTextScale: 1, controlsPinned: true,
       cardFields: { key: true, capo: true, chords: true, speed: true }
     };
     selectedCountdown = 0;
+    syncPinButton();
+    cancelAutoHide();
     document.documentElement.style.setProperty("--card-scale", 1);
     saveSettings();
     syncSettingsUI();
@@ -1639,6 +1700,7 @@
   /* ---------------- Init ---------------- */
   loadSongs();
   renderLibrary();
+  syncPinButton();
 })();
 </script>
 
