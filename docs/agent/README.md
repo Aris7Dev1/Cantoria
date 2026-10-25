@@ -129,7 +129,7 @@ En cas d'échec, le worktree est conservé. Nettoyage : `git worktree remove --f
 ## Limites à connaître
 
 - **Plafonds.** `--max-turns` (60), `--max-price` (3 $) et `--time-limit` (30 min) sont passés à Vibe. Le coût est calculé avec les prix de `.devcontainer/vibe/config.toml` : vérifie-les, ils viennent d'un article tiers. Quand un plafond est atteint, **le travail partiel n'est jamais poussé** (code 2) ; il reste dans le worktree. Suis aussi la consommation sur ta console Mistral.
-- **La qualité dépend du modèle.** Commence par une tâche courte (voir `premieres-issues.md`) et lis le journal d'une exécution complète avant d'en enchaîner d'autres.
+- **La qualité dépend du modèle.** Commence par une tâche courte (voir des exemples d'issues traitées dans `issues-traitees.md`) et lis le journal d'une exécution complète avant d'en enchaîner d'autres.
 - **Pas de validation visuelle par l'agent.** Il n'a pas d'écran : tout comportement d'interface doit être couvert par des tests jsdom. La mesure visuelle (`npm run visual`, voir `docs/visual/README.md`) est lancée par toi sur la branche de la PR ; elle ne fait pas partie du runner.
 - **Instructions du projet (`AGENTS.md`).** Vibe charge `AGENTS.md` tout seul en session interactive, une fois le dossier approuvé. Le runner, lui, lance Vibe sans `--trust` (volontairement : un dossier de confiance charge aussi la configuration et les compétences du projet, que l'agent pourrait modifier) : `AGENTS.md` n'est alors pas chargé automatiquement, et c'est le prompt du runner qui ordonne à l'agent de lire `VISION.md` puis `AGENTS.md`.
 - **Une tâche à la fois.** Le runner ne gère pas encore le parallélisme.
