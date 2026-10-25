@@ -31,6 +31,12 @@ gh auth setup-git               # permet à git push d'utiliser ce jeton
 
 Le jeton vit dans le conteneur : tout ce qui s'y exécute peut l'utiliser. C'est pourquoi sa portée est minimale et pourquoi l'étape 3 est indispensable.
 
+Le runner fait `git fetch origin` et pousse en `origin` : le dépôt doit avoir un **remote nommé `origin`**. Si le clone n'en a pas (branche configurée directement sur l'URL), ajoute-le :
+
+```bash
+git remote add origin https://github.com/<owner>/<dépôt>.git
+```
+
 ### 2. Le label d'approbation
 
 ```bash
@@ -55,6 +61,8 @@ Sans `package-lock.json`, `npm install` résout les versions à chaque fois. Gé
 
 ## Utilisation
 
+**Numérotation** : issues et pull requests partagent les numéros sur GitHub. Avant de lancer `npm run agent -- N`, vérifie que `N` est bien une **issue ouverte** — le runner refuse une PR (« L'issue n'est pas ouverte (MERGED) »).
+
 ```bash
 # 1. Crée l'issue avec le gabarit « Tâche pour l'agent codeur », puis pose le label agent-ok
 # 2. Simulation : affiche le prompt et la commande, ne crée rien
@@ -64,6 +72,8 @@ npm run agent -- 12
 ```
 
 Options : `--dry-run` · `--no-pr` (pousse la branche sans ouvrir la PR) · `--base=main` · `--timeout-min=30` · `--budget-usd=3` · `--max-turns=60`.
+
+**Modèle** : par défaut `large-4` (`.devcontainer/vibe/config.toml`), le plus fiable pour les tâches autonomes à contraintes strictes. Un modèle plus léger (ex. `mistral-medium-3-5`) se réserve aux tâches courtes et mécaniques, via `AGENT_VIBE_CMD="vibe --model <alias>"` — à vérifier sur le compte Mistral (identifiant, prix) et dans `GATEWAY_ALLOWED_MODELS` avant usage.
 
 Variables d'environnement : `AGENT_REQUIRED_LABEL` (agent-ok) · `AGENT_MAX_DIFF_LINES` (600) · `AGENT_TIMEOUT_MIN` (30) · `AGENT_BUDGET_USD` (3) · `AGENT_MAX_TURNS` (60) · `AGENT_VIBE_CMD` (vibe) · `AGENT_VIBE_CONFIG` (par défaut `.devcontainer/vibe/config.toml`) · `AGENT_PASSTHROUGH_ENV` (variables à transmettre à l'agent, à utiliser avec prudence) · `AGENT_WORKTREES_DIR` · `AGENT_LOGS_DIR` (`~/agent-logs`) · `AGENT_ALLOW_OTHER_AUTHORS=1` (à éviter).
 
