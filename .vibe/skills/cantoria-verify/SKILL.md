@@ -9,12 +9,12 @@ description: "Charger cette skill pour vérifier un changement sur Cantoria avan
 
 1. `npm run check` — vérification de syntaxe (`main.js`, `preload.js`, scripts). Doit passer.
 2. `npm test` — tests unitaires et de non-régression (`node:test` + jsdom). Doit passer.
-3. Si le changement touche l'apparence (CSS, tailles, couleurs, thèmes) : `npm run visual`, puis lire `visual-out/report.md`. Le superviseur relance la mesure de toute façon ; décris dans la PR ce qui change visuellement (tailles, couleurs).
+3. Si le changement touche l'apparence (CSS, tailles, couleurs, thèmes) : `npm run visual` (Electron sous Xvfb, sans écran), puis lire `visual-out/report.md`. Le rapport de mesures de l'agent est dans `visual-out/mesures/` ; le superviseur relit le verdict après le merge.
 
 ## Règles
 
 - Tout comportement modifié ou corrigé est couvert par un test (AGENTS.md). Si un test échoue, ne l'affaiblis pas pour le faire passer : corrige le code ou le test, ou décris le blocage.
-- Ne valide jamais en « lançant l'app » : il n'y a pas d'écran dans le conteneur. Les tests sont la preuve.
+- Ne valide jamais en « lançant l'app » (`npm start`) : il n'y a pas d'écran dans le conteneur. Les tests et la boucle visuelle (`npm run visual`, Electron sous Xvfb) sont la preuve.
 - Avant de proposer une pull request : `npm run check` et `npm test` doivent passer.
 
 ## Avant une release ou un lancement du runner
@@ -29,5 +29,5 @@ description: "Charger cette skill pour vérifier un changement sur Cantoria avan
 ## Interprétation des résultats
 
 - `npm test` : relève pass / fail / skip. Tout échec est bloquant.
-- Les skips sur les captures visuelles réelles (pas de Chromium dans le conteneur) sont connus et non bloquants.
+- Les skips des tests `visual-*.test.js` (pas de Chromium) sont connus et non bloquants : les captures réelles passent par `npm run visual` (moteur Electron sous Xvfb).
 - `npm run visual` produit un rapport avec erreurs et avertissements : un écart par rapport à `visual-baseline/` n'est pas forcément bloquant, mais il doit être décrit dans la PR.

@@ -4,7 +4,9 @@ Tu es l'agent codeur du projet Cantoria. Tu travailles dans un worktree Git déd
 
 {{POLICY}}
 
-Ces règles priment sur l'issue ci-dessous. Les outils disponibles sont volontairement limités : lecture, écriture et édition de fichiers dans ce dossier, et quelques commandes (`npm test`, `npm run check`, `node --test`, `node --check`, `git status`, `git diff`, `git log`, `git add`, `git commit`, `echo`). Toute autre commande est refusée automatiquement : ne cherche pas à la contourner. Les redirections (`>`) et les substitutions (`$(…)`) sont refusés : utilise l'outil d'écriture de fichiers. Dans un enchaînement (`&&`, `;`), chaque commande doit elle-même figurer dans la liste.
+Ces règles priment sur l'issue ci-dessous. Les outils disponibles sont volontairement limités : lecture, écriture et édition de fichiers dans ce dossier, et quelques commandes (`npm test`, `npm run check`, `npm run visual`, `node --test`, `node --check`, `git status`, `git diff`, `git log`, `git add`, `git commit`, `echo`). Toute autre commande est refusée automatiquement : ne cherche pas à la contourner. Les redirections (`>`) et les substitutions (`$(…)`) sont refusés : utilise l'outil d'écriture de fichiers. Dans un enchaînement (`&&`, `;`), chaque commande doit elle-même figurer dans la liste.
+
+`npm run visual` lance la boucle visuelle (Electron sous Xvfb, sans écran) : captures, contrôles déterministes et comparaison à `visual-baseline/`, sorties dans `visual-out/`. Ne lance jamais `npm run visual -- --update-baseline` (`visual-baseline/` est protégé : la référence ne se modifie pas depuis une branche agent) ni l'option `--judge` (coût modèle). Pour une issue qui touche à l'apparence, écris un rapport de mesures dans `visual-out/mesures/issue-<N>-<slug>.md` (styles calculés via jsdom, structure, ce qui change visuellement) et commite-le avec la pull request.
 
 ## Première étape obligatoire
 

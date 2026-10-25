@@ -80,7 +80,7 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 - `tests/agent-lib.test.js` et `tests/agent-runner.test.js` : politique et simulation complète du runner (faux `vibe` et faux `gh` dans `tests/fixtures/`) ; `tests/gateway.test.js` : passerelle Mistral. Hors de ton périmètre : ne les modifie pas.
 - Pour tester une fonction de l'interface, charge le HTML via jsdom comme dans `library-recovery.test.js`. Si une logique pure (transposition, parsing ChordPro) devient difficile à tester, propose son extraction dans un module dans une issue dédiée.
 - `tests/visual-*.test.js` : instruments de la boucle visuelle (contrôles, PNG, juge, orchestrateur, capture réelle ignorée si pas de Chromium). Hors de ton périmètre : ne les modifie pas.
-- Tu ne peux pas lancer `npm run visual` (pas d'Electron utilisable sans écran dans ton environnement restreint) : si une issue touche à l'apparence, le superviseur relancera la mesure ; décris dans la PR ce qui devrait changer visuellement (tailles, couleurs).
+- Tu peux lancer `npm run visual` (Electron sous Xvfb, sans écran) pour les issues d'interface : ne lance jamais `--update-baseline` (référence protégée) ni le juge A/B (coût) ; écris un rapport de mesures dans `visual-out/mesures/` (commité) et décris dans la PR ce qui change visuellement (tailles, couleurs). Le superviseur relit le verdict après le merge.
 
 ## Dette connue (candidates à des issues)
 

@@ -22,6 +22,7 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 - `npm run check` et `npm test` passent (la CI « verify » le contrôle aussi, mais refais-les en local si tu doutes).
 - Tout comportement modifié ou corrigé est couvert par un test. Un test affaibli pour passer est un échec, pas une réussite.
 - Pour un comportement d'interface, le test charge `cantoria.html` dans jsdom (comme `tests/library-recovery.test.js`) et couvre le flux réel (événements, `FileReader`, toast affiché).
+- Pour une PR qui touche à l'apparence : un rapport de mesures est présent dans `visual-out/mesures/` et le verdict de `npm run visual` (contrôles déterministes) ne remonte pas d'erreur bloquante.
 
 ## 4. Principes produit (VISION.md)
 
@@ -33,7 +34,7 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 
 - **Content-Security-Policy** : chaque ouverture (`img-src`, `font-src`…) est justifiée par un usage réel ; pas d'`eval`/`new Function`/`import()` dynamique (`script-src 'unsafe-inline'` ne les couvre pas) ; les `blob:` URLs (`URL.createObjectURL`, ex. export) ne sont pas restreints par `default-src` mais sont à vérifier manuellement.
 - **Import** : la règle d'or — aucune chanson existante supprimée ni modifiée, les doublons ignorés (jamais fusionnés ni écrasés) ; le toast reflète le résultat.
-- **Validation manuelle** : quand l'UI change (rendu, toast, CSP), le superviseur lance l'app hors conteneur — jsdom n'applique pas la CSP et ne voit pas le rendu réel.
+- **Validation manuelle** : quand l'UI change (rendu, toast, CSP), le rapport de mesures de l'agent (`visual-out/mesures/`) et le verdict de `npm run visual` remplacent l'inspection à l'œil ; le superviseur lance l'app hors conteneur uniquement pour la CSP (jsdom ne l'applique pas) et la boîte de dialogue native.
 
 ## 6. Verdict
 
