@@ -86,7 +86,7 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 
 - Pas de CSP dans le HTML.
 - Aucun moyen dans l'interface de récupérer une copie de secours (accessible seulement via le stockage local).
-- Pas de `package-lock.json` : le CI utilise `npm install`.
+- `package-lock.json` : le régénérer (`npm install --package-lock-only`) après tout changement de dépendances ou de version.
 - Logique de transposition et de parsing ChordPro sans test dédié.
 - Paliers de vitesse irréguliers (voir « Questions ouvertes » dans `VISION.md`).
 - Signature de code Windows et macOS non configurée (l'auto-update macOS en dépend).
