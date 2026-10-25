@@ -15,6 +15,7 @@
     --bg:#14161c; --bg-panel:#1b1e27; --bg-panel-2:#20242e; --border:#2a2e3a;
     --ink-dim:#5c6178; --ink-mid:#9298ab; --ink-bright:#f2ede0;
     --gold:#e2a25c; --gold-glow:rgba(226,162,92,.45);
+    --chord-ink:#e2a25c; --chord-standalone-ink:#e9ba86;
     --teal:#6faf9e; --danger:#c76a5f;
     --bg-glow:#1d212c; --primary-grad-light:#eab578; --primary-ink:#241605;
   }
@@ -22,6 +23,7 @@
     --bg:#1b2420; --bg-panel:#212b25; --bg-panel-2:#283630; --border:#3a4b40;
     --ink-dim:#7c8d78; --ink-mid:#a6b5a2; --ink-bright:#f1e7d3;
     --gold:#c8964f; --gold-glow:rgba(200,150,79,.42);
+    --chord-ink:#dbbb8d; --chord-standalone-ink:#e6d0b1;
     --teal:#84a086; --danger:#9a4331;
     --bg-glow:#263229; --primary-grad-light:#dcb578; --primary-ink:#2a1b0e;
   }
@@ -29,6 +31,7 @@
     --bg:#17120f; --bg-panel:#1e1712; --bg-panel-2:#261c15; --border:#3c2c20;
     --ink-dim:#8a7566; --ink-mid:#b8a28e; --ink-bright:#f5ddc9;
     --gold:#e6712f; --gold-glow:rgba(230,113,47,.45);
+    --chord-ink:#ed9869; --chord-standalone-ink:#f2b38f;
     --teal:#f0aa4e; --danger:#b23f2b;
     --bg-glow:#2a1c14; --primary-grad-light:#f0975a; --primary-ink:#2a1006;
   }
@@ -253,7 +256,7 @@
   }
   .seg{display:inline-flex;flex-direction:column;align-items:flex-start;}
   .seg-chord{
-    font-family:var(--font-chord);font-weight:700;color:var(--gold);
+    font-family:var(--font-chord);font-weight:700;color:var(--chord-ink, var(--gold));
     font-size:.9em;letter-spacing:.01em;white-space:nowrap;
     text-shadow:0 0 14px var(--gold-glow);
     line-height:1.15;min-height:1.15em;
@@ -262,7 +265,7 @@
     font-family:var(--font-body);line-height:1.5;color:var(--ink-bright);white-space:nowrap;
   }
   .line.instrumental{gap:.7em;opacity:.88;}
-  .seg-chord.standalone{font-size:1em;line-height:1.3;min-height:0;}
+  .seg-chord.standalone{font-size:1em;line-height:1.3;min-height:0;color:var(--chord-standalone-ink, var(--chord-ink, var(--gold)));}
   .chorus{background:var(--bg-panel-2);border-radius:14px;padding:12px 16px;margin:10px 0;}
   html[data-theme="guitar-case"] .song-card:hover{border-style:dashed;}
   html[data-theme="guitar-case"] .badge{border-style:dashed;border-radius:4px;}
