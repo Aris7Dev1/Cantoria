@@ -63,9 +63,11 @@ test("post-create.sh contrôle que le masque du .env est actif", () => {
 test("Vibe : passerelle locale, télémétrie coupée, commandes dangereuses refusées", () => {
   const toml = read("vibe", "config.toml");
   assert.match(toml, /api_base = "http:\/\/mistral-gateway:8080\/v1"/);
-  for (const key of ["enable_telemetry", "enable_otel", "enable_update_checks", "enable_auto_update", "enable_connectors", "enable_subagents", "enable_background_processes"]) {
+  for (const key of ["enable_telemetry", "enable_otel", "enable_update_checks", "enable_auto_update", "enable_connectors", "enable_background_processes"]) {
     assert.match(toml, new RegExp(`^${key} = false`, "m"), `${key} doit être false`);
   }
+  // Sous-agents autorisés par décision du superviseur (voir le commentaire de .devcontainer/vibe/config.toml).
+  assert.match(toml, /^enable_subagents = true/m, "enable_subagents est autorisé par décision du superviseur");
   const deny = toml.slice(toml.indexOf("denylist"));
   for (const cmd of ["git push", "curl", "wget", "npm install", "sudo", "docker", "gh "]) {
     assert.ok(deny.includes(`"${cmd}"`), `denylist doit contenir « ${cmd} »`);
