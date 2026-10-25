@@ -159,6 +159,55 @@ test("une ligne [Refrain] entre crochets est rendue comme accord isolé et reste
   assert.deepEqual(shifted[2].chords, ["G#"]);
 });
 
+test("à la taille par défaut, les accords mesurent ≥ 18 px et les paroles ≥ 20 px dans le lecteur", () => {
+  const window = loadApp([{
+    id: "s-1", title: "Tailles", artist: "",
+    body: "[Am]paroles en [G]musique",
+  }]);
+  openPlayer(window, "Tailles");
+
+  // jsdom ne résout pas les em en px : on remonte la cascade en partant de la
+  // taille racine du navigateur (16 px, « medium »), comme le fait le moteur.
+  function fontPx(el) {
+    const chain = [];
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) chain.unshift(n);
+    let px = 16;
+    for (const n of chain) {
+      const v = window.getComputedStyle(n).fontSize;
+      if (v === "medium") continue;
+      const m = /^([\d.]+)(px|em|%)$/.exec(v);
+      if (!m) continue;
+      const val = parseFloat(m[1]);
+      if (m[2] === "px") px = val;
+      else px = px * val / (m[2] === "%" ? 100 : 1);
+    }
+    return px;
+  }
+
+  const chord = window.document.querySelector("#stage-inner .seg-chord");
+  const word = window.document.querySelector("#stage-inner .seg-word");
+  assert.ok(chord && word, "le lecteur doit contenir un accord et une parole");
+  assert.ok(fontPx(chord) >= 18,
+    `accord à ${fontPx(chord)} px, minimum 18 px (seuils scripts/visual/thresholds.json)`);
+  assert.ok(fontPx(word) >= 20,
+    `parole à ${fontPx(word)} px, minimum 20 px (seuils scripts/visual/thresholds.json)`);
+
+  // Le réglage de taille (A−/A+) reste relatif : il s'applique sur #stage-inner en em.
+  const stageInner = window.document.querySelector("#stage-inner");
+  assert.equal(window.getComputedStyle(stageInner).fontSize, "1em",
+    "la taille par défaut laisse #stage-inner à 1em");
+  window.document.querySelector("#fs-up").click();
+  assert.equal(window.getComputedStyle(stageInner).fontSize, "1.15em",
+    "A+ augmente la taille du lecteur de 0,15 em");
+  assert.ok(fontPx(chord) >= 18 && fontPx(word) >= 20,
+    "les seuils restent atteints après A+");
+  window.document.querySelector("#fs-down").click();
+  window.document.querySelector("#fs-down").click();
+  const scaleDown = parseFloat(window.getComputedStyle(stageInner).fontSize);
+  assert.ok(Math.abs(scaleDown - 0.85) < 1e-9,
+    `A− diminue la taille du lecteur de 0,15 em par cran (attendu 0,85, obtenu ${scaleDown})`);
+});
+
 test("les accords utilisés listés sous le titre suivent la transposition", () => {
   const window = loadApp([{
     id: "s-1", title: "Badges", artist: "",
