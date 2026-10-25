@@ -13,3 +13,4 @@ l'historique git.
 | 6 | Contrôle des doublons à l'import | #8 | Mergée |
 | 9 | Copie de secours récupérable dans l'interface | #10 | Mergée |
 | 11 | Lecteur : bandeau compact épinglable, vitesse en stepper | #12 | Mergée |
+| 13 | Lecteur : taille du texte sous le seuil (accords, paroles) | #16 | Mergée |
