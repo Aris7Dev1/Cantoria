@@ -12,3 +12,4 @@ l'historique git.
 | 5 | Retirer `img-src data:` et `font-src data:` de la CSP | #7 | Mergée |
 | 6 | Contrôle des doublons à l'import | #8 | Mergée |
 | 9 | Copie de secours récupérable dans l'interface | #10 | Mergée |
+| 11 | Lecteur : bandeau compact épinglable, vitesse en stepper | #12 | Mergée |
