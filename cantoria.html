@@ -1342,6 +1342,21 @@
     });
   }
 
+  /* Deux chansons sont des doublons si elles ont le même id, ou si le titre,
+     l'artiste et le corps sont identiques (comparaison insensible à la casse
+     et aux espaces). Un doublon n'est jamais ajouté : la bibliothèque de
+     l'utilisateur ne doit ni perdre ni écraser une chanson existante. */
+  function normalizeForCompare(s){
+    return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  function isDuplicate(candidate, existing){
+    if(candidate.id && candidate.id === existing.id) return true;
+    return normalizeForCompare(candidate.title) === normalizeForCompare(existing.title)
+      && normalizeForCompare(candidate.artist) === normalizeForCompare(existing.artist)
+      && normalizeForCompare(candidate.body) === normalizeForCompare(existing.body);
+  }
+
   function importContent(content, fileName){
     var lowerName = String(fileName || "").toLowerCase();
 
@@ -1351,22 +1366,32 @@
         var incoming = Array.isArray(parsed) ? parsed : parsed.songs;
         if(!Array.isArray(incoming)) throw new Error("format inattendu");
 
+        var imported = 0, duplicates = 0;
         incoming.forEach(function(raw){
           var s = normalizeSong(raw);
-          if(songs.some(function(x){ return x.id === s.id; })) s.id = uid();
+          if(songs.some(function(x){ return isDuplicate(s, x); })){
+            duplicates++;
+            return;
+          }
           songs.push(s);
+          imported++;
         });
 
         saveSongs();
         renderLibrary();
-        toast(incoming.length + " chanson(s) importée(s)");
+        toast(imported + " chanson(s) importée(s), " + duplicates + " doublon(s) ignoré(s)");
         return;
       }
 
-      songs.push(songFromText(content, fileName));
+      var single = songFromText(content, fileName);
+      if(songs.some(function(x){ return isDuplicate(single, x); })){
+        toast("0 chanson(s) importée(s), 1 doublon(s) ignoré(s)");
+        return;
+      }
+      songs.push(single);
       saveSongs();
       renderLibrary();
-      toast("Chanson importée");
+      toast("1 chanson(s) importée(s), 0 doublon(s) ignoré(s)");
     }catch(err){
       toast("Fichier invalide");
     }
