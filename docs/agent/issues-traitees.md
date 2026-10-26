@@ -17,3 +17,4 @@ l'historique git.
 | 14 | Lecteur : contraste des accords sous le seuil | #17 | Mergée |
 | 15 | Bandeau lecteur : commandes sous le seuil de 32 px | #18 | Mergée |
 | 19 | Lecteur : encadrer les groupes de commandes du bandeau (boxes avec libellé) | #20 | Mergée |
+| 21 | Lecteur : raccourcis clavier pour jouer à distance (lecture, taille des paroles) | #22 | Mergée |
