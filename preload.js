@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("carnetDesktop", Object.freeze({
   platform: process.platform,
   isElectron: true,
   getAppVersion: () => ipcRenderer.invoke("app:version"),
+  setZoomFactor: (factor) => ipcRenderer.invoke("zoom:set", factor),
+  getZoomFactor: () => ipcRenderer.invoke("zoom:get"),
+  onZoomChanged: (callback) => subscribe("zoom:changed", callback),
   openDocument: () => ipcRenderer.invoke("dialog:open-document"),
   saveJson: (content) => {
     if (typeof content !== "string") {

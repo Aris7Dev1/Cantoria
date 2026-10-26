@@ -232,7 +232,10 @@
     border-radius:8px;padding:7px 12px;font-size:14px;
   }
   .segmented button.active{background:var(--gold);color:var(--primary-ink);border-color:transparent;font-weight:600;}
-  #stage-inner{max-width:min(96vw,1400px);margin:0 auto;}
+  /* Le zoom de rendu Electron (webContents.setZoomFactor) grossit toute l'interface.
+     Les paroles en sont exclues : leur taille (A−/A+) pose --reader-scale, compensée
+     ici par le facteur de zoom pour rester constante en px réels. */
+  #stage-inner{max-width:min(96vw,1400px);margin:0 auto;font-size:calc(var(--reader-scale, 1) * 1rem / var(--zoom, 1));}
   .section-label{
     font-family:var(--font-chord);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--teal);margin:26px 0 8px;opacity:.85;text-align:center;
@@ -608,6 +611,7 @@
   var editingId = null;
   var transposeSteps = 0;
   var fontScale = 1;
+  var zoomFactor = 1;
   var scrolling = false;
   var scrollRAF = null;
   var scrollPos = 0;
@@ -1106,7 +1110,7 @@
     currentId = id;
     transposeSteps = 0;
     fontScale = appSettings.defaultFontScale || 1;
-    $("#stage-inner").style.fontSize = fontScale + "em";
+    $("#stage-inner").style.setProperty("--reader-scale", fontScale);
     $("#tr-val").textContent = "0";
     var s = songs.find(function(x){ return x.id === id; });
     if(s){
@@ -1241,8 +1245,8 @@
   $("#tr-down").addEventListener("click", function(){ transposeSteps--; $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps; renderPlayer(); });
 
   /* Font size controls */
-  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.fontSize = fontScale + "em"; });
-  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.fontSize = fontScale + "em"; });
+  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
+  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
 
   /* Auto-scroll — synced to the browser's actual repaint cycle via requestAnimationFrame
      instead of a fixed-interval timer. setInterval doesn't align with when the browser
@@ -1259,7 +1263,10 @@
     if(lastFrameTs == null) lastFrameTs = ts;
     var dt = (ts - lastFrameTs) / 1000;
     lastFrameTs = ts;
-    var speed = BASE_SPEED * speedMultiplier * fontScale;
+    /* Le zoom de rendu grossit le layout : les paroles étant compensées (taille
+       constante en px), on divise par le facteur de zoom pour garder un rythme
+       constant en lignes/seconde. */
+    var speed = BASE_SPEED * speedMultiplier * fontScale / zoomFactor;
     var max = stage.scrollHeight - stage.clientHeight;
     scrollPos += speed * dt;
     if(scrollPos >= max - 0.5){
@@ -1328,9 +1335,58 @@
     else { startScroll(); this.textContent = "❚❚"; }
   });
 
+  /* ---------------- Zoom de l'interface (rendu Electron) ----------------
+     Le zoom s'applique à toute l'interface via webContents.setZoomFactor (le
+     processus principal persiste le facteur). Les paroles en sont exclues :
+     #stage-inner compense par --reader-scale / --zoom (voir la règle CSS).
+     Raccourcis globaux Ctrl+± (zoom), Ctrl+- (dézoom), Ctrl+0 (retour à ×1) :
+     ce sont des modificateurs, ils restent actifs même avec le focus dans un
+     champ de saisie. */
+  var ZOOM_MIN = 0.5;
+  var ZOOM_MAX = 2;
+  var ZOOM_STEP = 0.1;
+  function applyZoomFactor(f){
+    zoomFactor = f;
+    document.documentElement.style.setProperty("--zoom", f);
+  }
+  function setZoom(f){
+    var clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(f * 100) / 100));
+    // Mise à jour optimiste : deux raccourcis rapprochés s'enchaînent sur les
+    // paliers sans attendre l'aller-retour IPC (zoom:changed confirmera).
+    applyZoomFactor(clamped);
+    if(!window.carnetDesktop || typeof window.carnetDesktop.setZoomFactor !== "function") return;
+    window.carnetDesktop.setZoomFactor(clamped).then(function(applied){
+      if(typeof applied === "number" && isFinite(applied)) applyZoomFactor(applied);
+    }).catch(function(){ /* le zoom reste sur la valeur optimiste */ });
+  }
+  document.addEventListener("keydown", function(e){
+    if(!e.ctrlKey || e.altKey || e.metaKey) return;
+    if(e.key === "=" || e.key === "+"){
+      e.preventDefault();
+      setZoom(zoomFactor + ZOOM_STEP);
+    } else if(e.key === "-"){
+      e.preventDefault();
+      setZoom(zoomFactor - ZOOM_STEP);
+    } else if(e.key === "0"){
+      e.preventDefault();
+      setZoom(1);
+    }
+  });
+  (function initZoom(){
+    if(!window.carnetDesktop || typeof window.carnetDesktop.getZoomFactor !== "function") return;
+    window.carnetDesktop.getZoomFactor().then(function(f){
+      if(typeof f === "number" && isFinite(f)) applyZoomFactor(f);
+    }).catch(function(){});
+    if(typeof window.carnetDesktop.onZoomChanged === "function"){
+      window.carnetDesktop.onZoomChanged(function(f){
+        if(typeof f === "number" && isFinite(f)) applyZoomFactor(f);
+      });
+    }
+  })();
+
   /* Raccourcis clavier du lecteur (guitariste à distance) : actifs uniquement
      quand le lecteur est ouvert, ignorés si le focus est dans un champ de saisie.
-     Espace = lecture/pause, Ctrl+↑/↓ = taille des paroles (mêmes paliers que les boutons). */
+     Espace = lecture/pause, Ctrl+↑/↓ = taille des paroles (même paliers que les boutons). */
   function isTypingTarget(el){
     if(!el) return false;
     var tag = el.tagName;

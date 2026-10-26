@@ -6,11 +6,43 @@ const { autoUpdater } = require("electron-updater");
 const APP_NAME = "Cantoria";
 const UPDATE_CONFIG_FILE = path.join(__dirname, "update-config.json");
 const UPDATE_CHECK_MIN_INTERVAL = 60 * 60 * 1000;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+const ZOOM_DEFAULT = 1;
 
 let mainWindow = null;
 let updateTimer = null;
 let updateCheckRunning = false;
 let updateListenersRegistered = false;
+let zoomFactor = ZOOM_DEFAULT;
+
+function zoomFilePath() {
+  return path.join(app.getPath("userData"), "cantoria-zoom.json");
+}
+
+function clampZoomFactor(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+}
+
+async function loadZoomFactor() {
+  try {
+    const raw = await fs.readFile(zoomFilePath(), "utf8");
+    const parsed = JSON.parse(raw);
+    const factor = clampZoomFactor(parsed && parsed.factor);
+    return factor === null ? ZOOM_DEFAULT : factor;
+  } catch {
+    return ZOOM_DEFAULT;
+  }
+}
+
+async function persistZoomFactor(factor) {
+  try {
+    await fs.writeFile(zoomFilePath(), JSON.stringify({ factor }), { encoding: "utf8", mode: 0o600 });
+  } catch (error) {
+    console.error("Persistance du zoom impossible :", error?.message || error);
+  }
+}
 
 async function readUpdateConfig() {
   try {
@@ -163,6 +195,11 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
   mainWindow.once("ready-to-show", () => {
+    loadZoomFactor().then((factor) => {
+      zoomFactor = factor;
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.setZoomFactor(factor);
+    });
     mainWindow.show();
     configureAutoUpdater();
   });
@@ -225,6 +262,24 @@ function registerIpc() {
   ipcMain.handle("app:version", (event) => {
     if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
     return app.getVersion();
+  });
+
+  ipcMain.handle("zoom:set", async (event, factor) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+
+    const clamped = clampZoomFactor(factor);
+    if (clamped === null) throw new Error("Facteur de zoom invalide.");
+
+    zoomFactor = clamped;
+    mainWindow.webContents.setZoomFactor(clamped);
+    await persistZoomFactor(clamped);
+    mainWindow.webContents.send("zoom:changed", clamped);
+    return clamped;
+  });
+
+  ipcMain.handle("zoom:get", (event) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    return zoomFactor;
   });
 
   ipcMain.handle("update:check", async (event) => {
