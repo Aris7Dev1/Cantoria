@@ -279,6 +279,15 @@
   #controls.auto-hidden{opacity:0;transform:translateY(8px);pointer-events:none;}
   .ctrl-row{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap;}
   .ctrl-row .label{font-size:11px;color:var(--ink-mid);width:64px;flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
+  .ctrl-group{
+    position:relative;display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:3px 8px 2px;min-width:0;
+    background:var(--bg-panel-2);border:1px solid var(--border);border-radius:8px;
+  }
+  .ctrl-group-label{
+    position:absolute;top:-8px;left:6px;padding:0 4px;
+    background:var(--bg-panel);font-size:12px;line-height:1.2;color:var(--ink-bright);
+    letter-spacing:.04em;text-transform:uppercase;
+  }
   input[type=range]{flex:1;accent-color:var(--gold);}
   #play-toggle{
     width:44px;height:44px;border-radius:50%;background:linear-gradient(180deg,var(--primary-grad-light),var(--gold));
@@ -460,24 +469,26 @@
     <div id="controls">
       <div class="ctrl-row">
         <button id="play-toggle">▶</button>
-        <div class="stepper" id="speed-stepper">
-          <span class="label" style="width:auto;">Vitesse</span>
+        <div class="ctrl-group stepper" id="speed-stepper">
+          <span class="ctrl-group-label">Vitesse</span>
           <button id="speed-down" aria-label="Vitesse inférieure">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" aria-label="Vitesse supérieure">+</button>
         </div>
-        <div class="stepper">
-          <span class="label" style="width:auto;">Transp.</span>
+        <div class="ctrl-group stepper">
+          <span class="ctrl-group-label">Transpo</span>
           <button id="tr-down">−</button><span class="val" id="tr-val">0</span><button id="tr-up">+</button>
         </div>
-        <div class="stepper">
-          <span class="label" style="width:auto;">Texte</span>
+        <div class="ctrl-group stepper">
+          <span class="ctrl-group-label">Texte</span>
           <button id="fs-down">A−</button><button id="fs-up">A+</button>
         </div>
-        <span class="label" style="width:auto;">Décompte</span>
-        <div class="segmented" id="countdown-picker">
-          <button data-seconds="0" class="active">Aucun</button>
-          <button data-seconds="5">5s</button>
-          <button data-seconds="10">10s</button>
-          <button data-seconds="15">15s</button>
+        <div class="ctrl-group">
+          <span class="ctrl-group-label">Décompte</span>
+          <div class="segmented" id="countdown-picker">
+            <button data-seconds="0" class="active">Aucun</button>
+            <button data-seconds="5">5s</button>
+            <button data-seconds="10">10s</button>
+            <button data-seconds="15">15s</button>
+          </div>
         </div>
         <div class="spacer"></div>
         <button class="btn icon ghost" id="btn-pin-controls" aria-label="Désépingler le bandeau" aria-pressed="true">
