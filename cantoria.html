@@ -468,7 +468,7 @@
     </div>
     <div id="controls">
       <div class="ctrl-row">
-        <button id="play-toggle">▶</button>
+        <button id="play-toggle" title="Lecture / pause (Espace)">▶</button>
         <div class="ctrl-group stepper" id="speed-stepper">
           <span class="ctrl-group-label">Vitesse</span>
           <button id="speed-down" aria-label="Vitesse inférieure">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" aria-label="Vitesse supérieure">+</button>
@@ -479,7 +479,7 @@
         </div>
         <div class="ctrl-group stepper">
           <span class="ctrl-group-label">Texte</span>
-          <button id="fs-down">A−</button><button id="fs-up">A+</button>
+          <button id="fs-down" title="Taille des paroles − (Ctrl+↓)">A−</button><button id="fs-up" title="Taille des paroles + (Ctrl+↑)">A+</button>
         </div>
         <div class="ctrl-group">
           <span class="ctrl-group-label">Décompte</span>
@@ -1326,6 +1326,28 @@
     if(countdownActive){ cancelCountdown(); return; }
     if(selectedCountdown > 0){ beginCountdown(selectedCountdown); }
     else { startScroll(); this.textContent = "❚❚"; }
+  });
+
+  /* Raccourcis clavier du lecteur (guitariste à distance) : actifs uniquement
+     quand le lecteur est ouvert, ignorés si le focus est dans un champ de saisie.
+     Espace = lecture/pause, Ctrl+↑/↓ = taille des paroles (mêmes paliers que les boutons). */
+  function isTypingTarget(el){
+    if(!el) return false;
+    var tag = el.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+  }
+  document.addEventListener("keydown", function(e){
+    if(!$("#player-view").classList.contains("active")) return;
+    if(isTypingTarget(e.target)) return;
+    if(e.key === " " && !e.ctrlKey && !e.altKey && !e.metaKey){
+      e.preventDefault();
+      $("#play-toggle").click();
+      return;
+    }
+    if(e.ctrlKey && (e.key === "ArrowUp" || e.key === "ArrowDown")){
+      e.preventDefault();
+      $(e.key === "ArrowUp" ? "#fs-up" : "#fs-down").click();
+    }
   });
 
   /* Épinglage du bandeau de contrôle : épinglé par défaut, il reste visible.
