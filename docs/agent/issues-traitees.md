@@ -16,3 +16,4 @@ l'historique git.
 | 13 | Lecteur : taille du texte sous le seuil (accords, paroles) | #16 | Mergée |
 | 14 | Lecteur : contraste des accords sous le seuil | #17 | Mergée |
 | 15 | Bandeau lecteur : commandes sous le seuil de 32 px | #18 | Mergée |
+| 19 | Lecteur : encadrer les groupes de commandes du bandeau (boxes avec libellé) | #20 | Mergée |
