@@ -8,7 +8,7 @@ const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const SONGS_KEY = "cantoria-songs-v1";
 const SETTINGS_KEY = "cantoria-settings";
 
-function loadApp(seed = {}) {
+function loadApp(seed = {}, options = {}) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
   const dom = new JSDOM(html, {
     url: "http://localhost/",
@@ -19,6 +19,9 @@ function loadApp(seed = {}) {
         window.localStorage.setItem(key, value);
       }
       window.confirm = function () { return true; };
+      if (options.carnetDesktop) {
+        window.carnetDesktop = options.carnetDesktop;
+      }
     },
   });
   return dom.window;
@@ -43,7 +46,7 @@ function playToggleText(window) {
 }
 
 function fontSizeEm(window) {
-  return parseFloat(window.document.querySelector("#stage-inner").style.fontSize);
+  return parseFloat(window.document.querySelector("#stage-inner").style.getPropertyValue("--reader-scale"));
 }
 
 test("Espace dans le lecteur démarre la lecture, Espace à nouveau met en pause", () => {
@@ -119,7 +122,7 @@ test("les raccourcis sont inactifs quand le lecteur n'est pas ouvert", () => {
   keydown(window, { key: "ArrowUp", ctrlKey: true });
   keydown(window, { key: "ArrowDown", ctrlKey: true });
   assert.equal(playToggleText(window), "▶", "pas de lecture déclenchée");
-  assert.equal(window.document.querySelector("#stage-inner").style.fontSize, "", "taille inchangée");
+  assert.equal(window.document.querySelector("#stage-inner").style.getPropertyValue("--reader-scale"), "", "taille inchangée");
   window.close();
 });
 
@@ -167,5 +170,115 @@ test("découvrabilité : les boutons concernés mentionnent leur raccourci dans 
   assert.match(window.document.querySelector("#play-toggle").getAttribute("title"), /Espace/);
   assert.match(window.document.querySelector("#fs-up").getAttribute("title"), /Ctrl\+↑/);
   assert.match(window.document.querySelector("#fs-down").getAttribute("title"), /Ctrl\+↓/);
+  window.close();
+});
+
+/* ---------- Zoom de l'interface (Ctrl+± / Ctrl+- / Ctrl+0) ---------- */
+
+function zoomMock(initial = 1) {
+  const state = { factor: initial, calls: [] };
+  return {
+    state,
+    api: {
+      setZoomFactor: (f) => {
+        state.calls.push(f);
+        state.factor = f;
+        return Promise.resolve(f);
+      },
+      getZoomFactor: () => Promise.resolve(state.factor),
+      onZoomChanged: () => () => {},
+    },
+  };
+}
+
+function zoomCssVar(window) {
+  return window.document.documentElement.style.getPropertyValue("--zoom");
+}
+
+test("Ctrl+= et Ctrl++ zooment par paliers de 0,1 via carnetDesktop.setZoomFactor", async () => {
+  const mock = zoomMock(1);
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock.api });
+  await new Promise((r) => setTimeout(r, 0)); // laisse l'init getZoomFactor se résoudre
+  keydown(window, { key: "=", ctrlKey: true });
+  keydown(window, { key: "+", ctrlKey: true });
+  assert.deepEqual(mock.state.calls, [1.1, 1.2]);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(zoomCssVar(window), "1.2", "--zoom mis à jour sur :root");
+  window.close();
+});
+
+test("Ctrl+- dézoome, Ctrl+0 retourne à ×1, les événements sont preventDefault", async () => {
+  const mock = zoomMock(1.5);
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock.api });
+  await new Promise((r) => setTimeout(r, 0));
+  const minus = keydown(window, { key: "-", ctrlKey: true });
+  assert.equal(minus.defaultPrevented, true);
+  const zero = keydown(window, { key: "0", ctrlKey: true });
+  assert.equal(zero.defaultPrevented, true);
+  assert.deepEqual(mock.state.calls, [1.4, 1]);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(zoomCssVar(window), "1");
+  window.close();
+});
+
+test("bornes du zoom : [0,5 ; 2]", async () => {
+  const mock = zoomMock(1.95);
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock.api });
+  await new Promise((r) => setTimeout(r, 0));
+  keydown(window, { key: "=", ctrlKey: true });
+  keydown(window, { key: "=", ctrlKey: true });
+  assert.deepEqual(mock.state.calls, [2, 2], "plafond ×2 atteint et maintenu");
+  window.close();
+
+  const mock2 = zoomMock(0.55);
+  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock2.api });
+  await new Promise((r) => setTimeout(r, 0));
+  keydown(window2, { key: "-", ctrlKey: true });
+  keydown(window2, { key: "-", ctrlKey: true });
+  assert.deepEqual(mock2.state.calls, [0.5, 0.5], "plancher ×0,5 atteint et maintenu");
+  window2.close();
+});
+
+test("les raccourcis zoom sont globaux : actifs dans la bibliothèque et avec le focus dans un champ", async () => {
+  const mock = zoomMock(1);
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock.api });
+  await new Promise((r) => setTimeout(r, 0));
+  // Vue bibliothèque (pas de lecteur ouvert).
+  keydown(window, { key: "=", ctrlKey: true });
+  assert.deepEqual(mock.state.calls, [1.1], "zoom actif hors du lecteur");
+  // Focus dans un champ de saisie : les modificateurs restent actifs.
+  openFirstSong(window);
+  const input = window.document.querySelector("#f-title");
+  keydown(window, { key: "=", ctrlKey: true }, input);
+  assert.deepEqual(mock.state.calls, [1.1, 1.2], "zoom actif même dans un champ");
+  window.close();
+});
+
+test("les raccourcis zoom n'interfèrent pas avec Espace / Ctrl+↑/↓", async () => {
+  const mock = zoomMock(1);
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, { carnetDesktop: mock.api });
+  await new Promise((r) => setTimeout(r, 0));
+  openFirstSong(window);
+  const space = keydown(window, { key: " ", ctrlKey: true });
+  assert.equal(space.defaultPrevented, false, "Ctrl+Espace non intercepté par le zoom");
+  assert.equal(playToggleText(window), "▶", "pas de lecture déclenchée");
+  const up = keydown(window, { key: "ArrowUp", ctrlKey: true });
+  assert.equal(up.defaultPrevented, true, "Ctrl+↑ toujours intercepté par le lecteur");
+  assert.ok(Math.abs(fontSizeEm(window) - 1.15) < 1e-9, "la taille des paroles a augmenté");
+  assert.deepEqual(mock.state.calls, [], "aucun appel zoom déclenché");
+  // Sans Ctrl, les touches =, -, 0 ne déclenchent pas le zoom.
+  const plain = keydown(window, { key: "=" });
+  assert.equal(plain.defaultPrevented, false);
+  assert.deepEqual(mock.state.calls, []);
+  window.close();
+});
+
+test("sans carnetDesktop (navigateur), le zoom reste en repli local sur --zoom", async () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  await new Promise((r) => setTimeout(r, 0));
+  keydown(window, { key: "=", ctrlKey: true });
+  assert.equal(zoomCssVar(window), "1.1", "--zoom appliqué localement");
+  keydown(window, { key: "0", ctrlKey: true });
+  assert.equal(zoomCssVar(window), "1");
   window.close();
 });
