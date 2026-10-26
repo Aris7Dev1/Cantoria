@@ -220,6 +220,64 @@ test("style : chaque commande du bandeau mesure au moins 32 px de côté", () =>
   window.close();
 });
 
+test("structure : les quatre groupes de commandes sont encadrés avec un libellé", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+
+  // jsdom ne résout pas les em en px : on remonte la cascade en partant de la
+  // taille racine du navigateur (16 px, « medium »), comme dans tests/chords.test.js.
+  function fontPx(el) {
+    const chain = [];
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) chain.unshift(n);
+    let px = 16;
+    for (const n of chain) {
+      const v = window.getComputedStyle(n).fontSize;
+      if (v === "medium") continue;
+      const m = /^([\d.]+)(px|em|%)$/.exec(v);
+      if (!m) continue;
+      const val = parseFloat(m[1]);
+      if (m[2] === "px") px = val;
+      else px = px * val / (m[2] === "%" ? 100 : 1);
+    }
+    return px;
+  }
+
+  const groups = Array.from(window.document.querySelectorAll("#controls .ctrl-group"));
+  assert.equal(groups.length, 4, "quatre boxes de groupe dans le bandeau");
+
+  const expected = [
+    { label: "Vitesse", contains: ["#speed-down", "#speed-val", "#speed-up"] },
+    { label: "Transpo", contains: ["#tr-down", "#tr-val", "#tr-up"] },
+    { label: "Texte", contains: ["#fs-down", "#fs-up"] },
+    { label: "Décompte", contains: ["#countdown-picker"] },
+  ];
+  groups.forEach((group, i) => {
+    const label = group.querySelector(":scope > .ctrl-group-label");
+    assert.ok(label, "box n°" + (i + 1) + " : un libellé (.ctrl-group-label) présent");
+    assert.equal(label.textContent.trim(), expected[i].label,
+      "box n°" + (i + 1) + " : libellé « " + expected[i].label + " »");
+    const lcs = window.getComputedStyle(label);
+    assert.equal(lcs.textTransform, "uppercase",
+      "libellé « " + expected[i].label + " » en text-transform:uppercase");
+    assert.equal(lcs.position, "absolute",
+      "libellé « " + expected[i].label + " » posé sur la bordure (position:absolute)");
+    assert.ok(fontPx(label) >= 12,
+      "libellé « " + expected[i].label + " » à " + fontPx(label) + " px, minimum 12 px (seuil interface)");
+    const gcs = window.getComputedStyle(group);
+    assert.notEqual(gcs.borderTopWidth, "0px", "box « " + expected[i].label + " » : bordure visible");
+    for (const sel of expected[i].contains) {
+      assert.ok(group.querySelector(sel), "box « " + expected[i].label + " » contient " + sel);
+    }
+  });
+
+  // Les anciens libellés internes aux steppers sont remplacés par le libellé de la box.
+  assert.equal(window.document.querySelectorAll("#controls .stepper > .label").length, 0,
+    "plus de span.label interne aux steppers");
+  assert.equal(window.document.querySelectorAll("#controls > .ctrl-row > .label").length, 0,
+    "plus de span.label « Décompte » isolé dans la ligne");
+  window.close();
+});
+
 test("structure : les contrôles tiennent sur une seule ligne", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   const controls = window.document.querySelector("#controls");
