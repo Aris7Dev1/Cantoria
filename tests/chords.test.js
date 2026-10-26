@@ -192,20 +192,54 @@ test("à la taille par défaut, les accords mesurent ≥ 18 px et les paroles �
   assert.ok(fontPx(word) >= 20,
     `parole à ${fontPx(word)} px, minimum 20 px (seuils scripts/visual/thresholds.json)`);
 
-  // Le réglage de taille (A−/A+) reste relatif : il s'applique sur #stage-inner en em.
+  // Le réglage de taille (A−/A+) pose --reader-scale sur #stage-inner ; la règle
+  // CSS compense le zoom de l'interface (calc(var(--reader-scale) * 1rem / var(--zoom))).
   const stageInner = window.document.querySelector("#stage-inner");
-  assert.equal(window.getComputedStyle(stageInner).fontSize, "1em",
-    "la taille par défaut laisse #stage-inner à 1em");
+  assert.equal(stageInner.style.getPropertyValue("--reader-scale"), "1",
+    "la taille par défaut pose --reader-scale: 1");
   window.document.querySelector("#fs-up").click();
-  assert.equal(window.getComputedStyle(stageInner).fontSize, "1.15em",
-    "A+ augmente la taille du lecteur de 0,15 em");
+  assert.equal(stageInner.style.getPropertyValue("--reader-scale"), "1.15",
+    "A+ augmente la taille du lecteur de 0,15");
   assert.ok(fontPx(chord) >= 18 && fontPx(word) >= 20,
     "les seuils restent atteints après A+");
   window.document.querySelector("#fs-down").click();
   window.document.querySelector("#fs-down").click();
-  const scaleDown = parseFloat(window.getComputedStyle(stageInner).fontSize);
+  const scaleDown = parseFloat(stageInner.style.getPropertyValue("--reader-scale"));
   assert.ok(Math.abs(scaleDown - 0.85) < 1e-9,
-    `A− diminue la taille du lecteur de 0,15 em par cran (attendu 0,85, obtenu ${scaleDown})`);
+    `A− diminue la taille du lecteur de 0,15 par cran (attendu 0,85, obtenu ${scaleDown})`);
+});
+
+test("le zoom de l'interface est compensé sur #stage-inner (paroles à taille constante)", () => {
+  const window = loadApp([{
+    id: "s-1", title: "Zoom", artist: "",
+    body: "[Am]paroles en [G]musique",
+  }]);
+  openPlayer(window, "Zoom");
+
+  // La règle CSS de #stage-inner doit compenser le zoom via calc() et / var(--zoom…).
+  // (extraction directe : la règle est précédée d'un commentaire, pas d'une accolade)
+  const css = styleSheet();
+  const ruleMatch = /(?:^|\})\s*#stage-inner\{([^}]*)\}/m.exec(css);
+  assert.ok(ruleMatch, "la règle « #stage-inner » doit exister");
+  const decl = ruleMatch[1];
+  const fontSizeDecl = /font-size\s*:\s*([^;]+)/.exec(decl);
+  assert.ok(fontSizeDecl, "#stage-inner doit déclarer font-size");
+  assert.match(fontSizeDecl[1], /calc\(/, "le font-size de #stage-inner utilise calc()");
+  assert.match(fontSizeDecl[1], /\/\s*var\(--zoom/, "le font-size de #stage-inner est divisé par var(--zoom)");
+  assert.match(fontSizeDecl[1], /var\(--reader-scale/, "le font-size de #stage-inner dépend de var(--reader-scale)");
+
+  // Résolution de la cascade à la main (jsdom ne résout ni calc() ni var()) :
+  // à --zoom: 2 et --reader-scale: 1, le font-size calculé vaut 16 / 2 = 8 px.
+  const stageInner = window.document.querySelector("#stage-inner");
+  stageInner.style.setProperty("--reader-scale", "1");
+  window.document.documentElement.style.setProperty("--zoom", "2");
+  const m = /calc\(\s*var\(--reader-scale,\s*([\d.]+)\)\s*\*\s*([\d.]+)rem\s*\/\s*var\(--zoom,\s*([\d.]+)\)\s*\)/.exec(fontSizeDecl[1]);
+  assert.ok(m, "la formule calc(var(--reader-scale, 1) * 1rem / var(--zoom, 1)) est reconnue");
+  const readerScale = parseFloat(stageInner.style.getPropertyValue("--reader-scale")) || parseFloat(m[1]);
+  const zoom = parseFloat(window.document.documentElement.style.getPropertyValue("--zoom")) || parseFloat(m[3]);
+  const computedPx = 16 * parseFloat(m[2]) * readerScale / zoom;
+  assert.equal(computedPx, 8, "à --zoom: 2 et --reader-scale: 1, #stage-inner vaut 8 px (16 / 2)");
+  window.close();
 });
 
 test("les accords utilisés listés sous le titre suivent la transposition", () => {
