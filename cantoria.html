@@ -35,6 +35,17 @@
     --teal:#f0aa4e; --danger:#d96a52;
     --bg-glow:#2a1c14; --primary-grad-light:#f0975a; --primary-ink:#2a1006;
   }
+  html[data-theme="vibe"]{
+    --font-display:'JetBrains Mono','Cascadia Mono','SFMono-Regular',Consolas,Menlo,monospace;
+    --font-body:'JetBrains Mono','Cascadia Mono','SFMono-Regular',Consolas,Menlo,monospace;
+    --font-chord:'JetBrains Mono','Cascadia Mono','SFMono-Regular',Consolas,Menlo,monospace;
+    --bg:#0d0d0f; --bg-panel:#141417; --bg-panel-2:#1a1a1e; --border:#2e2e35;
+    --ink-dim:#6b6b78; --ink-mid:#a8a8b3; --ink-bright:#f4f2ec;
+    --gold:#ff8a3d; --gold-glow:rgba(255,138,61,.45);
+    --chord-ink:#ff9a4d; --chord-standalone-ink:#ffb066;
+    --teal:#ffd800; --danger:#ff6b4a;
+    --bg-glow:#16161b; --primary-grad-light:#ffb066; --primary-ink:#1a0d02;
+  }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
@@ -363,6 +374,25 @@
   #backup-list .btn{padding:7px 12px;font-size:13px;flex-shrink:0;}
 
   ::-webkit-scrollbar{width:0;height:0;}
+
+  /* Thème « vibe » : identité terminal — formes carrées, détail « prompt » sobre.
+     Scoping strict : aucun effet sur les trois autres thèmes. En fin de feuille :
+     les tests extraient la première règle d'un sélecteur, les règles de base
+     doivent rester les premières. */
+  html[data-theme="vibe"] .eyebrow::before{content:"> ";}
+  html[data-theme="vibe"] .btn{border-radius:4px;}
+  html[data-theme="vibe"] .btn.icon,html[data-theme="vibe"] #play-toggle{border-radius:6px;}
+  html[data-theme="vibe"] .song-card,html[data-theme="vibe"] .hint{border-radius:4px;}
+  html[data-theme="vibe"] .modal-panel,html[data-theme="vibe"] #update-banner{border-radius:6px;}
+  html[data-theme="vibe"] .ctrl-group,html[data-theme="vibe"] .stepper button,html[data-theme="vibe"] .segmented button{border-radius:3px;}
+  html[data-theme="vibe"] .badge{border-radius:2px;}
+  html[data-theme="vibe"] #search-input,html[data-theme="vibe"] #sort-select,html[data-theme="vibe"] input[type=text],html[data-theme="vibe"] textarea{border-radius:4px;}
+  html[data-theme="vibe"] .chorus,html[data-theme="vibe"] #toast{border-radius:4px;}
+  html[data-theme="vibe"] .switch{border-radius:8px;}
+  html[data-theme="vibe"] .switch .knob{border-radius:2px;}
+  html[data-theme="vibe"] .theme-picker .swatch{border-radius:6px;}
+  html[data-theme="vibe"] .line.focus-line{box-shadow:inset 3px 0 0 var(--gold);}
+  html[data-theme="vibe"] ::selection{background:var(--gold);color:var(--primary-ink);}
 </style>
 </head>
 <body>
@@ -378,6 +408,7 @@
             <button class="swatch" data-theme="spotlight" aria-label="Thème Sous les projecteurs" title="Sous les projecteurs" style="background:linear-gradient(135deg,#14161c 50%,#e2a25c 50%);"></button>
             <button class="swatch" data-theme="guitar-case" aria-label="Thème Étui de guitare" title="Étui de guitare" style="background:linear-gradient(135deg,#1b2420 50%,#c8964f 50%);"></button>
             <button class="swatch active" data-theme="campfire" aria-label="Thème Feu de camp" title="Feu de camp" style="background:linear-gradient(135deg,#17120f 50%,#e6712f 50%);"></button>
+            <button class="swatch" data-theme="vibe" aria-label="Thème Vibe" title="Vibe" style="background:linear-gradient(135deg,#0d0d0f 50%,#ff8a3d 50%);"></button>
           </div>
           <button class="btn icon ghost" id="btn-settings-open" aria-label="Paramètres">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
