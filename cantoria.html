@@ -101,7 +101,7 @@
   .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .theme-picker{display:flex;gap:9px;flex-shrink:0;}
   .theme-picker .swatch{
-    width:26px;height:26px;border-radius:50%;padding:0;
+    width:32px;height:32px;border-radius:50%;padding:0;
     border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);
     transition:border-color .15s, transform .1s;
   }
@@ -154,9 +154,9 @@
   .song-card .artist{font-size:calc(17px * var(--card-scale, 1));font-weight:600;color:var(--ink-mid);}
   .song-card .meta{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
   .fav-btn{
-    background:transparent;border:none;padding:2px;flex-shrink:0;color:var(--ink-dim);line-height:0;
+    background:transparent;border:none;padding:4px;flex-shrink:0;color:var(--ink-dim);line-height:0;
   }
-  .fav-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;}
+  .fav-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;}
   .fav-btn.active{color:var(--gold);}
   .fav-btn.active svg{fill:var(--gold);}
   .badge{
@@ -351,15 +351,15 @@
   .setting-title{font-size:15px;color:var(--ink-bright);font-weight:600;}
   .setting-desc{font-size:14.5px;color:var(--ink-mid);margin-top:2px;line-height:1.4;}
   .switch{
-    width:44px;height:26px;border-radius:14px;background:var(--bg-panel-2);border:1px solid var(--border);
+    width:44px;height:32px;border-radius:16px;background:var(--bg-panel-2);border:1px solid var(--border);
     padding:2px;flex-shrink:0;position:relative;transition:background .15s;
   }
   .switch .knob{
-    display:block;width:20px;height:20px;border-radius:50%;background:var(--ink-mid);
+    display:block;width:26px;height:26px;border-radius:50%;background:var(--ink-mid);
     transition:transform .15s, background .15s;
   }
   .switch.active{background:var(--gold);border-color:transparent;}
-  .switch.active .knob{transform:translateX(18px);background:var(--primary-ink);}
+  .switch.active .knob{transform:translateX(12px);background:var(--primary-ink);}
   #backup-list{display:flex;flex-direction:column;gap:10px;}
   #backup-list .btn{padding:7px 12px;font-size:13px;flex-shrink:0;}
 
