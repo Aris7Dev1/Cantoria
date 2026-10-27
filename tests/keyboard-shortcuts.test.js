@@ -114,6 +114,132 @@ test("bornes : Ctrl+↑ plafonne à 4,4 em, Ctrl+↓ plancher à 0,7 em", () => 
   window2.close();
 });
 
+/* ---------- Vitesse et transposition (Ctrl+←/→, Ctrl+Shift+↑/↓) ---------- */
+
+function speedVal(window) {
+  return window.document.querySelector("#speed-val").textContent;
+}
+
+function trVal(window) {
+  return window.document.querySelector("#tr-val").textContent;
+}
+
+test("Ctrl+→ augmente la vitesse d'un palier, Ctrl+← la diminue", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  assert.equal(speedVal(window), "×1");
+  keydown(window, { key: "ArrowRight", ctrlKey: true });
+  assert.equal(speedVal(window), "×1,25", "1 → 1,25");
+  keydown(window, { key: "ArrowRight", ctrlKey: true });
+  assert.equal(speedVal(window), "×1,5", "1,25 → 1,5");
+  keydown(window, { key: "ArrowLeft", ctrlKey: true });
+  assert.equal(speedVal(window), "×1,25", "1,5 → 1,25");
+  window.close();
+});
+
+test("bornes du stepper de vitesse : pas de dépassement, boutons disabled cohérents", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 2 })]) });
+  openFirstSong(window);
+  assert.equal(speedVal(window), "×2");
+  assert.equal(window.document.querySelector("#speed-up").disabled, true, "×2 : bouton + désactivé");
+  keydown(window, { key: "ArrowRight", ctrlKey: true });
+  assert.equal(speedVal(window), "×2", "plafond ×2 respecté");
+  window.close();
+
+  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.25 })]) });
+  openFirstSong(window2);
+  assert.equal(speedVal(window2), "×0,25");
+  assert.equal(window2.document.querySelector("#speed-down").disabled, true, "×0,25 : bouton − désactivé");
+  keydown(window2, { key: "ArrowLeft", ctrlKey: true });
+  assert.equal(speedVal(window2), "×0,25", "plancher ×0,25 respecté");
+  window2.close();
+});
+
+test("Ctrl+Shift+↑ augmente la transposition d'un demi-ton, Ctrl+Shift+↓ la diminue", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  assert.equal(trVal(window), "0");
+  keydown(window, { key: "ArrowUp", ctrlKey: true, shiftKey: true });
+  assert.equal(trVal(window), "+1", "0 → +1");
+  keydown(window, { key: "ArrowUp", ctrlKey: true, shiftKey: true });
+  assert.equal(trVal(window), "+2", "+1 → +2");
+  keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true });
+  assert.equal(trVal(window), "+1", "+2 → +1");
+  keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true });
+  assert.equal(trVal(window), "0", "+1 → 0");
+  keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true });
+  assert.equal(trVal(window), "-1", "0 → -1");
+  window.close();
+});
+
+test("Ctrl+←/→ et Ctrl+Shift+↑/↓ sont preventDefault", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  assert.equal(keydown(window, { key: "ArrowRight", ctrlKey: true }).defaultPrevented, true);
+  assert.equal(keydown(window, { key: "ArrowLeft", ctrlKey: true }).defaultPrevented, true);
+  assert.equal(keydown(window, { key: "ArrowUp", ctrlKey: true, shiftKey: true }).defaultPrevented, true);
+  assert.equal(keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true }).defaultPrevented, true);
+  window.close();
+});
+
+test("les raccourcis vitesse/transposition sont inactifs quand le lecteur n'est pas ouvert", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  assert.equal(window.document.querySelector("#player-view").classList.contains("active"), false);
+  keydown(window, { key: "ArrowRight", ctrlKey: true });
+  keydown(window, { key: "ArrowLeft", ctrlKey: true });
+  keydown(window, { key: "ArrowUp", ctrlKey: true, shiftKey: true });
+  keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true });
+  assert.equal(window.document.querySelector("#speed-val").textContent, "×1", "vitesse inchangée");
+  assert.equal(window.document.querySelector("#tr-val").textContent, "0", "transposition inchangée");
+  window.close();
+});
+
+test("les raccourcis vitesse/transposition sont inactifs quand le focus est dans un champ de saisie", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  const input = window.document.querySelector("#f-title");
+  keydown(window, { key: "ArrowRight", ctrlKey: true }, input);
+  keydown(window, { key: "ArrowLeft", ctrlKey: true }, input);
+  keydown(window, { key: "ArrowUp", ctrlKey: true, shiftKey: true }, input);
+  keydown(window, { key: "ArrowDown", ctrlKey: true, shiftKey: true }, input);
+  assert.equal(speedVal(window), "×1", "vitesse inchangée dans un champ");
+  assert.equal(trVal(window), "0", "transposition inchangée dans un champ");
+  window.close();
+});
+
+test("non-interférence : Ctrl+↑/↓ sans Shift change la taille des paroles, pas la transposition", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  keydown(window, { key: "ArrowUp", ctrlKey: true });
+  assert.ok(Math.abs(fontSizeEm(window) - 1.15) < 1e-9, "taille des paroles augmentée");
+  assert.equal(trVal(window), "0", "transposition inchangée");
+  keydown(window, { key: "ArrowDown", ctrlKey: true });
+  assert.ok(Math.abs(fontSizeEm(window) - 1) < 1e-9, "taille des paroles diminuée");
+  assert.equal(trVal(window), "0", "transposition inchangée");
+  window.close();
+});
+
+test("non-interférence : Ctrl+←/→ ne change pas la transposition, Espace fonctionne toujours", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  keydown(window, { key: "ArrowRight", ctrlKey: true });
+  keydown(window, { key: "ArrowLeft", ctrlKey: true });
+  assert.equal(trVal(window), "0", "transposition inchangée par Ctrl+←/→");
+  keydown(window, { key: " " });
+  assert.equal(playToggleText(window), "❚❚", "Espace démarre la lecture");
+  window.close();
+});
+
+test("découvrabilité : les boutons vitesse/transposition mentionnent leur raccourci dans title", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
+  openFirstSong(window);
+  assert.match(window.document.querySelector("#speed-down").getAttribute("title"), /Ctrl\+←/);
+  assert.match(window.document.querySelector("#speed-up").getAttribute("title"), /Ctrl\+→/);
+  assert.match(window.document.querySelector("#tr-down").getAttribute("title"), /Ctrl\+Shift\+↓/);
+  assert.match(window.document.querySelector("#tr-up").getAttribute("title"), /Ctrl\+Shift\+↑/);
+  window.close();
+});
+
 test("les raccourcis sont inactifs quand le lecteur n'est pas ouvert", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   // Vue bibliothèque : aucun lecteur ouvert.
