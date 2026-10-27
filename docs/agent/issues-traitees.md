@@ -20,3 +20,4 @@ l'historique git.
 | 21 | Lecteur : raccourcis clavier pour jouer à distance (lecture, taille des paroles) | #22 | Mergée |
 | 23 | Zoom de l'interface (rendu Electron), paroles exclues | #24 | Mergée |
 | 25 | Interface : commandes des paramètres et de la bibliothèque sous le seuil de 32 px | #26 | Mergée |
+| 27 | Interface : contraste des libellés et des boutons danger sous le seuil de 4,5:1 | #28 | Mergée |
