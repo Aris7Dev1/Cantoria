@@ -19,3 +19,4 @@ l'historique git.
 | 19 | Lecteur : encadrer les groupes de commandes du bandeau (boxes avec libellé) | #20 | Mergée |
 | 21 | Lecteur : raccourcis clavier pour jouer à distance (lecture, taille des paroles) | #22 | Mergée |
 | 23 | Zoom de l'interface (rendu Electron), paroles exclues | #24 | Mergée |
+| 25 | Interface : commandes des paramètres et de la bibliothèque sous le seuil de 32 px | #26 | Mergée |
