@@ -126,9 +126,10 @@ test("cas limites : ligne vide, ligne de label et accord inconnu laissé intact"
   openPlayer(window, "Limites");
   const stage = window.document.querySelector("#stage-inner");
   assert.ok(stage.querySelector(".gap"), "la ligne vide produit un séparateur");
-  const comment = stage.querySelector(".comment-row");
-  assert.ok(comment, "la ligne « Refrain » produit un label");
-  assert.equal(comment.textContent, "Refrain");
+  const sectionLabel = stage.querySelector(".section-label");
+  assert.ok(sectionLabel, "la ligne « Refrain » produit un libellé de section");
+  assert.equal(sectionLabel.textContent, "Refrain");
+  assert.ok(stage.querySelector("[data-section=\"chorus-1\"]"), "et une section repérable");
   const lines = stageLines(window);
   assert.equal(lines.length, 2);
   assert.deepEqual(lines[0].chords, ["C"]);
@@ -139,24 +140,22 @@ test("cas limites : ligne vide, ligne de label et accord inconnu laissé intact"
   assert.deepEqual(shifted[1].chords, ["Xyz", "G#"], "l'accord inconnu reste intact après transposition");
 });
 
-test("une ligne [Refrain] entre crochets est rendue comme accord isolé et reste intacte", () => {
+test("une ligne [Refrain] entre crochets ouvre une section, un vrai accord isolé reste instrumental", () => {
   const window = loadApp([{
     id: "s-1", title: "Label crochets", artist: "",
     body: "[C]avant\n[Refrain]\n[G]après",
   }]);
   openPlayer(window, "Label crochets");
   const lines = stageLines(window);
-  assert.equal(lines.length, 3);
-  assert.ok(window.document.querySelector("#stage-inner .line.instrumental"),
-    "une ligne d'accords sans parole est rendue en bloc instrumental");
-  assert.deepEqual(lines[1].chords, ["Refrain"]);
-  assert.equal(lines[1].text, "Refrain");
+  assert.equal(lines.length, 2, "« [Refrain] » n'est plus une ligne d'accord : c'est un libellé de section");
+  const section = window.document.querySelector("#stage-inner [data-section=\"chorus-1\"]");
+  assert.ok(section, "« [Refrain] » ouvre une section refrain");
+  assert.equal(window.document.querySelector("#stage-inner .section-label").textContent, "Refrain");
 
   transpose(window, 1, 1);
   const shifted = stageLines(window);
   assert.deepEqual(shifted[0].chords, ["C#"]);
-  assert.deepEqual(shifted[1].chords, ["Refrain"], "« Refrain » n'est pas un accord : il reste intact");
-  assert.deepEqual(shifted[2].chords, ["G#"]);
+  assert.deepEqual(shifted[1].chords, ["G#"]);
 });
 
 test("à la taille par défaut, les accords mesurent ≥ 18 px et les paroles ≥ 20 px dans le lecteur", () => {

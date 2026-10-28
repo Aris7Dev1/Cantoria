@@ -986,7 +986,40 @@
      symbols) to enumerate exhaustively, so this accepts any alphanumeric/accidental/paren
      suffix rather than a fixed list. */
   var CHORD_TOKEN_RE = /^[A-G][#b♭]?[A-Za-z0-9#b♭()+\-]*(\/[A-G][#b♭]?[A-Za-z0-9#b♭()]*)?$/;
-  var LABEL_WORDS = ["intro","couplet","refrain","pré-refrain","prerefrain","pre-chorus","pont","bridge","outro","interlude","break","coda","fin","final","finale","chorus","verse"];
+  var LABEL_WORDS = ["intro","couplet","refrain","pré-refrain","prerefrain","pre-chorus","pont","bridge","outro","interlude","break","coda","fin","final","finale","chorus","verse","solo"];
+  /* Libellés de section en texte libre (« Refrain : », « Pont », « Couplet 2 »…)
+     tels qu'on les trouve dans les exports de chansonniers (le-chansonnier.com,
+     formats texte). Reconnus par isLabelLine ; sectionFromLabel déduit le type
+     de section pour les liserés et la navigation. */
+  var LABEL_SECTION_PREFIXES = [
+    { prefix: "pré-refrain", section: "verse" },
+    { prefix: "prerefrain", section: "verse" },
+    { prefix: "pre-chorus", section: "verse" },
+    { prefix: "refrain", section: "chorus" },
+    { prefix: "chorus", section: "chorus" },
+    { prefix: "couplet", section: "verse" },
+    { prefix: "verse", section: "verse" },
+    { prefix: "pont", section: "bridge" },
+    { prefix: "bridge", section: "bridge" },
+    { prefix: "solo", section: "verse" },
+    { prefix: "intro", section: "verse" },
+    { prefix: "outro", section: "verse" },
+    { prefix: "interlude", section: "verse" },
+    { prefix: "break", section: "verse" },
+    { prefix: "coda", section: "verse" },
+    { prefix: "final", section: "verse" },
+    { prefix: "fin", section: "verse" }
+  ];
+  function sectionFromLabel(trimmed){
+    var stripped = trimmed.replace(/[:\-–]+$/, "").replace(/\(?\s*x\s*\d+\s*\)?/i, "").trim().toLowerCase();
+    for(var i=0; i<LABEL_SECTION_PREFIXES.length; i++){
+      var p = LABEL_SECTION_PREFIXES[i];
+      if(stripped === p.prefix || stripped.indexOf(p.prefix + " ") === 0 || stripped.indexOf(p.prefix + ":") === 0){
+        return p.section;
+      }
+    }
+    return null;
+  }
 
   function isChordOnlyLine(trimmed){
     if(!trimmed) return false;
@@ -1069,18 +1102,23 @@
     var lines = body.split("\n");
     var blocks = [];
     var sectionType = null;
+    var sectionFromLabelLine = false;
     for(var i=0; i<lines.length; i++){
       var raw = lines[i];
       var trimmed = raw.trim();
 
-      if(trimmed === ""){ blocks.push({ kind:"blank" }); continue; }
+      if(trimmed === ""){
+        if(sectionFromLabelLine){ sectionType = null; sectionFromLabelLine = false; }
+        blocks.push({ kind:"blank" });
+        continue;
+      }
 
       var dm = /^\{(.+)\}$/.exec(trimmed);
       if(dm){
         var content = dm[1].trim();
         var lower = content.toLowerCase();
         var key = lower.split(":")[0].trim();
-        if(SECTION_STARTS[key]){ sectionType = SECTION_STARTS[key]; continue; }
+        if(SECTION_STARTS[key]){ sectionType = SECTION_STARTS[key]; sectionFromLabelLine = false; continue; }
         if(SECTION_ENDS[key]){ sectionType = null; continue; }
         if(key === "comment" || key === "c"){
           blocks.push({ kind:"comment", text: content.split(":").slice(1).join(":").trim() });
@@ -1089,12 +1127,32 @@
         continue; // title/artist/key/capo/tempo handled at song level
       }
 
+      var bracketLabel = /^\[([^\]]+)\]$/.exec(trimmed);
+      if(bracketLabel){
+        var bracketText = bracketLabel[1].replace(/[:\-–]+$/, "").trim();
+        var bracketSection = sectionFromLabel(bracketText);
+        if(bracketSection){
+          sectionType = bracketSection;
+          sectionFromLabelLine = true;
+          blocks.push({ kind:"comment", text: bracketText, section: bracketSection });
+          continue;
+        }
+      }
+
       if(/\[[^\]]+\]/.test(raw)){
         blocks.push({ kind:"chordline", section: sectionType, raw: raw });
         continue;
       }
 
       if(isLabelLine(trimmed)){
+        var labelSection = sectionFromLabel(trimmed);
+        if(labelSection){
+          sectionType = labelSection;
+          sectionFromLabelLine = true;
+          blocks.push({ kind:"comment", text: trimmed, section: labelSection });
+          continue;
+        }
+        sectionType = null;
         blocks.push({ kind:"comment", text: trimmed });
         continue;
       }
@@ -1444,7 +1502,17 @@
     var sectionCounters = {};
     blocks.forEach(function(b){
       if(b.kind === "blank"){ html += '<div class="gap"></div>'; return; }
-      if(b.kind === "comment"){ html += '<div class="comment-row">'+esc(b.text)+'</div>'; return; }
+      if(b.kind === "comment"){
+        if(b.section && b.section !== openSection){
+          if(openSection) html += "</div>";
+          var labelIndex = sectionCounters[b.section] = (sectionCounters[b.section] || 0) + 1;
+          html += '<div class="'+b.section+'" data-section="'+b.section+'-'+labelIndex+'"><div class="section-label">'+esc(b.text)+'</div>';
+          openSection = b.section;
+        } else {
+          html += '<div class="comment-row">'+esc(b.text)+'</div>';
+        }
+        return;
+      }
 
       // b.kind === "chordline" (bracket ChordPro) or "plainline" (chords-over-lyrics / plain text)
       if(b.section !== openSection){

@@ -43,7 +43,7 @@ function loadApp(seed = {}) {
 function song(overrides = {}) {
   return Object.assign({
     id: "s-1", title: "Test", artist: "",
-    body: "[Am]la la la\n[Refrain]",
+    body: "[Am]la la la\n[Dm]",
     speed: 1,
   }, overrides);
 }
