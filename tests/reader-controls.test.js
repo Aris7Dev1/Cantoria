@@ -220,7 +220,7 @@ test("style : chaque commande du bandeau mesure au moins 32 px de côté", () =>
   window.close();
 });
 
-test("structure : les quatre groupes de commandes sont encadrés avec un libellé", () => {
+test("structure : les cinq groupes de commandes sont encadrés avec un libellé", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   openFirstSong(window);
 
@@ -243,12 +243,13 @@ test("structure : les quatre groupes de commandes sont encadrés avec un libell�
   }
 
   const groups = Array.from(window.document.querySelectorAll("#controls .ctrl-group"));
-  assert.equal(groups.length, 4, "quatre boxes de groupe dans le bandeau");
+  assert.equal(groups.length, 5, "cinq boxes de groupe dans le bandeau");
 
   const expected = [
     { label: "Vitesse", contains: ["#speed-down", "#speed-val", "#speed-up"] },
     { label: "Transpo", contains: ["#tr-down", "#tr-val", "#tr-up"] },
     { label: "Texte", contains: ["#fs-down", "#fs-up"] },
+    { label: "Section", contains: ["#section-prev", "#section-next"] },
     { label: "Décompte", contains: ["#countdown-picker"] },
   ];
   groups.forEach((group, i) => {

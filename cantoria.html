@@ -543,6 +543,10 @@
           <button id="fs-down" title="Taille des paroles − (Ctrl+↓)">A−</button><button id="fs-up" title="Taille des paroles + (Ctrl+↑)">A+</button>
         </div>
         <div class="ctrl-group">
+          <span class="ctrl-group-label">Section</span>
+          <button id="section-prev" aria-label="Section précédente" title="Section précédente (Ctrl+Shift+←)">◀</button><button id="section-next" aria-label="Section suivante" title="Section suivante (Ctrl+Shift+→)">▶</button>
+        </div>
+        <div class="ctrl-group">
           <span class="ctrl-group-label">Décompte</span>
           <div class="segmented" id="countdown-picker">
             <button data-seconds="0" class="active">Aucun</button>
@@ -1299,6 +1303,7 @@
     var blocks = parseBody(s.body);
     var html = "";
     var openSection = null;
+    var sectionCounters = {};
     blocks.forEach(function(b){
       if(b.kind === "blank"){ html += '<div class="gap"></div>'; return; }
       if(b.kind === "comment"){ html += '<div class="comment-row">'+esc(b.text)+'</div>'; return; }
@@ -1307,7 +1312,8 @@
       if(b.section !== openSection){
         if(openSection) html += "</div>"; // close previous wrapper
         if(b.section){
-          html += '<div class="'+b.section+'"><div class="section-label">'+SECTION_LABEL[b.section]+'</div>';
+          var sectionIndex = sectionCounters[b.section] = (sectionCounters[b.section] || 0) + 1;
+          html += '<div class="'+b.section+'" data-section="'+b.section+'-'+sectionIndex+'"><div class="section-label">'+SECTION_LABEL[b.section]+'</div>';
         }
         openSection = b.section;
       }
@@ -1333,6 +1339,36 @@
 
   $("#btn-player-back").addEventListener("click", function(){ stopScroll(); cancelCountdown(); showView("library"); });
   $("#btn-edit-current").addEventListener("click", function(){ if(currentId) openEditor(currentId); });
+
+  /* Navigation par sections : saut au début de la section précédente/suivante.
+     En répétition, « on rejoue le refrain » devient un geste. Marche aussi sans lecture
+     en cours (positionne le défilement). */
+  function sectionTargets(){
+    return Array.from(document.querySelectorAll("#stage-inner [data-section]"));
+  }
+  function currentSectionIndex(){
+    var targets = sectionTargets();
+    if(!targets.length) return -1;
+    var stageTop = $("#stage").getBoundingClientRect().top;
+    var best = 0;
+    for(var i=0; i<targets.length; i++){
+      if(targets[i].getBoundingClientRect().top - stageTop <= 40) best = i;
+    }
+    return best;
+  }
+  function gotoSection(delta){
+    var targets = sectionTargets();
+    if(!targets.length) return;
+    var idx = currentSectionIndex() + delta;
+    if(idx < 0) idx = 0;
+    if(idx >= targets.length) idx = targets.length - 1;
+    var stage = $("#stage");
+    var scrollMax = stage.scrollHeight - stage.clientHeight;
+    var offset = targets[idx].getBoundingClientRect().top - stage.getBoundingClientRect().top;
+    stage.scrollTop = Math.max(0, Math.min(scrollMax, stage.scrollTop + offset - 20));
+  }
+  $("#section-prev").addEventListener("click", function(){ gotoSection(-1); });
+  $("#section-next").addEventListener("click", function(){ gotoSection(1); });
 
   /* Transpose controls */
   $("#tr-up").addEventListener("click", function(){ transposeSteps++; $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps; renderPlayer(); });
@@ -1504,6 +1540,16 @@
       }else{
         $(e.key === "ArrowUp" ? "#fs-up" : "#fs-down").click();
       }
+      return;
+    }
+    if(e.key === "ArrowLeft" && e.shiftKey){
+      e.preventDefault();
+      $("#section-prev").click();
+      return;
+    }
+    if(e.key === "ArrowRight" && e.shiftKey){
+      e.preventDefault();
+      $("#section-next").click();
       return;
     }
     if(e.key === "ArrowLeft" && !e.shiftKey){
@@ -1791,7 +1837,8 @@
         { action: "Lecture / pause du défilement", keys: ["Espace"] },
         { action: "Taille des paroles + / −", keys: ["Ctrl", "↑ / ↓"] },
         { action: "Transposition + / − (demi-ton)", keys: ["Ctrl", "Shift", "↑ / ↓"] },
-        { action: "Vitesse de défilement − / +", keys: ["Ctrl", "← / →"] }
+        { action: "Vitesse de défilement − / +", keys: ["Ctrl", "← / →"] },
+        { action: "Section précédente / suivante", keys: ["Ctrl", "Shift", "← / →"] }
       ]
     },
     {
