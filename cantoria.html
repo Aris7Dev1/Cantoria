@@ -1122,6 +1122,17 @@
         continue; // title/artist/key/capo/tempo handled at song level
       }
 
+      var bracketLabel = /^\[([^\]]+)\]$/.exec(trimmed);
+      if(bracketLabel){
+        var bracketText = bracketLabel[1].replace(/[:\-–]+$/, "").trim();
+        var bracketSection = sectionFromLabel(bracketText);
+        if(bracketSection){
+          sectionType = bracketSection;
+          blocks.push({ kind:"comment", text: bracketText, section: bracketSection });
+          continue;
+        }
+      }
+
       if(/\[[^\]]+\]/.test(raw)){
         blocks.push({ kind:"chordline", section: sectionType, raw: raw });
         continue;

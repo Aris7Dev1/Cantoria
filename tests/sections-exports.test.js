@@ -127,3 +127,47 @@ test("les marqueurs ChordPro {sov}/{soc} continuent de fonctionner comme avant",
   assert.deepEqual(labels, ["Couplet", "Refrain"], "libellés génériques ChordPro inchangés");
   assert.equal(sections(window).length, 2);
 });
+
+/* Collage réel du type le-chansonnier.com / Ultimate Guitar : libellé de
+   section entre crochets (« [Refrain :] »), accords au-dessus des paroles. */
+function balavoineBody() {
+  return [
+    "Em                           Gm ",
+    "Heure sonne matin Pleure chagrin",
+    "                    B♭           F            A7 ",
+    " Et repasse le film Humide du passé dans les yeux",
+    "",
+    "[Refrain :] ",
+    "                      Dm          C   ",
+    " Et pourtant il faut vivre ou survivre",
+    "         B♭              A                   Dm   ",
+    " Sans problème sans blesser tous ceux qui l’aiment",
+    "",
+    "Em                      ",
+    "Mais vivre pour toujours",
+  ].join("\n");
+}
+
+test("un libellé entre crochets « [Refrain :] » ouvre une section repérable", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: balavoineBody() })]) });
+  openFirstSong(window);
+  const secs = sections(window);
+  assert.equal(secs.length, 1, "le collage Balavoine détecte son refrain");
+  assert.equal(secs[0].getAttribute("data-section"), "chorus-1");
+  assert.ok(secs[0].classList.contains("chorus"), "liseré or du refrain");
+  const labels = Array.from(window.document.querySelectorAll("#stage-inner .section-label")).map((el) => el.textContent);
+  assert.deepEqual(labels, ["Refrain"], "le libellé entre crochets est reconnu et nettoyé");
+  const lines = secs[0].querySelectorAll(".line");
+  assert.ok(lines.length >= 2, "les paroles du refrain sont dans la section");
+});
+
+test("« [Solo :] » entre crochets est aussi reconnu", () => {
+  const window = loadApp({
+    [SONGS_KEY]: JSON.stringify([song({ body: "[Solo :]\n[D]Pam pam\n[Am]Pim pim" })]),
+  });
+  openFirstSong(window);
+  const secs = sections(window);
+  assert.equal(secs.length, 1);
+  assert.equal(secs[0].getAttribute("data-section"), "verse-1");
+  assert.equal(window.document.querySelector("#stage-inner .section-label").textContent, "Solo");
+});
