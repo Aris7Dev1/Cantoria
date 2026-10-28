@@ -376,6 +376,22 @@
     border-radius:5px;padding:2px 7px;min-width:24px;text-align:center;
   }
   .help-note{font-size:13.5px;color:var(--ink-mid);line-height:1.45;}
+  #chord-diagrams{
+    display:flex;gap:10px;padding:10px 14px;overflow-x:auto;
+    background:var(--bg-panel);border-bottom:1px solid var(--border);
+  }
+  .chord-diagram{
+    display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;
+  }
+  .chord-diagram .cd-name{
+    font-family:var(--font-chord);font-size:14px;color:var(--chord-ink, var(--gold));
+    text-align:center;min-height:18px;
+  }
+  .chord-diagram svg{display:block;}
+  .chord-diagram svg .cd-grid{stroke:var(--ink-mid);stroke-width:1;opacity:.55;}
+  .chord-diagram svg .cd-dot{fill:var(--gold);}
+  .chord-diagram svg .cd-muted{stroke:var(--ink-mid);stroke-width:1.4;opacity:.7;}
+  .chord-diagram svg .cd-open{stroke:var(--gold);stroke-width:1.4;fill:none;}
   .setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;}
   .setting-title{font-size:15px;color:var(--ink-bright);font-weight:600;}
   .setting-desc{font-size:14.5px;color:var(--ink-mid);margin-top:2px;line-height:1.4;}
@@ -523,6 +539,7 @@
       </button>
     </div>
     <div id="chords-used"></div>
+    <div id="chord-diagrams"></div>
     <div id="stage">
       <div id="stage-inner"></div>
       <div id="countdown-overlay"><div id="countdown-number">5</div></div>
@@ -604,6 +621,19 @@
           <button data-seconds="5">5s</button>
           <button data-seconds="10">10s</button>
           <button data-seconds="15">15s</button>
+        </div>
+      </div>
+
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div class="setting-text">
+          <div class="setting-title">Diagrammes d'accords</div>
+          <div class="setting-desc">Dessins des positions de doigts des accords de la chanson, affichés dans le lecteur (modifiable ensuite dans le lecteur).</div>
+        </div>
+        <div class="segmented" id="diagrams-picker">
+          <button data-pos="song" class="active">Selon la chanson</button>
+          <button data-pos="top">En haut</button>
+          <button data-pos="bottom">En bas</button>
+          <button data-pos="hidden">Masqués</button>
         </div>
       </div>
 
@@ -1193,6 +1223,93 @@
   });
 
   /* ---------------- Player ---------------- */
+  /* Diagrammes d'accords : formes ouvertes usuelles, sinon forme de barré
+     (Am pour les mineurs, E pour les majeurs) transposée. Cordes graves à
+     gauche : frets[0] = corde aiguë ... frets[5] = Mi grave, -1 = corde étouffée. */
+  var CHORD_SHAPES = {
+    "C": { frets: [-1, 3, 2, 0, 1, 0] }, "C7": { frets: [-1, 3, 2, 3, 1, 0] },
+    "D": { frets: [-1, -1, 0, 2, 3, 2] }, "Dm": { frets: [-1, -1, 0, 2, 3, 1] }, "D7": { frets: [-1, -1, 0, 2, 1, 2] },
+    "E": { frets: [0, 2, 2, 1, 0, 0] }, "Em": { frets: [0, 2, 2, 0, 0, 0] }, "E7": { frets: [0, 2, 0, 1, 0, 0] },
+    "F": { frets: [1, 3, 3, 2, 1, 1] },
+    "G": { frets: [3, 2, 0, 0, 0, 3] }, "G7": { frets: [3, 2, 0, 0, 0, 1] },
+    "A": { frets: [-1, 0, 2, 2, 2, 0] }, "Am": { frets: [-1, 0, 2, 2, 1, 0] }, "A7": { frets: [-1, 0, 2, 0, 2, 0] },
+    "B7": { frets: [-1, 2, 1, 2, 0, 2] }
+  };
+  function chordFrets(name){
+    if(CHORD_SHAPES[name]) return CHORD_SHAPES[name].frets;
+    var m = /^([A-G][#b]?)(m?)$/.exec(name);
+    if(!m) return null;
+    var note = FLAT_MAP[m[1]] || m[1];
+    var idx = SHARPS.indexOf(note);
+    if(idx === -1) return null;
+    var minor = m[2] === "m";
+    var shape = minor ? CHORD_SHAPES.Am : CHORD_SHAPES.E;
+    var shapeRoot = minor ? SHARPS.indexOf("A") : SHARPS.indexOf("E");
+    var shift = ((idx - shapeRoot) % 12 + 12) % 12;
+    return shape.frets.map(function(f){ return f < 0 ? f : f + shift; });
+  }
+  function chordDiagramSvg(name){
+    var frets = chordFrets(name);
+    if(!frets) return null;
+    var played = frets.filter(function(f){ return f > 0; });
+    var firstFret = played.length ? Math.min.apply(null, played) : 1;
+    var strings = 6, shownFrets = 4;
+    var w = 40, h = 52, x0 = 6, y0 = 10;
+    var fw = (w - 2 * x0) / (strings - 1), fh = (h - y0 - 8) / shownFrets;
+    var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true">';
+    for(var f = 0; f <= shownFrets; f++){
+      var y = y0 + f * fh;
+      svg += '<line class="cd-grid" x1="' + x0 + '" y1="' + y + '" x2="' + (x0 + (strings - 1) * fw) + '" y2="' + y + '"/>';
+    }
+    for(var s = 0; s < strings; s++){
+      var x = x0 + s * fw;
+      svg += '<line class="cd-grid" x1="' + x + '" y1="' + y0 + '" x2="' + x + '" y2="' + (y0 + shownFrets * fh) + '"/>';
+    }
+    for(var i = 0; i < frets.length; i++){
+      var fret = frets[i];
+      var xs = x0 + (frets.length - 1 - i) * fw;
+      if(fret < 0){
+        svg += '<path class="cd-muted" d="M' + (xs - 3) + ' ' + (y0 - 7) + ' l6 6 m0 -6 l-6 6"/>';
+      } else if(fret === 0){
+        svg += '<circle class="cd-open" cx="' + xs + '" cy="' + (y0 - 4) + '" r="3"/>';
+      } else {
+        var row = fret - firstFret + 1;
+        if(row >= 1 && row <= shownFrets){
+          svg += '<circle class="cd-dot" cx="' + xs + '" cy="' + (y0 + (row - 0.5) * fh) + '" r="4.6"/>';
+        }
+      }
+    }
+    if(firstFret > 1){
+      svg += '<text x="' + (w - 3) + '" y="' + (y0 + fh * 0.8) + '" font-size="9" fill="var(--ink-mid)" text-anchor="end">' + firstFret + '</text>';
+    }
+    svg += '</svg>';
+    return svg;
+  }
+  function renderChordDiagrams(){
+    var zone = $("#chord-diagrams");
+    var stage = $("#stage");
+    if(appSettings.chordDiagrams === "hidden" || !chordsVisible || !currentId){
+      zone.innerHTML = "";
+      if(zone.nextElementSibling !== stage) zone.parentNode.insertBefore(zone, stage);
+      return;
+    }
+    var s = songs.find(function(x){ return x.id === currentId; });
+    if(!s){ zone.innerHTML = ""; return; }
+    var chordNames = extractChordNames(s.body).map(function(c){ return transposeChord(c, transposeSteps); });
+    var uniq = [];
+    chordNames.forEach(function(c){ if(uniq.indexOf(c) === -1) uniq.push(c); });
+    var html = "";
+    uniq.forEach(function(c){
+      var svg = chordDiagramSvg(c);
+      if(svg) html += '<div class="chord-diagram"><div class="cd-name">' + esc(c) + '</div>' + svg + '</div>';
+    });
+    zone.innerHTML = html;
+    if(appSettings.chordDiagrams === "bottom"){
+      zone.parentNode.insertBefore(zone, stage.nextElementSibling);
+    } else {
+      zone.parentNode.insertBefore(zone, stage);
+    }
+  }
   function openPlayer(id){
     currentId = id;
     transposeSteps = 0;
@@ -1299,6 +1416,7 @@
     chordNames.forEach(function(c){ if(uniq.indexOf(c) === -1) uniq.push(c); });
     $("#chords-used").innerHTML = chordsVisible ? uniq.map(function(c){ return '<span class="badge">'+esc(c)+'</span>'; }).join("") : "";
     applyChordsVisibility();
+    renderChordDiagrams();
 
     var blocks = parseBody(s.body);
     var html = "";
@@ -1768,7 +1886,7 @@
   var SETTINGS_STORAGE_KEY = "cantoria-settings";
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-    cardTextScale: 1, controlsPinned: true, chordsVisible: true,
+    cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song",
     cardFields: { key: true, capo: true, chords: true, speed: true }
   };
   (function loadSettings(){
@@ -1791,6 +1909,9 @@
     $("#setting-spotlight").setAttribute("aria-pressed", appSettings.spotlight ? "true" : "false");
     $("#setting-chords-visible").classList.toggle("active", appSettings.chordsVisible !== false);
     $("#setting-chords-visible").setAttribute("aria-pressed", appSettings.chordsVisible !== false ? "true" : "false");
+    document.querySelectorAll("#diagrams-picker button").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-pos") === (appSettings.chordDiagrams || "song"));
+    });
     $("#def-fs-val").textContent = "×" + appSettings.defaultFontScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
     $("#card-fs-val").textContent = "×" + appSettings.cardTextScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
     document.querySelectorAll("#def-countdown-picker button").forEach(function(b){
@@ -1905,7 +2026,14 @@
     appSettings.chordsVisible = appSettings.chordsVisible === false;
     chordsVisible = appSettings.chordsVisible;
     syncSettingsUI(); saveSettings();
-    renderPlayer();
+    if($("#player-view").classList.contains("active")) renderPlayer();
+  });
+  document.querySelectorAll("#diagrams-picker button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      appSettings.chordDiagrams = btn.getAttribute("data-pos");
+      syncSettingsUI(); saveSettings();
+      if($("#player-view").classList.contains("active")) renderPlayer();
+    });
   });
   $("#btn-chords-visibility").addEventListener("click", function(){
     chordsVisible = !chordsVisible;
@@ -1933,7 +2061,7 @@
     if(!confirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ? Tes chansons ne seront pas touchées.")) return;
     appSettings = {
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-      cardTextScale: 1, controlsPinned: true, chordsVisible: true,
+      cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song",
       cardFields: { key: true, capo: true, chords: true, speed: true }
     };
     selectedCountdown = 0;
@@ -1951,6 +2079,7 @@
     renderLibrary();
     applyChordsVisibility();
     if($("#player-view").classList.contains("active")) renderPlayer();
+    else renderChordDiagrams();
     toast("Paramètres réinitialisés");
   });
 
