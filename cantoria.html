@@ -366,7 +366,7 @@
   #update-banner .btn{padding:8px 11px;font-size:12.5px;}
 
   .modal-overlay{
-    position:fixed;inset:0;background:rgba(0,0,0,.6);
+    position:fixed;inset:0;background:rgba(0,0,0,.75);
     display:none;align-items:center;justify-content:center;z-index:60;padding:20px;
   }
   .modal-overlay.show{display:flex;}
@@ -374,6 +374,7 @@
     background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;
     padding:20px;width:100%;max-width:420px;max-height:86vh;overflow-y:auto;
     display:flex;flex-direction:column;gap:18px;
+    background-image:linear-gradient(var(--bg-panel), var(--bg-panel));
   }
   .modal-head{display:flex;align-items:center;justify-content:space-between;}
   #help-content{display:flex;flex-direction:column;gap:18px;}
