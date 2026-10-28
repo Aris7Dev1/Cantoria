@@ -80,14 +80,18 @@ test("les sections portent leur libellé français en clair", () => {
   assert.deepEqual(labels, ["Couplet", "Refrain", "Pont"]);
 });
 
-test("le couplet n'est pas encapsulé dans un bloc de couleur pleine", () => {
+test("le couplet est démarqué par un liseré discret mais sans fond de couleur pleine", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   openFirstSong(window);
   const verse = window.document.querySelector("#stage-inner .verse");
   assert.ok(verse, "le bloc couplet doit exister (pour l'ancrage des sections)");
   const style = window.getComputedStyle(verse);
   assert.equal(style.backgroundColor, "rgba(0, 0, 0, 0)",
-    "le couplet reste sans fond, seul le refrain et le pont se détachent");
+    "le couplet reste sans fond pleine : il se démarque par un liseré neutre");
+  const borderRule = ruleFor(window, ".verse", "border-left");
+  assert.ok(borderRule, "le couplet porte un liseré gauche");
+  assert.match(borderRule, /var\(--ink-dim\)/,
+    "le liseré du couplet utilise la teinte neutre du thème (distinct de l'or du refrain et du bleu-vert du pont)");
 });
 
 test("une chanson sans marqueurs ChordPro ne crée aucun bloc de section", () => {
