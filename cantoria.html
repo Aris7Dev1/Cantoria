@@ -143,6 +143,9 @@
   .fav-filter svg{fill:none;stroke:currentColor;stroke-width:1.6;vertical-align:-2px;margin-right:2px;}
   .fav-filter[aria-pressed="true"]{color:var(--primary-ink);background:var(--gold);border-color:transparent;}
   .fav-filter[aria-pressed="true"] svg{fill:currentColor;stroke:currentColor;}
+  #btn-chords-visibility svg .eye-off-line{display:none;}
+  #btn-chords-visibility[aria-pressed="false"] svg .eye-line{display:none;}
+  #btn-chords-visibility[aria-pressed="false"] svg .eye-off-line{display:block;}
   #song-grid{
     flex:1;overflow-y:auto;padding:6px 20px 100px;
     display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;
@@ -216,6 +219,7 @@
   #chords-used{
     display:flex;gap:6px;padding:10px 14px;overflow-x:auto;background:var(--bg-panel);border-bottom:1px solid var(--border);
   }
+  #chords-used:empty{display:none;}
   #stage{
     flex:1;overflow-y:auto;padding:18vh 16px 42vh;scroll-behavior:auto;
     -webkit-overflow-scrolling:touch;
@@ -502,6 +506,12 @@
         <div class="title" id="p-title">—</div>
         <div class="sub" id="p-sub">—</div>
       </div>
+      <button class="btn icon ghost" id="btn-chords-visibility" aria-label="Cacher les accords sous le titre" aria-pressed="true" title="Afficher / cacher les accords sous le titre">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <g class="eye-line"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></g>
+          <g class="eye-off-line"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
+        </svg>
+      </button>
       <button class="btn icon ghost fav-btn" id="btn-fav-current" aria-label="Marquer comme favori">
         <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg>
       </button>
@@ -592,6 +602,14 @@
 
       <div class="setting-row">
         <div class="setting-text">
+          <div class="setting-title">Accords sous le titre</div>
+          <div class="setting-desc">Affiche la liste des accords sous le titre de la chanson dans le lecteur (modifiable ensuite dans le lecteur, bouton «\u00a0œil\u00a0»).</div>
+        </div>
+        <button class="switch active" id="setting-chords-visible" aria-pressed="true"><span class="knob"></span></button>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-text">
           <div class="setting-title">Taille du texte de la liste</div>
           <div class="setting-desc">Titre, artiste et badges sur les cartes de "Mes chansons".</div>
         </div>
@@ -672,6 +690,7 @@
   var editingId = null;
   var transposeSteps = 0;
   var fontScale = 1;
+  var chordsVisible = true;
   var zoomFactor = 1;
   var scrolling = false;
   var scrollRAF = null;
@@ -1181,6 +1200,8 @@
     speedMultiplier = (s && s.speed) || 1;
     updateSpeedStepper();
     selectedCountdown = appSettings.defaultCountdown || 0;
+    chordsVisible = appSettings.chordsVisible !== false;
+    applyChordsVisibility();
     document.querySelectorAll("#countdown-picker button").forEach(function(b){
       b.classList.toggle("active", parseInt(b.getAttribute("data-seconds"),10) === selectedCountdown);
     });
@@ -1248,6 +1269,13 @@
 
   function currentSong(){ return songs.find(function(x){ return x.id === currentId; }); }
 
+  function applyChordsVisibility(){
+    var btn = $("#btn-chords-visibility");
+    btn.setAttribute("aria-pressed", chordsVisible ? "true" : "false");
+    btn.setAttribute("aria-label", chordsVisible ? "Cacher les accords sous le titre" : "Afficher les accords sous le titre");
+    var zone = $("#chords-used");
+    if(!chordsVisible) zone.innerHTML = "";
+  }
   function renderPlayer(){
     var s = currentSong();
     if(!s) return;
@@ -1262,7 +1290,8 @@
     var chordNames = extractChordNames(s.body).map(function(c){ return transposeChord(c, transposeSteps); });
     var uniq = [];
     chordNames.forEach(function(c){ if(uniq.indexOf(c) === -1) uniq.push(c); });
-    $("#chords-used").innerHTML = uniq.map(function(c){ return '<span class="badge">'+esc(c)+'</span>'; }).join("");
+    $("#chords-used").innerHTML = chordsVisible ? uniq.map(function(c){ return '<span class="badge">'+esc(c)+'</span>'; }).join("") : "";
+    applyChordsVisibility();
 
     var blocks = parseBody(s.body);
     var html = "";
@@ -1690,7 +1719,7 @@
   var SETTINGS_STORAGE_KEY = "cantoria-settings";
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-    cardTextScale: 1, controlsPinned: true,
+    cardTextScale: 1, controlsPinned: true, chordsVisible: true,
     cardFields: { key: true, capo: true, chords: true, speed: true }
   };
   (function loadSettings(){
@@ -1711,6 +1740,8 @@
   function syncSettingsUI(){
     $("#setting-spotlight").classList.toggle("active", appSettings.spotlight);
     $("#setting-spotlight").setAttribute("aria-pressed", appSettings.spotlight ? "true" : "false");
+    $("#setting-chords-visible").classList.toggle("active", appSettings.chordsVisible !== false);
+    $("#setting-chords-visible").setAttribute("aria-pressed", appSettings.chordsVisible !== false ? "true" : "false");
     $("#def-fs-val").textContent = "×" + appSettings.defaultFontScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
     $("#card-fs-val").textContent = "×" + appSettings.cardTextScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
     document.querySelectorAll("#def-countdown-picker button").forEach(function(b){
@@ -1820,6 +1851,19 @@
     saveSettings();
     if(!appSettings.spotlight) applySpotlight();
   });
+  $("#setting-chords-visible").addEventListener("click", function(){
+    appSettings.chordsVisible = appSettings.chordsVisible === false;
+    chordsVisible = appSettings.chordsVisible;
+    syncSettingsUI(); saveSettings();
+    renderPlayer();
+  });
+  $("#btn-chords-visibility").addEventListener("click", function(){
+    chordsVisible = !chordsVisible;
+    appSettings.chordsVisible = chordsVisible;
+    applyChordsVisibility();
+    saveSettings();
+    renderPlayer();
+  });
   $("#def-fs-up").addEventListener("click", function(){
     appSettings.defaultFontScale = Math.min(4.4, appSettings.defaultFontScale + 0.15);
     syncSettingsUI(); saveSettings();
@@ -1839,10 +1883,11 @@
     if(!confirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ? Tes chansons ne seront pas touchées.")) return;
     appSettings = {
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-      cardTextScale: 1, controlsPinned: true,
+      cardTextScale: 1, controlsPinned: true, chordsVisible: true,
       cardFields: { key: true, capo: true, chords: true, speed: true }
     };
     selectedCountdown = 0;
+    chordsVisible = true;
     syncPinButton();
     cancelAutoHide();
     document.documentElement.style.setProperty("--card-scale", 1);
@@ -1854,6 +1899,8 @@
       b.classList.toggle("active", b.getAttribute("data-theme") === "campfire");
     });
     renderLibrary();
+    applyChordsVisibility();
+    if($("#player-view").classList.contains("active")) renderPlayer();
     toast("Paramètres réinitialisés");
   });
 
