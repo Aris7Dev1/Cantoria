@@ -133,16 +133,18 @@ simple navigateur. B garde la promesse « hors ligne, local, sobre » :
 - Les tests `node:test` + jsdom restent la base de vérification pour la partie
   interface (ils testent le HTML, pas Electron).
 
-## 6. Décisions à prendre (superviseur)
+## 6. Décisions prises (superviseur, PR #33)
 
-| # | Décision | Options |
+Décisions tranchées le jour de la fusion de la PR #33 par le superviseur :
+
+| # | Décision | Résultat |
 |---|---|---|
-| 1 | Confirmer l'entrée d'Android/ChromeOS dans le périmètre et mettre à jour `VISION.md` en conséquence | Oui / Non / plus tard |
-| 2 | Choix technique | WebView native (recommandé) / Capacitor / PWA-TWA |
-| 3 | Distribution et mises à jour Android | Play Store / sideload APK |
-| 4 | Stockage des chansons sur Android | Fichier privé via pont JS (recommandé) / localStorage WebView |
-| 5 | Gestes tactiles dans le lecteur | Aucun au début (recommandé : sobre) / tap pause / swipe vitesse-transpo |
-| 6 | Signatures Android (keystore) et secrets CI | Réservé superviseur |
+| 1 | Confirmer l'entrée d'Android/ChromeOS dans le périmètre et mettre à jour `VISION.md` en conséquence | **Oui** — `VISION.md` mis à jour en conséquence |
+| 2 | Choix technique | **WebView native** (option B, recommandée) |
+| 3 | Distribution et mises à jour Android | **Sideload APK avec GitHub Releases** (pas de Play Store) |
+| 4 | Stockage des chansons sur Android | **Fichier privé via pont JS** (recommandé) |
+| 5 | Gestes tactiles dans le lecteur | **Aucun au début** (recommandé : sobre) |
+| 6 | Signatures Android (keystore) et secrets CI | **Pas pour l'instant** — reste réservé au superviseur |
 
 ## 7. Étapes proposées (une fois le périmètre acté)
 

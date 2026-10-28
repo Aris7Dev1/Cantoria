@@ -17,11 +17,11 @@ Cantoria est un carnet de paroles et d'accords à défilement automatique, pour 
 
 ## Périmètre
 
-**Plateforme (décision du superviseur) :** application de bureau **Electron**, Windows, macOS et Linux. La piste PWA / ChromeOS est **abandonnée** ; ne pas la réintroduire (pas de manifest, pas de service worker).
+**Plateforme (décision du superviseur) :** application de bureau **Electron**, Windows, macOS et Linux ; adaptation **Android (APK, WebView native)** et ChromeOS (via APK) entrée au périmètre (décision PR #33). La piste **PWA / ChromeOS** reste **abandonnée** ; ne pas la réintroduire (pas de manifest, pas de service worker).
 
 **Dans le périmètre :** bibliothèque de chansons, éditeur, lecteur à défilement (vitesse, taille du texte, compte à rebours, mise en évidence de la ligne), accords et transposition, import (JSON, TXT, ChordPro) et export JSON, mise à jour automatique.
 
-**Hors périmètre :** comptes et synchronisation cloud, partage en ligne, publicités, suivi d'usage, version mobile, lecture audio ou reconnaissance musicale, IA embarquée.
+**Hors périmètre :** comptes et synchronisation cloud, partage en ligne, publicités, suivi d'usage, lecture audio ou reconnaissance musicale, IA embarquée.
 
 ## Exception réseau unique
 
@@ -41,6 +41,7 @@ Le **processus principal** (`main.js`) interroge GitHub Releases pour la mise à
 | Fichier HTML d'interface sans dépendance externe | Décidée |
 | Données dans le `localStorage` du profil Electron | En vigueur |
 | Signature de code, secrets de publication, configuration de release | Réservées au superviseur |
+| Android/ChromeOS dans le périmètre : WebView native, sideload APK via GitHub Releases, stockage fichier privé via pont JS, aucun geste tactile au début | Décidée (PR #33) |
 
 ## Questions ouvertes (ne pas trancher seul)
 
