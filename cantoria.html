@@ -357,6 +357,17 @@
     display:flex;flex-direction:column;gap:18px;
   }
   .modal-head{display:flex;align-items:center;justify-content:space-between;}
+  .help-section-title{font-size:14px;color:var(--ink-bright);font-weight:600;margin-top:4px;}
+  .help-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .help-list li{display:flex;align-items:center;justify-content:space-between;gap:14px;}
+  .help-action{font-size:14.5px;color:var(--ink-mid);}
+  .help-keys{display:flex;gap:4px;flex-shrink:0;}
+  .kbd{
+    font-family:inherit;font-size:12.5px;color:var(--ink-bright);
+    background:var(--bg-panel-2);border:1px solid var(--border);border-bottom-width:2px;
+    border-radius:5px;padding:2px 7px;min-width:24px;text-align:center;
+  }
+  .help-note{font-size:13.5px;color:var(--ink-mid);line-height:1.45;}
   .setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;}
   .setting-title{font-size:15px;color:var(--ink-bright);font-weight:600;}
   .setting-desc{font-size:14.5px;color:var(--ink-mid);margin-top:2px;line-height:1.4;}
@@ -410,6 +421,9 @@
             <button class="swatch active" data-theme="campfire" aria-label="Thème Feu de camp" title="Feu de camp" style="background:linear-gradient(135deg,#17120f 50%,#e6712f 50%);"></button>
             <button class="swatch" data-theme="vibe" aria-label="Thème Vibe" title="Vibe" style="background:linear-gradient(135deg,#0d0d0f 50%,#ff8a3d 50%);"></button>
           </div>
+          <button class="btn icon ghost" id="btn-help-open" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
+          </button>
           <button class="btn icon ghost" id="btn-settings-open" aria-label="Paramètres">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </button>
@@ -524,6 +538,9 @@
           </div>
         </div>
         <div class="spacer"></div>
+        <button class="btn icon ghost" id="btn-help-open-player" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
+        </button>
         <button class="btn icon ghost" id="btn-pin-controls" aria-label="Désépingler le bandeau" aria-pressed="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"></path></svg>
         </button>
@@ -614,6 +631,19 @@
       </div>
 
       <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;">Réinitialiser les paramètres</button>
+    </div>
+  </div>
+
+  <!-- ===== AIDE / RACCOURCIS ===== -->
+  <div id="help-overlay" class="modal-overlay">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div class="eyebrow">Aide</div>
+        <button class="btn icon ghost" id="btn-help-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div id="help-content"></div>
     </div>
   </div>
 
@@ -1713,6 +1743,75 @@
   });
   $("#btn-settings-open").addEventListener("click", function(){ syncSettingsUI(); renderBackupList(); $("#settings-overlay").classList.add("show"); });
   $("#btn-settings-close").addEventListener("click", function(){ $("#settings-overlay").classList.remove("show"); });
+
+  /* ---------------- Aide / raccourcis clavier ----------------
+     Source unique : la modale d'aide et les info-bulles des boutons du lecteur
+     sont rendues/vérifiées depuis SHORTCUTS. docs/raccourcis-clavier.md reprend
+     la même liste. */
+  var SHORTCUTS = [
+    {
+      title: "Lecteur",
+      note: "Actifs uniquement quand le lecteur est ouvert et ignorés si le focus est dans un champ de saisie. Espace annule aussi un décompte en cours.",
+      items: [
+        { action: "Lecture / pause du défilement", keys: ["Espace"] },
+        { action: "Taille des paroles + / −", keys: ["Ctrl", "↑ / ↓"] },
+        { action: "Transposition + / − (demi-ton)", keys: ["Ctrl", "Shift", "↑ / ↓"] },
+        { action: "Vitesse de défilement − / +", keys: ["Ctrl", "← / →"] }
+      ]
+    },
+    {
+      title: "Zoom de l'interface",
+      note: "Le zoom s'applique à l'interface hors paroles et est mémorisé (de ×0,5 à ×2).",
+      items: [
+        { action: "Zoomer / Dézoomer", keys: ["Ctrl", "+ / −"] },
+        { action: "Réinitialiser le zoom (×1)", keys: ["Ctrl", "0"] }
+      ]
+    },
+    {
+      title: "Bibliothèque",
+      note: "La navigation suit l'ordre naturel du focus (Tab / Shift+Tab), chaque carte de chanson est focalisable.",
+      items: [
+        { action: "Ouvrir la chanson de la carte focalisée", keys: ["Entrée / Espace"] }
+      ]
+    },
+    {
+      title: "Éditeur",
+      note: "Dans la zone de saisie : ligne entre crochets = accord ([Am]), ligne commençant par # = libellé de section (#couplet), toute autre ligne = paroles.",
+      items: []
+    }
+  ];
+  function renderHelp(){
+    var html = "";
+    SHORTCUTS.forEach(function(section){
+      html += '<div class="help-section-title">' + section.title + "</div>";
+      if(section.note) html += '<div class="help-note">' + section.note + "</div>";
+      if(section.items.length){
+        html += '<ul class="help-list">';
+        section.items.forEach(function(item){
+          html += '<li><span class="help-action">' + item.action + '</span><span class="help-keys">';
+          item.keys.forEach(function(k){ html += '<kbd class="kbd">' + k + "</kbd>"; });
+          html += "</span></li>";
+        });
+        html += "</ul>";
+      }
+    });
+    $("#help-content").innerHTML = html;
+  }
+  function openHelp(){
+    if(!$("#help-content").innerHTML) renderHelp();
+    $("#help-overlay").classList.add("show");
+    $("#btn-help-close").focus();
+  }
+  $("#btn-help-open").addEventListener("click", openHelp);
+  $("#btn-help-open-player").addEventListener("click", openHelp);
+  $("#btn-help-close").addEventListener("click", function(){ $("#help-overlay").classList.remove("show"); });
+  $("#help-overlay").addEventListener("click", function(e){ if(e.target === this) this.classList.remove("show"); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape"){
+      $("#help-overlay").classList.remove("show");
+      $("#settings-overlay").classList.remove("show");
+    }
+  });
   $("#settings-overlay").addEventListener("click", function(e){ if(e.target === this) this.classList.remove("show"); });
   $("#setting-spotlight").addEventListener("click", function(){
     appSettings.spotlight = !appSettings.spotlight;
