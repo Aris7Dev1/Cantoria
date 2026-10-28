@@ -517,6 +517,12 @@
           <span class="section-tools-sep"></span>
           <button type="button" class="btn small ghost" id="structure-labels" title="Convertit les libellés texte existants (Refrain, [Refrain :]…) en directives ChordPro fermées à la strophe">Structurer les libellés</button>
         </div>
+        <div class="section-tools">
+          <button type="button" class="btn small ghost" id="editor-undo" aria-label="Annuler (Ctrl+Z)" title="Annuler (Ctrl+Z)">⟲ Annuler</button>
+          <button type="button" class="btn small ghost" id="editor-redo" aria-label="Rétablir (Ctrl+Shift+Z)" title="Rétablir (Ctrl+Shift+Z)">⟳ Rétablir</button>
+          <span class="section-tools-sep"></span>
+          <span class="section-tools-label">Ctrl+S pour enregistrer</span>
+        </div>
         <textarea id="f-body" placeholder="[G]Voici les paroles [C]avec les accords entre crochets"></textarea>
       </div>
       <div class="hint">
@@ -841,6 +847,26 @@
         ? "Le carnet local était illisible : une copie de secours a été conservée"
         : "Le carnet local était illisible : il a été réinitialisé");
     }
+  }
+
+  /* Copie de secours d'édition : avant d'écraser une chanson existante,
+     l'ancienne version part en backup (3 plus récentes conservées). */
+  var EDIT_BACKUP_PREFIX = "cantoria-edit-backup-";
+  var EDIT_BACKUP_KEEP = 3;
+  function backupSongBeforeOverwrite(song){
+    try{
+      var raw = JSON.stringify(song);
+      localStorage.setItem(EDIT_BACKUP_PREFIX + Date.now(), raw);
+      var keys = [];
+      for(var i = 0; i < localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(k && k.indexOf(EDIT_BACKUP_PREFIX) === 0) keys.push(k);
+      }
+      keys.sort();
+      keys.slice(0, Math.max(0, keys.length - EDIT_BACKUP_KEEP)).forEach(function(k){
+        localStorage.removeItem(k);
+      });
+    }catch(e){ /* pas de place : on n'empêche pas la sauvegarde pour autant */ }
   }
 
   /* ---------------- Library backup recovery ---------------- */
@@ -1258,6 +1284,45 @@
   });
 
   /* ---------------- Editor ---------------- */
+  var EDIT_HISTORY_KEEP = 50;
+  var bodyHistory = [];
+  var historyIndex = -1;
+  var editorBaseline = "";
+
+  function editorSnapshot(){
+    return $("#f-body").value;
+  }
+  function pushBodyHistory(){
+    var value = editorSnapshot();
+    if(historyIndex >= 0 && bodyHistory[historyIndex] === value) return;
+    bodyHistory = bodyHistory.slice(0, historyIndex + 1);
+    bodyHistory.push(value);
+    if(bodyHistory.length > EDIT_HISTORY_KEEP) bodyHistory.shift();
+    historyIndex = bodyHistory.length - 1;
+    syncUndoButtons();
+  }
+  function restoreHistoryEntry(index){
+    if(index < 0 || index >= bodyHistory.length) return;
+    historyIndex = index;
+    $("#f-body").value = bodyHistory[index];
+    syncUndoButtons();
+  }
+  function syncUndoButtons(){
+    var undoBtn = $("#editor-undo");
+    var redoBtn = $("#editor-redo");
+    undoBtn.disabled = historyIndex <= 0;
+    redoBtn.disabled = historyIndex >= bodyHistory.length - 1;
+  }
+  function fieldSnapshot(){
+    return [
+      $("#f-title").value, $("#f-artist").value, $("#f-key").value, $("#f-capo").value, $("#f-body").value
+    ].join("\u0000");
+  }
+  function baselineFromSong(s){
+    return [
+      s ? s.title : "", s ? s.artist : "", s ? s.key : "", s ? s.capo : "", s ? s.body : ""
+    ].join("\u0000");
+  }
   function openEditor(id){
     editingId = id || null;
     var s = id ? songs.find(function(x){ return x.id === id; }) : null;
@@ -1268,11 +1333,20 @@
     $("#f-capo").value = s ? s.capo : "";
     $("#f-body").value = s ? s.body : "";
     $("#btn-delete").style.display = s ? "inline-flex" : "none";
+    editorBaseline = baselineFromSong(s);
+    bodyHistory = [$("#f-body").value];
+    historyIndex = 0;
+    syncUndoButtons();
     showView("editor");
   }
 
   $("#btn-new").addEventListener("click", function(){ openEditor(null); });
-  $("#btn-editor-back").addEventListener("click", function(){ showView("library"); });
+  $("#btn-editor-back").addEventListener("click", function(){
+    if(fieldSnapshot() !== editorBaseline){
+      if(!confirm("Quitter l'éditeur sans enregistrer ? Tes modifications seront perdues.")) return;
+    }
+    showView("library");
+  });
 
   /* Marquage de sections dans l'éditeur : encapsule la sélection (ou insère
      une paire vide au curseur) en directives ChordPro. Les directives ont une
@@ -1293,8 +1367,18 @@
       ta.selectionStart = ta.selectionEnd = before.length + lead.length + start.length + 1 + body.length + 1 + end.length;
     }
     ta.focus();
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    pushBodyHistory();
   }
+  $("#editor-undo").addEventListener("click", function(){ restoreHistoryEntry(historyIndex - 1); });
+  $("#editor-redo").addEventListener("click", function(){ restoreHistoryEntry(historyIndex + 1); });
+  $("#f-body").addEventListener("input", pushBodyHistory);
+  document.addEventListener("keydown", function(e){
+    if(!$("#editor-view").classList.contains("active")) return;
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "s"){
+      e.preventDefault();
+      $("#song-form").requestSubmit();
+    }
+  });
   $("#mark-verse").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.verse[0], SECTION_DIRECTIVES.verse[1]); });
   $("#mark-chorus").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.chorus[0], SECTION_DIRECTIVES.chorus[1]); });
   $("#mark-bridge").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.bridge[0], SECTION_DIRECTIVES.bridge[1]); });
@@ -1338,7 +1422,7 @@
     }
     if(conversions > 0){
       ta.value = lines.join("\n");
-      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      pushBodyHistory();
       toast(conversions + " section" + (conversions > 1 ? "s" : "") + " structurée" + (conversions > 1 ? "s" : ""));
     } else {
       toast("Aucun libellé de section à structurer");
@@ -1357,6 +1441,7 @@
     };
     if(editingId){
       var s = songs.find(function(x){ return x.id === editingId; });
+      if(s) backupSongBeforeOverwrite(s);
       Object.assign(s, data);
       saveSongs();
       toast("Chanson mise à jour");
