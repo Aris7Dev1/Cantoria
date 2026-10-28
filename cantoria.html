@@ -1149,6 +1149,7 @@
     }
     speedMultiplier = (s && s.speed) || 1;
     updateSpeedStepper();
+    selectedCountdown = appSettings.defaultCountdown || 0;
     document.querySelectorAll("#countdown-picker button").forEach(function(b){
       b.classList.toggle("active", parseInt(b.getAttribute("data-seconds"),10) === selectedCountdown);
     });
@@ -1730,6 +1731,7 @@
   document.querySelectorAll("#def-countdown-picker button").forEach(function(btn){
     btn.addEventListener("click", function(){
       appSettings.defaultCountdown = parseInt(btn.getAttribute("data-seconds"), 10);
+      selectedCountdown = appSettings.defaultCountdown || 0;
       syncSettingsUI(); saveSettings();
     });
   });
