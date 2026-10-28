@@ -126,9 +126,10 @@ test("cas limites : ligne vide, ligne de label et accord inconnu laissé intact"
   openPlayer(window, "Limites");
   const stage = window.document.querySelector("#stage-inner");
   assert.ok(stage.querySelector(".gap"), "la ligne vide produit un séparateur");
-  const comment = stage.querySelector(".comment-row");
-  assert.ok(comment, "la ligne « Refrain » produit un label");
-  assert.equal(comment.textContent, "Refrain");
+  const sectionLabel = stage.querySelector(".section-label");
+  assert.ok(sectionLabel, "la ligne « Refrain » produit un libellé de section");
+  assert.equal(sectionLabel.textContent, "Refrain");
+  assert.ok(stage.querySelector("[data-section=\"chorus-1\"]"), "et une section repérable");
   const lines = stageLines(window);
   assert.equal(lines.length, 2);
   assert.deepEqual(lines[0].chords, ["C"]);
