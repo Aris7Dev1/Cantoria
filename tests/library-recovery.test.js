@@ -72,6 +72,7 @@ test("seules les 3 copies de secours les plus récentes sont conservées", () =>
 
 function openSettings(window) {
   window.document.querySelector("#btn-settings-open").click();
+  window.document.querySelector("#btn-manage-backups").click();
 }
 
 test("les copies de secours sont listées dans les paramètres", () => {
