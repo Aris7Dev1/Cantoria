@@ -1360,6 +1360,8 @@
       Object.assign(s, data);
       saveSongs();
       toast("Chanson mise à jour");
+      renderLibrary();
+      openPlayer(editingId);
     } else {
       data.id = uid();
       data.favori = false;
@@ -1369,9 +1371,9 @@
       songs.push(data);
       saveSongs();
       toast("Chanson ajoutée");
+      renderLibrary();
+      showView("library");
     }
-    renderLibrary();
-    showView("library");
   });
 
   $("#btn-delete").addEventListener("click", function(){

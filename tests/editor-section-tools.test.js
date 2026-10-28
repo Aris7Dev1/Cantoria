@@ -129,3 +129,29 @@ test("une chanson structurée via l'outil rend une section fermée correctement 
   assert.ok(body.value.indexOf("{soc}") !== -1);
   assert.ok(body.value.indexOf("{eoc}") !== -1);
 });
+
+test("enregistrer une chanson modifiée renvoie au lecteur de cette chanson", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: "[Am]Original" })]) });
+  window.document.querySelector("#song-grid .song-card").click();
+  assert.ok(window.document.querySelector("#player-view").classList.contains("active"));
+  window.document.querySelector("#btn-edit-current").click();
+  assert.ok(window.document.querySelector("#editor-view").classList.contains("active"));
+  const body = window.document.querySelector("#f-body");
+  body.value = "[Am]Modifié";
+  window.document.querySelector("#song-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  assert.ok(window.document.querySelector("#player-view").classList.contains("active"),
+    "l'enregistrement d'une modification renvoie au lecteur");
+  assert.equal(window.document.querySelector("#p-title").textContent, "Test");
+  assert.ok(window.document.querySelector("#stage-inner").textContent.includes("Modifié"),
+    "le lecteur affiche la version modifiée");
+});
+
+test("enregistrer une nouvelle chanson renvoie à la bibliothèque (comportement inchangé)", () => {
+  const window = loadApp();
+  window.document.querySelector("#btn-new").click();
+  window.document.querySelector("#f-title").value = "Nouvelle";
+  window.document.querySelector("#f-body").value = "[C]Paroles";
+  window.document.querySelector("#song-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  assert.ok(window.document.querySelector("#library-view").classList.contains("active"),
+    "une nouvelle chanson reste validée côté bibliothèque");
+});
