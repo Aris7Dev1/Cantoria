@@ -4,6 +4,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+/* Les confirmations passent par la modale HTML asynchrone (issue #46) :
+   cliquer le déclencheur, confirmer si la modale s'ouvre, laisser se dérouler
+   les promesses, puis reprendre les assertions. */
+async function confirmAndFlush(window, trigger) {
+  trigger.click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  if (overlay.classList.contains("show")) {
+    window.document.querySelector("#confirm-ok").click();
+  }
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+
 const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const SONGS_KEY = "cantoria-songs-v1";
 const EDIT_BACKUP_PREFIX = "cantoria-edit-backup-";
@@ -58,7 +72,7 @@ test("les paramètres listent les copies de secours d'édition avec titre et bou
   assert.ok(restoreBtn, "bouton Restaurer présent");
 });
 
-test("restaurer une copie d'édition remplace la chanson par l'ancienne version", () => {
+test("restaurer une copie d'édition remplace la chanson par l'ancienne version", async () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   window.document.querySelector("#song-grid .song-card").click();
   window.document.querySelector("#btn-edit-current").click();
@@ -68,7 +82,7 @@ test("restaurer une copie d'édition remplace la chanson par l'ancienne version"
   assert.equal(stored()[0].body, "[Am]Nouvelle version");
 
   openSettings(window);
-  window.document.querySelector("#edit-backup-list .backup-edit-restore").click();
+  await confirmAndFlush(window, window.document.querySelector("#edit-backup-list .backup-edit-restore"));
   assert.equal(stored()[0].body, "[Am]Original", "l'ancienne version est restaurée dans le carnet");
   assert.equal(stored()[0].title, "Test");
   // la version remplacée part aussi en copie de secours
@@ -78,7 +92,7 @@ test("restaurer une copie d'édition remplace la chanson par l'ancienne version"
   assert.equal(newestContent.body, "[Am]Nouvelle version", "la copie la plus récente contient la version écrasée");
 });
 
-test("restaurer met à jour le lecteur si la chanson est ouverte", () => {
+test("restaurer met à jour le lecteur si la chanson est ouverte", async () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   window.document.querySelector("#song-grid .song-card").click();
   window.document.querySelector("#btn-edit-current").click();
@@ -87,7 +101,7 @@ test("restaurer met à jour le lecteur si la chanson est ouverte", () => {
   assert.ok(window.document.querySelector("#player-view").classList.contains("active"));
 
   openSettings(window);
-  window.document.querySelector("#edit-backup-list .backup-edit-restore").click();
+  await confirmAndFlush(window, window.document.querySelector("#edit-backup-list .backup-edit-restore"));
   const stage = window.document.querySelector("#stage-inner").textContent.replace(/\s+/g, "");
   assert.ok(stage.includes("Original"), "le lecteur affiche la version restaurée");
 });

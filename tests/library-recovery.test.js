@@ -4,6 +4,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+/* Les confirmations passent par la modale HTML asynchrone (issue #46) :
+   cliquer le déclencheur, confirmer si la modale s'ouvre, laisser se dérouler
+   les promesses, puis reprendre les assertions. */
+async function confirmAndFlush(window, trigger) {
+  trigger.click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  if (overlay.classList.contains("show")) {
+    window.document.querySelector("#confirm-ok").click();
+  }
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+
 const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const STORAGE_KEY = "cantoria-songs-v1";
 const BACKUP_PREFIX = `${STORAGE_KEY}-corrupted-`;
@@ -97,21 +111,28 @@ test("sans copie de secours, les paramètres affichent un message dédié", () =
   assert.ok(window.document.querySelector("#backup-list").textContent.includes("Aucune copie de secours"));
 });
 
-test("restaurer une copie valide remplace la bibliothèque et conserve l'état actuel", () => {
+test("restaurer une copie valide remplace la bibliothèque et conserve l'état actuel", async () => {
   const current = [{ id: "s-1", title: "Actuelle", body: "" }];
   const window = loadApp({
     [STORAGE_KEY]: JSON.stringify(current),
     [`${BACKUP_PREFIX}1000`]: JSON.stringify([{ id: "s-2", title: "Secours", body: "" }]),
   });
   openSettings(window);
-  window.document.querySelector("#backup-list .setting-row .backup-restore").click();
+  await confirmAndFlush(window, window.document.querySelector("#backup-list .setting-row .backup-restore"));
   const restored = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
   assert.equal(restored.length, 1);
   assert.equal(restored[0].title, "Secours");
   assert.ok(window.document.querySelector("#song-grid").textContent.includes("Secours"));
-  const keys = backupKeys(window);
-  assert.equal(keys.length, 2, "l'état actuel doit être conservé en copie de secours");
-  const kept = keys.map((k) => window.localStorage.getItem(k));
+  /* Depuis l'issue #46, l'état sain remplacé part sous le préfixe « -replaced- »
+     distinct des copies de corruption : le pruning ne peut plus l'évincer. */
+  const replacedKeys = [];
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (key.startsWith(`${STORAGE_KEY}-replaced-`)) replacedKeys.push(key);
+  }
+  assert.equal(backupKeys(window).length, 1, "la copie de corruption d'origine est préservée");
+  assert.equal(replacedKeys.length, 1, "l'état actuel est conservé en copie de secours dédiée");
+  const kept = replacedKeys.map((k) => window.localStorage.getItem(k));
   assert.ok(kept.some((raw) => JSON.parse(raw)[0].title === "Actuelle"));
 });
 
@@ -128,15 +149,18 @@ test("restaurer une copie illisible ne change rien", () => {
   assert.ok(window.document.querySelector("#toast").classList.contains("show"));
 });
 
-test("annuler la restauration ne change rien", () => {
+test("annuler la restauration ne change rien", async () => {
   const current = [{ id: "s-1", title: "Actuelle", body: "" }];
   const window = loadApp({
     [STORAGE_KEY]: JSON.stringify(current),
     [`${BACKUP_PREFIX}1000`]: JSON.stringify([{ id: "s-2", title: "Secours", body: "" }]),
   });
-  window.confirm = function () { return false; };
   openSettings(window);
   window.document.querySelector("#backup-list .setting-row .backup-restore").click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  assert.ok(overlay.classList.contains("show"), "la confirmation s'affiche avant toute restauration");
+  window.document.querySelector("#confirm-cancel").click();
+  await Promise.resolve();
   assert.equal(window.localStorage.getItem(STORAGE_KEY), JSON.stringify(current));
   assert.equal(backupKeys(window).length, 1);
 });

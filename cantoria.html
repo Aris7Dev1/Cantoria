@@ -278,7 +278,7 @@
   #stage-inner[data-lyrics-align="left"] .bridge .line{margin-left:0;margin-right:auto;}
   html[data-theme="spotlight"] .line.focus-line{filter:brightness(1.1);}
   html[data-theme="guitar-case"] .line.focus-line .seg-chord{text-shadow:0 0 18px var(--gold-glow),0 0 4px var(--gold);}
-  html[data-theme="campfire"] .line.focus-line .seg-chord{animation:ember-pulse 2.4s ease-in-out infinite;}
+  html[data-theme="campfire"] .line.focus-line .seg-chord{animation:ember-pulse 2.4s ease-in-out 3;}
   @keyframes ember-pulse{
     0%,100%{text-shadow:0 0 10px var(--gold-glow);}
     50%{text-shadow:0 0 20px var(--gold-glow),0 0 6px var(--gold);}
@@ -365,11 +365,28 @@
   #update-banner .update-actions{display:flex;gap:8px;flex-shrink:0;}
   #update-banner .btn{padding:8px 11px;font-size:12.5px;}
 
+  #confirm-overlay .confirm-message{font-size:14.5px;line-height:1.6;color:var(--ink-bright);white-space:pre-line;}
+  #confirm-overlay .confirm-actions{display:flex;gap:10px;justify-content:flex-end;}
   .modal-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.75);
     display:none;align-items:center;justify-content:center;z-index:60;padding:20px;
   }
   .modal-overlay.show{display:flex;}
+  /* Focus clavier explicite : bordure dorée + halo, sans pénaliser le clic. */
+  button:focus-visible, .song-card:focus-visible, .swatch:focus-visible,
+  input:focus-visible, textarea:focus-visible, select:focus-visible,
+  a:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+  }
+  /* Respect de prefers-reduced-motion : plus d'animation décorative. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+    }
+  }
   .modal-panel{
     background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;
     padding:20px;width:100%;max-width:420px;max-height:86vh;overflow-y:auto;
@@ -754,6 +771,20 @@
     </div>
   </div>
 
+  <!-- ===== CONFIRMATION (remplace confirm() natif, absent en WebView Android) ===== -->
+  <div id="confirm-overlay" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <div class="eyebrow" id="confirm-title">Confirmation</div>
+      </div>
+      <div id="confirm-message" class="confirm-message"></div>
+      <div class="confirm-actions">
+        <button class="btn ghost" id="confirm-cancel">Annuler</button>
+        <button class="btn primary" id="confirm-ok">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== AIDE / RACCOURCIS ===== -->
   <div id="help-overlay" class="modal-overlay">
     <div class="modal-panel">
@@ -839,15 +870,23 @@
      avant une restauration manuelle. On conserve les 3 plus récentes pour ne pas
      saturer le stockage local. */
   var SONGS_BACKUP_PREFIX = SONGS_STORAGE_KEY + "-corrupted-";
+  var SONGS_REPLACE_PREFIX = SONGS_STORAGE_KEY + "-replaced-";
   var SONGS_BACKUP_KEEP = 3;
 
-  function backupUnreadableLibrary(raw){
+  /* Copie l'état sain du carnet avant une restauration de copie de secours,
+     sous un préfixe distinct des copies de corruption : le pruning à 3 ne doit
+     pouvoir évincer aucune des deux catégories. */
+  function backupLibraryBeforeReplace(raw){
+    return pruneAndStoreBackup(SONGS_REPLACE_PREFIX, raw);
+  }
+
+  function pruneAndStoreBackup(prefix, raw){
     try{
-      localStorage.setItem(SONGS_BACKUP_PREFIX + Date.now(), raw);
+      localStorage.setItem(prefix + Date.now(), raw);
       var keys = [];
       for(var i = 0; i < localStorage.length; i++){
         var k = localStorage.key(i);
-        if(k && k.indexOf(SONGS_BACKUP_PREFIX) === 0) keys.push(k);
+        if(k && k.indexOf(prefix) === 0) keys.push(k);
       }
       keys.sort();
       keys.slice(0, Math.max(0, keys.length - SONGS_BACKUP_KEEP)).forEach(function(k){
@@ -857,6 +896,10 @@
     }catch(e){
       return false;
     }
+  }
+
+  function backupUnreadableLibrary(raw){
+    return pruneAndStoreBackup(SONGS_BACKUP_PREFIX, raw);
   }
 
   function loadSongs(){
@@ -957,16 +1000,18 @@
       toast("La chanson d'origine n'existe plus dans le carnet : restauration impossible");
       return;
     }
-    if(!confirm("Restaurer cette version de « " + (parsed.title || "Sans titre") + " » ? La version actuelle sera remplacée ; elle sera d'abord conservée en copie de secours.")) return;
-    backupSongBeforeOverwrite(existing);
-    parsed = normalizeSong(parsed);
-    Object.assign(existing, parsed);
-    saveSongs();
-    renderLibrary();
-    if(currentId === existing.id && $("#player-view").classList.contains("active")) renderPlayer();
-    renderEditBackupList();
-    updateBackupsSummary();
-    toast("Version restaurée : « " + (parsed.title || "Sans titre") + " »");
+    uiConfirm("Restaurer cette version de « " + (parsed.title || "Sans titre") + " » ?\nLa version actuelle sera remplacée ; elle sera d'abord conservée en copie de secours.").then(function(ok){
+      if(!ok) return;
+      backupSongBeforeOverwrite(existing);
+      parsed = normalizeSong(parsed);
+      Object.assign(existing, parsed);
+      saveSongs();
+      renderLibrary();
+      if(currentId === existing.id && $("#player-view").classList.contains("active")) renderPlayer();
+      renderEditBackupList();
+      updateBackupsSummary();
+      toast("Version restaurée : « " + (parsed.title || "Sans titre") + " »");
+    });
   }
 
   /* ---------------- Library backup recovery ---------------- */
@@ -976,6 +1021,8 @@
       var k = localStorage.key(i);
       if(k && k.indexOf(SONGS_BACKUP_PREFIX) === 0){
         backups.push({ key: k, stamp: k.slice(SONGS_BACKUP_PREFIX.length), raw: localStorage.getItem(k) });
+      } else if(k && k.indexOf(SONGS_REPLACE_PREFIX) === 0){
+        backups.push({ key: k, stamp: k.slice(SONGS_REPLACE_PREFIX.length), raw: localStorage.getItem(k) });
       }
     }
     backups.sort(function(a, b){ return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0); });
@@ -1053,13 +1100,15 @@
       toast("Cette copie de secours n'est pas un carnet valide : restauration impossible");
       return;
     }
-    if(!confirm("Restaurer cette copie de secours ? La bibliothèque actuelle sera remplacée ; son état actuel sera d'abord conservé en copie de secours.")) return;
-    backupUnreadableLibrary(JSON.stringify(songs));
-    songs = parsed.map(normalizeSong);
-    saveSongs();
-    renderLibrary();
-    renderBackupList();
-    toast("Copie de secours restaurée : " + songs.length + " chanson(s)");
+    uiConfirm("Restaurer cette copie de secours ?\nLa bibliothèque actuelle sera remplacée ; son état actuel sera d'abord conservé en copie de secours.").then(function(ok){
+      if(!ok) return;
+      backupLibraryBeforeReplace(JSON.stringify(songs));
+      songs = parsed.map(normalizeSong);
+      saveSongs();
+      renderLibrary();
+      renderBackupList();
+      toast("Copie de secours restaurée : " + songs.length + " chanson(s)");
+    });
   }
 
   var toastEl = $("#toast"), toastTimer;
@@ -1070,6 +1119,29 @@
     var duration = Math.min(5200, Math.max(2200, msg.length * 55));
     toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, duration);
   }
+
+  /* Confirmation HTML remplaçant le dialogue natif du navigateur,
+     inexistant en WebView Android. Retourne une promesse :
+     true (Confirmer), false (Annuler ou Échap). */
+  var confirmResolve = null;
+  function uiConfirm(message){
+    return new Promise(function(resolve){
+      var overlay = $("#confirm-overlay");
+      $("#confirm-message").textContent = message;
+      overlay.classList.add("show");
+      $("#confirm-ok").focus();
+      confirmResolve = resolve;
+    });
+  }
+  function settleConfirm(result){
+    var overlay = $("#confirm-overlay");
+    if(!overlay.classList.contains("show")) return;
+    overlay.classList.remove("show");
+    if(confirmResolve){ confirmResolve(result); confirmResolve = null; }
+  }
+  $("#confirm-ok").addEventListener("click", function(){ settleConfirm(true); });
+  $("#confirm-cancel").addEventListener("click", function(){ settleConfirm(false); });
+  $("#confirm-overlay").addEventListener("click", function(e){ if(e.target === this) settleConfirm(false); });
 
   function showView(name){
     document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
@@ -1443,7 +1515,10 @@
   $("#btn-new").addEventListener("click", function(){ openEditor(null); });
   $("#btn-editor-back").addEventListener("click", function(){
     if(fieldSnapshot() !== editorBaseline){
-      if(!confirm("Quitter l'éditeur sans enregistrer ? Tes modifications seront perdues.")) return;
+      uiConfirm("Quitter l'éditeur sans enregistrer ?\nTes modifications seront perdues.").then(function(ok){
+        if(ok) showView("library");
+      });
+      return;
     }
     showView("library");
   });
@@ -1563,11 +1638,13 @@
 
   $("#btn-delete").addEventListener("click", function(){
     if(!editingId) return;
-    if(!confirm("Supprimer cette chanson ?")) return;
-    songs = songs.filter(function(x){ return x.id !== editingId; });
-    saveSongs();
-    renderLibrary();
-    showView("library");
+    uiConfirm("Supprimer cette chanson ?").then(function(ok){
+      if(!ok) return;
+      songs = songs.filter(function(x){ return x.id !== editingId; });
+      saveSongs();
+      renderLibrary();
+      showView("library");
+    });
   });
 
   /* ---------------- Player ---------------- */
@@ -2175,6 +2252,9 @@
 
   function importContent(content, fileName){
     var lowerName = String(fileName || "").toLowerCase();
+    /* BOM UTF-8 : les exportations Windows (PowerShell, Notepad) précèdent
+       le JSON d'un BOM ; JSON.parse échouerait sans cette purge. */
+    if(content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
 
     try{
       if(lowerName.endsWith(".json")){
@@ -2392,6 +2472,7 @@
   $("#help-overlay").addEventListener("click", function(e){ if(e.target === this) this.classList.remove("show"); });
   document.addEventListener("keydown", function(e){
     if(e.key === "Escape"){
+      settleConfirm(false);
       $("#help-overlay").classList.remove("show");
       if($("#settings-overlay").classList.contains("show") && $("#backups-subview").classList.contains("show")){
         showBackupsSubview(false);
@@ -2452,7 +2533,13 @@
     });
   });
   $("#btn-settings-reset").addEventListener("click", function(){
-    if(!confirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ? Tes chansons ne seront pas touchées.")) return;
+    uiConfirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ?\nTes chansons ne seront pas touchées.").then(function(ok){
+      if(!ok) return;
+      resetSettingsNow();
+    });
+  });
+
+  function resetSettingsNow(){
     appSettings = {
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
       cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song", lyricsAlign: "center",
@@ -2476,7 +2563,7 @@
     if($("#player-view").classList.contains("active")) renderPlayer();
     else renderChordDiagrams();
     toast("Paramètres réinitialisés");
-  });
+  }
 
   /* Theme picker */
   var THEME_STORAGE_KEY = "cantoria-theme";
