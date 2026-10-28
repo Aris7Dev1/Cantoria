@@ -44,6 +44,19 @@ function storedSettings(window) {
   return JSON.parse(window.localStorage.getItem(SETTINGS_KEY));
 }
 
+function dotPositions(window, chord) {
+  const all = diagrams(window);
+  const el = all.find((d) => d.querySelector(".cd-name").textContent === chord);
+  const svg = el.querySelector("svg");
+  const viewBox = svg.getAttribute("viewBox").split(" ").map(Number);
+  const [, , w] = viewBox;
+  const x0 = 8, fw = (w - 16) / 5;
+  return Array.from(svg.querySelectorAll(".cd-dot")).map((c) => ({
+    string: Math.round((parseFloat(c.getAttribute("cx")) - x0) / fw),
+    y: parseFloat(c.getAttribute("cy")),
+  }));
+}
+
 test("les diagrammes des accords de la chanson s'affichent avec leur nom", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   openFirstSong(window);
@@ -105,4 +118,27 @@ test("un accord non reconnaissable n'affiche pas de diagramme cassé", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: "[Am]la [Qq]la" })]) });
   openFirstSong(window);
   assert.deepEqual(diagramNames(window), ["Am"]);
+});
+
+test("l'orientation du manche : Mi grave à gauche, comme sur un chansonnier imprimé", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: "[F]la" })]) });
+  openFirstSong(window);
+  // F majeur : frets = [1,3,3,2,1,1] (Mi grave → Mi aigu). Toutes les cordes
+  // sont frettées case 1 (barré) : six points, dont le plus à gauche (corde 0)
+  // doit être sur la première corde dessinée à gauche.
+  const dots = dotPositions(window, "F");
+  assert.equal(dots.length, 6, "F barré : un point par corde");
+  const strings = dots.map((d) => d.string).sort((a, b) => a - b);
+  assert.deepEqual(strings, [0, 1, 2, 3, 4, 5], "les six cordes, de la plus grave (gauche) à la plus aiguë");
+  // Am : frets = [-1,0,2,2,1,0]. Seules les cordes 2,3,4 (index Mi grave → aigu)
+  // sont frettées : positions gauche→droite = cases 2,2,1 sur les cordes 2,3,4.
+  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: "[Am]la" })]) });
+  openFirstSong(window2);
+  const amDots = dotPositions(window2, "Am");
+  assert.equal(amDots.length, 3, "Am : trois cordes frettées");
+  const leftToRight = amDots.slice().sort((a, b) => a.string - b.string).map((d) => d.y);
+  const y0 = 18, fh = (92 - y0 - 12) / 4;
+  assert.ok(Math.abs(leftToRight[0] - (y0 + 1.5 * fh)) < 2, "corde Ré (index 2) à la case 2");
+  assert.ok(Math.abs(leftToRight[1] - (y0 + 1.5 * fh)) < 2, "corde Sol (index 3) à la case 2");
+  assert.ok(Math.abs(leftToRight[2] - (y0 + 0.5 * fh)) < 2, "corde Si (index 4) à la case 1");
 });
