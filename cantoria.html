@@ -264,6 +264,12 @@
     width:fit-content;max-width:100%;margin:3px auto;
     transition:opacity .25s ease;font-size:1.25em;
   }
+  #stage-inner[data-lyrics-align="left"] .line,
+  #stage-inner[data-lyrics-align="left"] .comment-row,
+  #stage-inner[data-lyrics-align="left"] .line.instrumental{margin-left:0;margin-right:auto;}
+  #stage-inner[data-lyrics-align="left"] .section-label{text-align:left;}
+  #stage-inner[data-lyrics-align="left"] .chorus .line,
+  #stage-inner[data-lyrics-align="left"] .bridge .line{margin-left:0;margin-right:auto;}
   html[data-theme="spotlight"] .line.focus-line{filter:brightness(1.1);}
   html[data-theme="guitar-case"] .line.focus-line .seg-chord{text-shadow:0 0 18px var(--gold-glow),0 0 4px var(--gold);}
   html[data-theme="campfire"] .line.focus-line .seg-chord{animation:ember-pulse 2.4s ease-in-out infinite;}
@@ -634,6 +640,17 @@
           <button data-pos="top">En haut</button>
           <button data-pos="bottom">En bas</button>
           <button data-pos="hidden">Masqués</button>
+        </div>
+      </div>
+
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div class="setting-text">
+          <div class="setting-title">Alignement des paroles</div>
+          <div class="setting-desc">Position des lignes dans la zone de lecture. À gauche : chaque ligne démarre au même endroit, plus facile à suivre en défilement. Au centre : présentation classique des chansonniers.</div>
+        </div>
+        <div class="segmented" id="align-picker">
+          <button data-align="left">À gauche</button>
+          <button data-align="center" class="active">Au centre</button>
         </div>
       </div>
 
@@ -1327,6 +1344,7 @@
     updateSpeedStepper();
     selectedCountdown = appSettings.defaultCountdown || 0;
     chordsVisible = appSettings.chordsVisible !== false;
+    applyLyricsAlign();
     applyChordsVisibility();
     document.querySelectorAll("#countdown-picker button").forEach(function(b){
       b.classList.toggle("active", parseInt(b.getAttribute("data-seconds"),10) === selectedCountdown);
@@ -1888,7 +1906,7 @@
   var SETTINGS_STORAGE_KEY = "cantoria-settings";
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-    cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song",
+    cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song", lyricsAlign: "center",
     cardFields: { key: true, capo: true, chords: true, speed: true }
   };
   (function loadSettings(){
@@ -1902,6 +1920,7 @@
     }catch(e){}
     selectedCountdown = appSettings.defaultCountdown || 0;
     document.documentElement.style.setProperty("--card-scale", appSettings.cardTextScale);
+    $("#stage-inner").setAttribute("data-lyrics-align", appSettings.lyricsAlign === "left" ? "left" : "center");
   })();
   function saveSettings(){
     try{ localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings)); }catch(e){}
@@ -1913,6 +1932,9 @@
     $("#setting-chords-visible").setAttribute("aria-pressed", appSettings.chordsVisible !== false ? "true" : "false");
     document.querySelectorAll("#diagrams-picker button").forEach(function(b){
       b.classList.toggle("active", b.getAttribute("data-pos") === (appSettings.chordDiagrams || "song"));
+    });
+    document.querySelectorAll("#align-picker button").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-align") === (appSettings.lyricsAlign || "center"));
     });
     $("#def-fs-val").textContent = "×" + appSettings.defaultFontScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
     $("#card-fs-val").textContent = "×" + appSettings.cardTextScale.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
@@ -2030,6 +2052,15 @@
     syncSettingsUI(); saveSettings();
     if($("#player-view").classList.contains("active")) renderPlayer();
   });
+  function applyLyricsAlign(){
+    $("#stage-inner").setAttribute("data-lyrics-align", appSettings.lyricsAlign === "left" ? "left" : "center");
+  }
+  document.querySelectorAll("#align-picker button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      appSettings.lyricsAlign = btn.getAttribute("data-align");
+      syncSettingsUI(); saveSettings(); applyLyricsAlign();
+    });
+  });
   document.querySelectorAll("#diagrams-picker button").forEach(function(btn){
     btn.addEventListener("click", function(){
       appSettings.chordDiagrams = btn.getAttribute("data-pos");
@@ -2063,7 +2094,7 @@
     if(!confirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ? Tes chansons ne seront pas touchées.")) return;
     appSettings = {
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
-      cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song",
+      cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song", lyricsAlign: "center",
       cardFields: { key: true, capo: true, chords: true, speed: true }
     };
     selectedCountdown = 0;
@@ -2079,6 +2110,7 @@
       b.classList.toggle("active", b.getAttribute("data-theme") === "campfire");
     });
     renderLibrary();
+    applyLyricsAlign();
     applyChordsVisibility();
     if($("#player-view").classList.contains("active")) renderPlayer();
     else renderChordDiagrams();
