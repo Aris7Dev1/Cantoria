@@ -205,6 +205,12 @@
     color:var(--ink-bright);padding:14px;font-size:14.5px;line-height:1.7;font-family:var(--font-chord);resize:vertical;
   }
   textarea:focus{outline:none;border-color:var(--gold);}
+  .section-tools{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 2px;
+  }
+  .section-tools-label{font-size:13px;color:var(--ink-mid);}
+  .section-tools-sep{flex:1;}
+  .btn.small{font-size:13px;padding:6px 12px;}
   .hint{
     background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;
     font-size:12.5px;color:var(--ink-mid);line-height:1.6;
@@ -503,6 +509,14 @@
       </div>
       <div class="field">
         <label>Paroles &amp; accords (format ChordPro)</label>
+        <div class="section-tools">
+          <span class="section-tools-label">Marquer la sélection :</span>
+          <button type="button" class="btn small" id="mark-verse">Couplet</button>
+          <button type="button" class="btn small" id="mark-chorus">Refrain</button>
+          <button type="button" class="btn small" id="mark-bridge">Pont</button>
+          <span class="section-tools-sep"></span>
+          <button type="button" class="btn small ghost" id="structure-labels" title="Convertit les libellés texte existants (Refrain, [Refrain :]…) en directives ChordPro fermées à la strophe">Structurer les libellés</button>
+        </div>
         <textarea id="f-body" placeholder="[G]Voici les paroles [C]avec les accords entre crochets"></textarea>
       </div>
       <div class="hint">
@@ -1259,6 +1273,78 @@
 
   $("#btn-new").addEventListener("click", function(){ openEditor(null); });
   $("#btn-editor-back").addEventListener("click", function(){ showView("library"); });
+
+  /* Marquage de sections dans l'éditeur : encapsule la sélection (ou insère
+     une paire vide au curseur) en directives ChordPro. Les directives ont une
+     étendue explicite : liserés et navigation fiables en lecture. */
+  var SECTION_DIRECTIVES = { verse: ["{sov}", "{eov}"], chorus: ["{soc}", "{eoc}"], bridge: ["{sob}", "{eob}"] };
+  function wrapSelectionWith(start, end){
+    var ta = $("#f-body");
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    var before = ta.value.slice(0, s), sel = ta.value.slice(s, e), after = ta.value.slice(e);
+    if(s === e){
+      ta.value = before + start + "\n" + end + after;
+      ta.selectionStart = ta.selectionEnd = s + start.length + 1;
+    } else {
+      var needsLeadingNl = before !== "" && !before.endsWith("\n");
+      var lead = needsLeadingNl ? "\n" : "";
+      var body = sel.endsWith("\n") ? sel.slice(0, -1) : sel;
+      ta.value = before + lead + start + "\n" + body + "\n" + end + after;
+      ta.selectionStart = ta.selectionEnd = before.length + lead.length + start.length + 1 + body.length + 1 + end.length;
+    }
+    ta.focus();
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  $("#mark-verse").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.verse[0], SECTION_DIRECTIVES.verse[1]); });
+  $("#mark-chorus").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.chorus[0], SECTION_DIRECTIVES.chorus[1]); });
+  $("#mark-bridge").addEventListener("click", function(){ wrapSelectionWith(SECTION_DIRECTIVES.bridge[0], SECTION_DIRECTIVES.bridge[1]); });
+
+  /* Structurer les libellés : convertit les libellés texte (« Refrain »,
+     « [Refrain :] ») en paires start/end ChordPro, la fermeture tombant sur la
+     ligne vide qui termine la strophe. Aucune perte : seul le libellé change. */
+  $("#structure-labels").addEventListener("click", function(){
+    var ta = $("#f-body");
+    var lines = ta.value.split("\n");
+    var starts = { verse: "{sov}", chorus: "{soc}", bridge: "{sob}" };
+    var ends = { verse: "{eov}", chorus: "{eoc}", bridge: "{eob}" };
+    var conversions = 0;
+    for(var i = 0; i < lines.length; i++){
+      var trimmed = lines[i].trim();
+      var text = trimmed;
+      var bm = /^\[([^\]]+)\]$/.exec(trimmed);
+      if(bm) text = bm[1];
+      text = text.replace(/[:\-–]+$/, "").trim();
+      if(!isLabelLine(text)) continue;
+      var section = sectionFromLabel(text);
+      if(!section) continue;
+      lines[i] = starts[section];
+      var j = i + 1;
+      var sawContent = false;
+      while(j < lines.length){
+        var t = lines[j].trim();
+        if(t === ""){
+          if(sawContent){ lines[j] = ends[section]; conversions++; i = j; break; }
+          j++;
+          continue;
+        }
+        sawContent = true;
+        j++;
+      }
+      if(j >= lines.length && sawContent){
+        lines.push(ends[section]);
+        conversions++;
+        i = j;
+      }
+    }
+    if(conversions > 0){
+      ta.value = lines.join("\n");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      toast(conversions + " section" + (conversions > 1 ? "s" : "") + " structurée" + (conversions > 1 ? "s" : ""));
+    } else {
+      toast("Aucun libellé de section à structurer");
+    }
+    ta.focus();
+  });
 
   $("#song-form").addEventListener("submit", function(e){
     e.preventDefault();
