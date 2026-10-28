@@ -64,7 +64,7 @@ test("la modale d'aide liste tous les raccourcis documentés avec leurs touches"
   assert.deepEqual(sections, ["Lecteur", "Zoom de l'interface", "Bibliothèque", "Éditeur"]);
 
   const items = helpItems(window);
-  assert.equal(items.length, 7, "4 raccourcis lecteur + 2 zoom + 1 bibliothèque");
+  assert.equal(items.length, 8, "5 raccourcis lecteur + 2 zoom + 1 bibliothèque");
   assert.ok(items.every((li) => li.querySelector(".help-action")), "chaque ligne a une action");
   assert.ok(items.every((li) => li.querySelector(".kbd")), "chaque ligne a des touches en keycaps");
 
