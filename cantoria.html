@@ -723,6 +723,14 @@
         <div id="backup-list"></div>
       </div>
 
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div class="setting-text">
+          <div class="setting-title">Copies de secours d'édition</div>
+          <div class="setting-desc">L'ancienne version d'une chanson est conservée avant chaque enregistrement par-dessus (les 3 plus récentes). Restaurer remplace la chanson actuelle par la copie ; son état actuel est d'abord conservé en copie de secours.</div>
+        </div>
+        <div id="edit-backup-list"></div>
+      </div>
+
       <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;">Réinitialiser les paramètres</button>
     </div>
   </div>
@@ -867,6 +875,78 @@
         localStorage.removeItem(k);
       });
     }catch(e){ /* pas de place : on n'empêche pas la sauvegarde pour autant */ }
+  }
+
+  function listEditBackups(){
+    var backups = [];
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(k && k.indexOf(EDIT_BACKUP_PREFIX) === 0){
+        backups.push({ key: k, stamp: k.slice(EDIT_BACKUP_PREFIX.length), raw: localStorage.getItem(k) });
+      }
+    }
+    backups.sort(function(a, b){ return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0); });
+    return backups;
+  }
+
+  function describeEditBackup(raw){
+    try{
+      var parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object" && parsed.title !== undefined){
+        return "« " + (parsed.title || "Sans titre") + " »" + (parsed.artist ? " — " + parsed.artist : "");
+      }
+    }catch(e){}
+    return "Contenu illisible";
+  }
+
+  function renderEditBackupList(){
+    var container = $("#edit-backup-list");
+    if(!container) return;
+    var backups = listEditBackups();
+    if(!backups.length){
+      container.innerHTML = '<div class="setting-desc">Aucune copie de secours d’édition pour le moment.</div>';
+      return;
+    }
+    container.innerHTML = "";
+    backups.slice().reverse().forEach(function(b){
+      var row = document.createElement("div");
+      row.className = "setting-row";
+      var ts = Number(b.stamp);
+      var dateLabel = Number.isFinite(ts) ? new Date(ts).toLocaleString("fr-FR") : b.stamp;
+      row.innerHTML =
+        '<div class="setting-text">'+
+          '<div class="setting-title" style="font-weight:400;font-size:13.5px;">'+esc(dateLabel)+'</div>'+
+          '<div class="setting-desc">'+esc(describeEditBackup(b.raw))+'</div>'+
+        '</div>'+
+        '<button class="btn backup-edit-restore">Restaurer</button>';
+      row.querySelector("button").addEventListener("click", function(){ restoreEditBackup(b.key); });
+      container.appendChild(row);
+    });
+  }
+
+  function restoreEditBackup(key){
+    var raw = localStorage.getItem(key);
+    if(raw === null) return;
+    var parsed = null;
+    try{ parsed = JSON.parse(raw); }catch(e){}
+    if(!parsed || typeof parsed !== "object" || parsed.id === undefined){
+      toast("Cette copie de secours n'est pas une chanson valide : restauration impossible");
+      return;
+    }
+    var existing = songs.find(function(x){ return x.id === parsed.id; });
+    if(!existing){
+      toast("La chanson d'origine n'existe plus dans le carnet : restauration impossible");
+      return;
+    }
+    if(!confirm("Restaurer cette version de « " + (parsed.title || "Sans titre") + " » ? La version actuelle sera remplacée ; elle sera d'abord conservée en copie de secours.")) return;
+    backupSongBeforeOverwrite(existing);
+    parsed = normalizeSong(parsed);
+    Object.assign(existing, parsed);
+    saveSongs();
+    renderLibrary();
+    if(currentId === existing.id && $("#player-view").classList.contains("active")) renderPlayer();
+    renderEditBackupList();
+    toast("Version restaurée : « " + (parsed.title || "Sans titre") + " »");
   }
 
   /* ---------------- Library backup recovery ---------------- */
@@ -2208,7 +2288,7 @@
     document.documentElement.style.setProperty("--card-scale", appSettings.cardTextScale);
     syncSettingsUI(); saveSettings();
   });
-  $("#btn-settings-open").addEventListener("click", function(){ syncSettingsUI(); renderBackupList(); $("#settings-overlay").classList.add("show"); });
+  $("#btn-settings-open").addEventListener("click", function(){ syncSettingsUI(); renderBackupList(); renderEditBackupList(); $("#settings-overlay").classList.add("show"); });
   $("#btn-settings-close").addEventListener("click", function(){ $("#settings-overlay").classList.remove("show"); });
 
   /* ---------------- Aide / raccourcis clavier ----------------
