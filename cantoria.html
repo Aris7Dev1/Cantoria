@@ -1102,18 +1102,23 @@
     var lines = body.split("\n");
     var blocks = [];
     var sectionType = null;
+    var sectionFromLabelLine = false;
     for(var i=0; i<lines.length; i++){
       var raw = lines[i];
       var trimmed = raw.trim();
 
-      if(trimmed === ""){ blocks.push({ kind:"blank" }); continue; }
+      if(trimmed === ""){
+        if(sectionFromLabelLine){ sectionType = null; sectionFromLabelLine = false; }
+        blocks.push({ kind:"blank" });
+        continue;
+      }
 
       var dm = /^\{(.+)\}$/.exec(trimmed);
       if(dm){
         var content = dm[1].trim();
         var lower = content.toLowerCase();
         var key = lower.split(":")[0].trim();
-        if(SECTION_STARTS[key]){ sectionType = SECTION_STARTS[key]; continue; }
+        if(SECTION_STARTS[key]){ sectionType = SECTION_STARTS[key]; sectionFromLabelLine = false; continue; }
         if(SECTION_ENDS[key]){ sectionType = null; continue; }
         if(key === "comment" || key === "c"){
           blocks.push({ kind:"comment", text: content.split(":").slice(1).join(":").trim() });
@@ -1128,6 +1133,7 @@
         var bracketSection = sectionFromLabel(bracketText);
         if(bracketSection){
           sectionType = bracketSection;
+          sectionFromLabelLine = true;
           blocks.push({ kind:"comment", text: bracketText, section: bracketSection });
           continue;
         }
@@ -1142,6 +1148,7 @@
         var labelSection = sectionFromLabel(trimmed);
         if(labelSection){
           sectionType = labelSection;
+          sectionFromLabelLine = true;
           blocks.push({ kind:"comment", text: trimmed, section: labelSection });
           continue;
         }

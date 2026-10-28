@@ -171,3 +171,29 @@ test("« [Solo :] » entre crochets est aussi reconnu", () => {
   assert.equal(secs[0].getAttribute("data-section"), "verse-1");
   assert.equal(window.document.querySelector("#stage-inner .section-label").textContent, "Solo");
 });
+
+test("une section ouverte par un libellé texte se referme à la fin de la strophe", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ body: balavoineBody() })]) });
+  openFirstSong(window);
+  const chorus = window.document.querySelector('#stage-inner [data-section="chorus-1"]');
+  assert.ok(chorus, "le refrain est détecté");
+  const chorusLines = chorus.querySelectorAll(".line");
+  assert.ok(chorusLines.length >= 2, "le refrain contient ses lignes");
+  const stage = window.document.querySelector("#stage-inner");
+  const allLines = stage.querySelectorAll(".line");
+  assert.ok(allLines.length > chorusLines.length,
+    "les couplets suivant le refrain ne sont PAS enveloppés dans la section refrain");
+});
+
+test("les sections ChordPro {sov}/{eov} gardent leur étendue exacte malgré les lignes vides internes", () => {
+  const window = loadApp({
+    [SONGS_KEY]: JSON.stringify([song({
+      body: ["{sov}", "[Am]Couplet ligne 1", "", "[Am]Couplet ligne 2 après un vide", "{eov}", "", "[F]Hors section"].join("\n"),
+    })]),
+  });
+  openFirstSong(window);
+  const verse = window.document.querySelector('#stage-inner [data-section="verse-1"]');
+  assert.ok(verse, "le couplet ChordPro existe");
+  assert.equal(verse.querySelectorAll(".line").length, 2,
+    "la ligne vide interne n'a pas refermé la section ChordPro");
+});
