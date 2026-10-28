@@ -33,6 +33,7 @@ function loadApp(seed = {}, options = {}) {
 
 function openSettings(window) {
   window.document.querySelector("#btn-settings-open").click();
+  window.document.querySelector("#btn-manage-backups").click();
 }
 
 function backupRows(window) {

@@ -39,6 +39,7 @@ function editBackupKeys(window) {
 
 function openSettings(window) {
   window.document.querySelector("#btn-settings-open").click();
+  window.document.querySelector("#btn-manage-backups").click();
 }
 
 test("les paramètres listent les copies de secours d'édition avec titre et bouton Restaurer", () => {

@@ -405,6 +405,12 @@
   .chord-diagram svg .cd-muted{stroke:var(--ink-mid);stroke-width:1.4;opacity:.7;}
   .chord-diagram svg .cd-open{stroke:var(--gold);stroke-width:1.4;fill:none;}
   .setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;}
+  .modal-subview{
+    display:none;flex-direction:column;gap:14px;
+  }
+  .modal-subview.show{display:flex;}
+  .modal-panel.show-subview > :not(.modal-subview){display:none;}
+  #backup-list,#edit-backup-list{display:flex;flex-direction:column;gap:10px;}
   .setting-title{font-size:15px;color:var(--ink-bright);font-weight:600;}
   .setting-desc{font-size:14.5px;color:var(--ink-mid);margin-top:2px;line-height:1.4;}
   .switch{
@@ -715,23 +721,35 @@
         </div>
       </div>
 
-      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+      <div class="setting-row">
         <div class="setting-text">
-          <div class="setting-title">Copies de secours du carnet</div>
-          <div class="setting-desc">Conservées automatiquement quand le carnet local devient illisible (les 3 plus récentes). Télécharger exporte la copie telle quelle, sans toucher à la bibliothèque actuelle. Restaurer remplace la bibliothèque actuelle, dont l'état est d'abord conservé en copie de secours.</div>
+          <div class="setting-title">Copies de secours</div>
+          <div class="setting-desc" id="backups-summary">Versions conservées automatiquement (carnet, chansons modifiées).</div>
         </div>
-        <div id="backup-list"></div>
-      </div>
-
-      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
-        <div class="setting-text">
-          <div class="setting-title">Copies de secours d'édition</div>
-          <div class="setting-desc">L'ancienne version d'une chanson est conservée avant chaque enregistrement par-dessus (les 3 plus récentes). Restaurer remplace la chanson actuelle par la copie ; son état actuel est d'abord conservé en copie de secours.</div>
-        </div>
-        <div id="edit-backup-list"></div>
+        <button class="btn" id="btn-manage-backups">Gérer…</button>
       </div>
 
       <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;">Réinitialiser les paramètres</button>
+    </div>
+    <div id="backups-subview" class="modal-subview">
+      <div class="modal-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn icon ghost" id="btn-backups-back" aria-label="Retour aux paramètres">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+          </button>
+          <div class="eyebrow">Copies de secours</div>
+        </div>
+      </div>
+      <div class="setting-text" style="margin-bottom:4px;">
+        <div class="setting-title">Carnet</div>
+        <div class="setting-desc">Conservées quand le carnet local devient illisible (les 3 plus récentes). Télécharger exporte la copie telle quelle. Restaurer remplace la bibliothèque actuelle, d'abord conservée en copie de secours.</div>
+      </div>
+      <div id="backup-list"></div>
+      <div class="setting-text" style="margin:14px 0 4px;">
+        <div class="setting-title">Chansons modifiées</div>
+        <div class="setting-desc">L'ancienne version d'une chanson est conservée avant chaque enregistrement par-dessus (les 3 plus récentes). Restaurer remplace la chanson actuelle, d'abord conservée en copie de secours.</div>
+      </div>
+      <div id="edit-backup-list"></div>
     </div>
   </div>
 
@@ -946,6 +964,7 @@
     renderLibrary();
     if(currentId === existing.id && $("#player-view").classList.contains("active")) renderPlayer();
     renderEditBackupList();
+    updateBackupsSummary();
     toast("Version restaurée : « " + (parsed.title || "Sans titre") + " »");
   }
 
@@ -2288,7 +2307,23 @@
     document.documentElement.style.setProperty("--card-scale", appSettings.cardTextScale);
     syncSettingsUI(); saveSettings();
   });
-  $("#btn-settings-open").addEventListener("click", function(){ syncSettingsUI(); renderBackupList(); renderEditBackupList(); $("#settings-overlay").classList.add("show"); });
+  function updateBackupsSummary(){
+    var n = listLibraryBackups().length + listEditBackups().length;
+    var el = $("#backups-summary");
+    if(!el) return;
+    el.textContent = n === 0
+      ? "Aucune version conservée pour le moment."
+      : n + " version" + (n > 1 ? "s" : "") + " conservée" + (n > 1 ? "s" : "") + " automatiquement (carnet, chansons modifiées).";
+  }
+  function showBackupsSubview(show){
+    $("#backups-subview").classList.toggle("show", show);
+    $("#settings-overlay .modal-panel").classList.toggle("show-subview", show);
+    if(show){ renderBackupList(); renderEditBackupList(); }
+    else updateBackupsSummary();
+  }
+  $("#btn-manage-backups").addEventListener("click", function(){ showBackupsSubview(true); });
+  $("#btn-backups-back").addEventListener("click", function(){ showBackupsSubview(false); });
+  $("#btn-settings-open").addEventListener("click", function(){ syncSettingsUI(); updateBackupsSummary(); showBackupsSubview(false); $("#settings-overlay").classList.add("show"); });
   $("#btn-settings-close").addEventListener("click", function(){ $("#settings-overlay").classList.remove("show"); });
 
   /* ---------------- Aide / raccourcis clavier ----------------
@@ -2357,6 +2392,10 @@
   document.addEventListener("keydown", function(e){
     if(e.key === "Escape"){
       $("#help-overlay").classList.remove("show");
+      if($("#settings-overlay").classList.contains("show") && $("#backups-subview").classList.contains("show")){
+        showBackupsSubview(false);
+        return;
+      }
       $("#settings-overlay").classList.remove("show");
     }
   });
