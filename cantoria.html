@@ -1120,12 +1120,30 @@
   }
 
   /* ---------------- Plain "chords over lyrics" format (e.g. Le Chansonnier exports) ---------------- */
-  /* Permissive chord-token match: a root note followed by (almost) any quality/extension
-     text (7, m, sus4, maj7, (♭5), #11, ...) and an optional slash bass note. Real chord
-     charts use too many combinations (m7sus4, altered extensions in parentheses, the ♭/♯
-     symbols) to enumerate exhaustively, so this accepts any alphanumeric/accidental/paren
-     suffix rather than a fixed list. */
-  var CHORD_TOKEN_RE = /^[A-G][#b♭]?[A-Za-z0-9#b♭()+\-]*(\/[A-G][#b♭]?[A-Za-z0-9#b♭()]*)?$/;
+  /* Strict chord-token match : une fondamentale A-G (avec ♯/♭/b) suivie
+     d'une qualité issue d'un vocabulaire connu (m, maj, dim, aug, sus, add, M,
+     chiffres, altérations entre parenthèses) et d'une basse optionnelle après /.
+     L'ancienne regex permissive acceptait n'importe quel suffixe alphanumérique :
+     « Elle », « Aime » ou « Acide » étaient pris pour des accords et la ligne
+     de paroles suivante était dévorée. Un vocabulaire fermé reste compatible
+     avec les accords réels (m7sus4, (♭5), #11, add9…) tout en rejetant les
+     mots français. */
+  var CHORD_QUALITY = "(?:maj|min|dim|aug|sus|add|M|m|\\d+[#b♯♭]?|[#b♯♭]\\d+|\\([^()]*\\))";
+  var CHORD_TOKEN_RE = new RegExp(
+    "^([A-G][#b♭]?)(?:" + CHORD_QUALITY + ")*(?:\\/([A-G][#b♭]?)(?:" + CHORD_QUALITY + ")*)?$"
+  );
+  /* Un token est un accord certain si sa qualité (éventuelle) appartient au
+     vocabulaire connu : « Am » (qualité m) passe, « Amour » (qualité « our »)
+     est rejeté par la regex. Une fondamentale nue (« C », « F# », « Bb ») est
+     ambiguë avec un mot français très court (« A » = « à ») : verdict null,
+     tranché par isChordOnlyLine selon le contexte de la ligne. */
+  function isChordToken(token){
+    if(!CHORD_TOKEN_RE.test(token)) return false;
+    var quality = token.slice(RegExp.$1.length);
+    if(token.indexOf("/") !== -1) quality = quality.slice(0, quality.indexOf("/"));
+    if(quality === "") return null;
+    return true;
+  }
   var LABEL_WORDS = ["intro","couplet","refrain","pré-refrain","prerefrain","pre-chorus","pont","bridge","outro","interlude","break","coda","fin","final","finale","chorus","verse","solo"];
   /* Libellés de section en texte libre (« Refrain : », « Pont », « Couplet 2 »…)
      tels qu'on les trouve dans les exports de chansonniers (le-chansonnier.com,
@@ -1164,7 +1182,18 @@
   function isChordOnlyLine(trimmed){
     if(!trimmed) return false;
     var tokens = trimmed.split(/\s+/);
-    return tokens.every(function(t){ return CHORD_TOKEN_RE.test(t); });
+    var bare = 0, withQuality = 0;
+    for(var i = 0; i < tokens.length; i++){
+      var verdict = isChordToken(tokens[i]);
+      if(verdict === false) return false;
+      if(verdict === null) bare++;
+      else withQuality++;
+    }
+    /* Certain si au moins un accord porte une qualité (Am, D7, Cadd9…).
+       Des fondamentales nues seules (« C D », « A E ») restent plausibles
+       comme ligne d'accords à condition d'être plusieurs ; une fondamentale
+       isolate (« A », « C ») est plus probablement un mot français. */
+    return withQuality > 0 || (bare > 1 && tokens.length === bare);
   }
   function isLabelLine(trimmed){
     if(!trimmed || trimmed.length > 40) return false;
