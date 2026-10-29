@@ -910,9 +910,15 @@
   var storageWarned = false;
   function estimateStorageBytes(){
     var total = 0;
+    /* Robustesse : sur WebView, key(i) peut renvoyer null (fragments internes
+       de Chromium, itération pendant une mutation) — la boucle doit survivre. */
     for(var i = 0; i < localStorage.length; i++){
-      var k = localStorage.key(i);
-      if(k) total += (k.length + (localStorage.getItem(k) || "").length) * 2;
+      var k = null;
+      try{ k = localStorage.key(i); }catch(e){ continue; }
+      if(!k) continue;
+      var v = null;
+      try{ v = localStorage.getItem(k); }catch(e){}
+      total += (k.length + (v || "").length) * 2;
     }
     return total;
   }

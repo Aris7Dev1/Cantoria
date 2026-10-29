@@ -1,0 +1,27 @@
+# Copie de build : cantoria.html est copié vers les assets par npm run
+# android:install / Gradle (source de vérité unique à la racine)
+app/src/main/assets/cantoria.html
+
+# Configuration locale (chemin SDK spécifique à chaque machine)
+local.properties
+
+# Cache et artefacts de build Gradle
+.gradle/
+build/
+app/build/
+
+# Fichiers Android Studio propres à l'utilisateur
+.idea/caches/
+.idea/libraries/
+.idea/shelf/
+.idea/usage.statistics.xml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries/
+
+# Captures d'écran (sortie visuelle)
+captures/
+
+# Signatures (jamais de keystore dans le dépôt)
+*.jks
+*.keystore

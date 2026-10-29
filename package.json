@@ -8,7 +8,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check scripts/agent/lib.js && node --check scripts/agent/run-issue.js && node --check .devcontainer/gateway/server.js && node --check scripts/visual/checks.js && node --check scripts/visual/capture.js && node --check scripts/visual/judge.js && node --check scripts/visual/run.js && node --check scripts/visual/png.js",
+    "check": "node --check main.js && node --check preload.js && node --check scripts/agent/lib.js && node --check scripts/agent/run-issue.js && node --check .devcontainer/gateway/server.js && node --check scripts/visual/checks.js && node --check scripts/visual/capture.js && node --check scripts/visual/judge.js && node --check scripts/visual/run.js && node --check scripts/visual/png.js && node --check android/app/src/main/assets/android-shim.js && node --check scripts/android/install.js",
     "agent": "node scripts/agent/run-issue.js",
     "test": "node --test \"tests/*.test.js\"",
     "dist": "electron-builder --publish never",
@@ -16,7 +16,8 @@
     "dist:mac": "electron-builder --mac --publish never",
     "dist:linux": "electron-builder --linux --publish never",
     "prepare:release": "node scripts/prepare-release.js",
-    "visual": "xvfb-run -a node scripts/visual/run.js"
+    "visual": "xvfb-run -a node scripts/visual/run.js",
+    "android:install": "node scripts/android/install.js"
   },
   "devDependencies": {
     "electron": "44.4.3",

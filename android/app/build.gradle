@@ -1,0 +1,69 @@
+// Module app Cantoria — version pilotée par package.json (source de vérité unique).
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def pkgVersion = {
+    def f = rootProject.file('../package.json')
+    if (f.exists()) {
+        def json = new JsonSlurper().parseText(f.text)
+        return [versionName: json.version, versionCode: Math.max(1, Integer.parseInt(json.version.replaceAll('[^0-9]', '')))]
+    }
+    return [versionName: '1.3.0', versionCode: 10300]
+}()
+
+android {
+    namespace 'fr.cantoria.app'
+    compileSdk 34
+
+    // AGP 8 : BuildConfig n'est plus généré par défaut — requis par le garde
+    // de debugging (BuildConfig.DEBUG) de MainActivity.
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId 'fr.cantoria.app'
+        minSdk 26          // java.time requis par le bridge
+        targetSdk 34
+        versionName pkgVersion.versionName
+        versionCode pkgVersion.versionCode
+    }
+
+    buildTypes {
+        debug {
+            // Debuggable : la WebView est inspectable via chrome://inspect (issue #54).
+            debuggable true
+        }
+        release {
+            // Pas de keystore pour l'instant (décision superviseur PR #33) :
+            // release signée avec la clé debug pour permettre le sideload.
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    // cantoria.html embarqué sans duplication manuelle : tâche de copie au build.
+    applicationVariants.all { variant ->
+        variant.mergeAssetsProvider.get().doLast {
+            copy {
+                from rootProject.file('../cantoria.html')
+                into file("${buildDir}/intermediates/assets/${variant.name}/mergeAssets")
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
