@@ -912,9 +912,47 @@
   if($("#storage-alert-dismiss")) $("#storage-alert-dismiss").addEventListener("click", hideStorageAlert);
   if($("#storage-alert-export")) $("#storage-alert-export").addEventListener("click", function(){ exportAllSongs(); });
 
+  /* Adaptateur de stockage (issue #56) : quand le pont expose un fichier
+     privé (Android), il devient la destination principale du carnet ;
+     localStorage reste un cache best-effort — son échec ne doit jamais
+     faire échouer une sauvegarde réussie côté fichier. Sur desktop et
+     navigateur (pas de pont), comportement inchangé. */
+  function storageBridge(){
+    return (window.carnetDesktop && typeof window.carnetDesktop.saveLibrary === "function"
+      && typeof window.carnetDesktop.loadLibrary === "function") ? window.carnetDesktop : null;
+  }
+
+  var storageMode = "local"; // devient "file" après la première réussite fichier
+
   function saveSongs(){
+    var json = JSON.stringify(songs);
+    var bridge = storageBridge();
+    if(bridge){
+      try{
+        var ok = false;
+        bridge.saveLibrary(json).then(function(result){
+          ok = !!(result && result.saved);
+          if(!ok){
+            showStorageAlert("Impossible de sauvegarder le carnet dans le stockage de l'application. Exporte ton carnet maintenant pour ne rien perdre.");
+          }else{
+            storageMode = "file";
+            if(storageAlertShown) hideStorageAlert();
+          }
+        }).catch(function(){
+          showStorageAlert("Impossible de sauvegarder le carnet dans le stockage de l'application. Exporte ton carnet maintenant pour ne rien perdre.");
+        });
+      }catch(e){
+        showStorageAlert("Impossible de sauvegarder le carnet dans le stockage de l'application. Exporte ton carnet maintenant pour ne rien perdre.");
+        return false;
+      }
+      /* Cache localStorage : best effort, sans alerte (le fichier est la
+         référence) ; un quota dépassé ici n'est pas une perte de données. */
+      try{ localStorage.setItem(SONGS_STORAGE_KEY, json); }catch(e){}
+      writeDailyBackup();
+      return true;
+    }
     try{
-      localStorage.setItem(SONGS_STORAGE_KEY, JSON.stringify(songs));
+      localStorage.setItem(SONGS_STORAGE_KEY, json);
       if(storageAlertShown) hideStorageAlert();
       checkStorageUsage();
       writeDailyBackup();
@@ -934,16 +972,23 @@
   var STORAGE_WARN_RATIO = 0.8;
   var storageWarned = false;
   function estimateStorageBytes(){
+    /* Défense en profondeur : sur WebView, localStorage peut se comporter de
+       façon inattendue (clés nulles, accès levant, longueur muable pendant
+       l'itération). L'estimation de quota ne doit JAMAIS faire planter
+       l'app — en cas de doute, on renvoie 0 (pas d'alerte) et on continue. */
     var total = 0;
-    /* Robustesse : sur WebView, key(i) peut renvoyer null (fragments internes
-       de Chromium, itération pendant une mutation) — la boucle doit survivre. */
-    for(var i = 0; i < localStorage.length; i++){
-      var k = null;
-      try{ k = localStorage.key(i); }catch(e){ continue; }
-      if(!k) continue;
-      var v = null;
-      try{ v = localStorage.getItem(k); }catch(e){}
-      total += (k.length + (v || "").length) * 2;
+    try{
+      var len = localStorage.length;
+      for(var i = 0; i < len; i++){
+        var k = null;
+        try{ k = localStorage.key(i); }catch(e){ continue; }
+        if(!k) continue;
+        var v = null;
+        try{ v = localStorage.getItem(k); }catch(e){}
+        total += ((k && k.length ? k.length : 0) + (v && v.length ? v.length : 0)) * 2;
+      }
+    }catch(e){
+      return 0;
     }
     return total;
   }
@@ -1004,7 +1049,57 @@
     return pruneAndStoreBackup(SONGS_BACKUP_PREFIX, raw);
   }
 
+  /* Migration douce (issue #56) : au démarrage, le fichier privé (pont) est
+     prioritaire ; s'il n'existe pas encore, on lit localStorage (état desktop
+     existant) et on le migre vers le fichier — SANS jamais vider localStorage
+     (il reste cache synchronisé tant que le quota le permet). Aucune perte
+     possible à aucune étape : une source illisible part en copie de secours
+     comme avant, l'autre source reste intacte. */
+  function applyLibraryRaw(raw, source){
+    if(!raw) return false;
+    var parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) throw new Error("Format de carnet inattendu");
+    songs = parsed.map(normalizeSong);
+    return true;
+  }
+
   function loadSongs(){
+    var bridge = storageBridge();
+    if(bridge){
+      bridge.loadLibrary().then(function(fileRaw){
+        var migrated = false;
+        // 1. fichier privé prioritaire
+        try{
+          if(applyLibraryRaw(fileRaw, "file")) { renderLibrary(); return; }
+        }catch(e){
+          if(fileRaw) backupUnreadableLibrary(fileRaw);
+        }
+        // 2. sinon localStorage -> migration vers le fichier (sans le vider)
+        var raw = null;
+        try{ raw = localStorage.getItem(SONGS_STORAGE_KEY); }catch(e){}
+        try{
+          if(applyLibraryRaw(raw, "local")){
+            migrated = true;
+            renderLibrary();
+            try{ bridge.saveLibrary(raw); storageMode = "file"; }catch(e2){}
+          }else{
+            renderLibrary();
+          }
+        }catch(e){
+          songs = [];
+          if(raw) backupUnreadableLibrary(raw);
+          renderLibrary();
+        }
+        if(migrated) toast("Carnet migré vers le stockage de l'application");
+      }).catch(function(){
+        // pont défaillant au chargement : fallback localStorage complet
+        try{
+          var raw = localStorage.getItem(SONGS_STORAGE_KEY);
+          if(applyLibraryRaw(raw, "local")) renderLibrary();
+        }catch(e){}
+      });
+      return;
+    }
     var raw = null;
     try{
       raw = localStorage.getItem(SONGS_STORAGE_KEY);

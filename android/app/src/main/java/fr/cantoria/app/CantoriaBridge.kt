@@ -98,7 +98,9 @@ class CantoriaBridge(private val activity: Activity) {
 
     // ---- Import / Export (Storage Access Framework — aucune permission requise) ----
 
-    private var pendingOpenCallback: String? = null
+    /* Écrit par le thread UI (onActivityResult), lu par le thread du pont
+       JS (takeOpenedDocument) : volatile pour la visibilité inter-threads. */
+    @Volatile private var pendingOpenCallback: String? = null
 
     @JavascriptInterface
     fun openDocument() {
@@ -118,7 +120,13 @@ class CantoriaBridge(private val activity: Activity) {
     @JavascriptInterface
     fun takeOpenedDocument(): String {
         val result = pendingOpenCallback ?: "null"
-        pendingOpenCallback = null
+        /* Ne consommer que les états FINAUX (JSON ou "null" en cas
+           d'annulation/échec) : "pending" signifie « sélecteur ouvert,
+           réponse pas encore arrivée » et doit rester en place. Le bug
+           précédent consommait "pending" au premier poll : le suivant
+           lisait null et le shim annulait l'import 100 ms après
+           l'ouverture du sélecteur. */
+        if (result != "pending") pendingOpenCallback = null
         return result
     }
 

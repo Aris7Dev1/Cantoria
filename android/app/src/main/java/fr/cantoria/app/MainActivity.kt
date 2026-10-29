@@ -31,6 +31,20 @@ class MainActivity : AppCompatActivity() {
         const val GITHUB_REPO = "Cantoria"
     }
 
+    // Contenu du shim lu une fois dans les assets : injecté par
+    // evaluateJavascript à chaque chargement de page. L'injection directe
+    // du CONTENU (et non d'un <script src>) n'est pas soumise à la CSP de la
+    // page (script-src 'unsafe-inline' interdit les src externes) — c'est
+    // l'app qui injecte son propre adaptateur, aucune ressource distante.
+    private var shimContent: String? = null
+
+    private fun loadShimContent(): String {
+        shimContent?.let { return it }
+        val content = assets.open("android-shim.js").use { it.readBytes().toString(Charsets.UTF_8) }
+        shimContent = content
+        return content
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -94,6 +108,13 @@ class MainActivity : AppCompatActivity() {
         // JavaScript requis par l'interface (un seul fichier autonome, aucun appel réseau).
         view.settings.javaScriptEnabled = true
 
+        // localStorage : sans cet interrupteur, l'objet est NULL dans la WebView
+        // (DOM storage désactivé par défaut sur Android). Toute la persistance
+        // de l'app s'appuie dessus (carnet + cache de l'adaptateur fichier #56),
+        // avec des gardes try/catch — mais l'objet doit exister. Stockage privé
+        // de l'app uniquement, aucune permission requise.
+        view.settings.domStorageEnabled = true
+
         // §4.5 : surface minimale. Pas d'accès fichiers générique, pas de contenu externe.
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = false
@@ -115,12 +136,12 @@ class MainActivity : AppCompatActivity() {
         // chaque chargement de page : cantoria.html reste SANS MODIFICATION.
         view.webViewClient = object : WebViewClient() {
             override fun onPageStarted(page: WebView, url: String?, favicon: android.graphics.Bitmap?) {
-                // document.head n'existe pas encore à ce stade ; documentElement
-                // est garanti dès l'analyse du document.
-                page.evaluateJavascript(
-                    "(function(){var s=document.createElement('script');" +
-                        "s.src='$SHIM_URL';" +
-                        "(document.head||document.documentElement).appendChild(s);})();", null)
+                // Injection du CONTENU du shim (pas d'un src file://) : la CSP
+                // de cantoria.html (script-src 'unsafe-inline') bloquerait toute
+                // balise script externe ; evaluateJavascript n'est pas soumis
+                // à la CSP. L'adaptateur carnetDesktop est en place avant que
+                // le script de la page ne s'exécute.
+                page.evaluateJavascript(loadShimContent(), null)
                 super.onPageStarted(page, url, favicon)
             }
         }
