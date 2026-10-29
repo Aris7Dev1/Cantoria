@@ -180,3 +180,15 @@ test("MainActivity ne déclare qu'un seul companion object", () => {
   assert.equal(count, 1, "un seul companion object autorisé en Kotlin");
   assert.ok(/const val GITHUB_OWNER/.test(main), "les constantes GitHub sont dans le companion");
 });
+
+/* Régression du crash des tests JUnit : le constructeur d'UpdateChecker ne
+   doit toucher aucune classe Android framework (Looper/Handler) — sinon
+   RuntimeException en test JVM local. */
+test("UpdateChecker reste constructible en JVM pure (Handler paresseux)", () => {
+  const checker = read("app/src/main/java/fr/cantoria/app/UpdateChecker.kt");
+  const ctor = /class UpdateChecker\([\s\S]*?\)\s*\{([\s\S]*?)\n    companion object/.exec(checker);
+  assert.ok(ctor, "corps du constructeur trouvé");
+  assert.ok(!/Handler\(/.test(ctor[1].split("fun handler()")[0].split("private fun")[0]),
+    "aucun Handler créé au niveau du champ/construction — uniquement via handler()");
+  assert.ok(/fun handler\(\): Handler \{/.test(checker), "création paresseuse par handler()");
+});

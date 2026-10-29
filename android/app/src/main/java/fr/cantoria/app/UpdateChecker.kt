@@ -35,8 +35,18 @@ class UpdateChecker(
         fun onError()
     }
 
-    private val mainHandler = Handler(Looper.getMainLooper())
+    /* Handler créé paresseusement : le constructeur reste pur (aucune
+       classe Android framework), donc testable en JVM unitaire locale —
+       Looper n'existe que sur un appareil/émulateur. */
+    private var mainHandler: Handler? = null
     private var inFlight = false
+
+    private fun handler(): Handler {
+        mainHandler?.let { return it }
+        val h = Handler(Looper.getMainLooper())
+        mainHandler = h
+        return h
+    }
 
     fun check(currentVersion: String, listener: Listener) {
         if (inFlight) return
@@ -99,7 +109,7 @@ class UpdateChecker(
     }
 
     private fun notify(listener: Listener, block: (Listener) -> Unit) {
-        mainHandler.post { block(listener) }
+        handler().post { block(listener) }
     }
 
     /* Comparaison semver : 1.2.10 > 1.2.9 (numérique par segment, pas
