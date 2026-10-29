@@ -81,6 +81,14 @@ test("cantoria.html n'est pas dupliqué à la main : copié au build", () => {
     "aucune copie versionnée de cantoria.html dans les assets (copie au build uniquement)");
 });
 
+test("l'icône launcher existe aux 5 densités Android", () => {
+  for (const dpi of ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]) {
+    const p = path.join(ANDROID, "app/src/main/res", `mipmap-${dpi}`, "ic_launcher.png");
+    assert.ok(fs.existsSync(p), `ic_launcher.png manquante en mipmap-${dpi}`);
+    assert.ok(fs.statSync(p).size > 100, `ic_launcher-${dpi} semble vide`);
+  }
+});
+
 test("la version Gradle est pilotée par package.json", () => {
   const gradle = read("app/build.gradle");
   assert.ok(/package\.json/.test(gradle), "versionName/versionCode lus depuis package.json");

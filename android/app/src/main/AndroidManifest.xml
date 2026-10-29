@@ -6,6 +6,7 @@
     <application
         android:label="Cantoria"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Cantoria"
         android:allowBackup="true">
 
