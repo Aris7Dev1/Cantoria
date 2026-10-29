@@ -147,3 +147,17 @@ test("le DOM storage est activé (localStorage sinon null en WebView)", () => {
   assert.ok(/domStorageEnabled = true/.test(main),
     "setDomStorageEnabled(true) requis : localStorage est null sinon");
 });
+
+/* Régression de l'import Android silencieusement annulé : le premier poll
+   de takeOpenedDocument consommait l'état "pending" — le poll suivant
+   lisait null et le shim annulait l'import avant même le choix du fichier.
+   "pending" doit rester en place jusqu'au résultat final. */
+test("takeOpenedDocument ne consomme jamais l'état pending", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  const m = /fun takeOpenedDocument\(\): String \{([\s\S]*?)\n    \}/.exec(bridge);
+  assert.ok(m, "takeOpenedDocument présent");
+  assert.ok(/if \(result != "pending"\) pendingOpenCallback = null/.test(m[1]),
+    "seuls les états finaux sont consommés — jamais \"pending\"");
+  assert.ok(/@Volatile private var pendingOpenCallback/.test(bridge),
+    "le champ partagé entre threads UI et pont JS est @Volatile");
+});
