@@ -59,8 +59,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # Le SDK Android est préinstallé sur les runners ubuntu-latest
+      # (ANDROID_HOME=/usr/local/lib/android/sdk). L'action
+      # android-actions/setup-android@v3 échoue sur les runners récents
+      # (sdkmanager « Failed to find package 'tools' ») et est superflue.
 
       - name: Copy cantoria.html to assets (contrat de la coquille)
         run: node -e "require('fs').copyFileSync('cantoria.html','android/app/src/main/assets/cantoria.html')"
