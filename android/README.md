@@ -42,7 +42,24 @@ il télécharge Gradle 8.7 automatiquement, rien à installer.
   (le contrat attendu par l'interface), injecté à chaque chargement de page.
   `cantoria.html` ne sait pas qu'il tourne sur Android.
 
-## Hors périmètre actuel (roadmap #55-#58)
+## Mises à jour (issue #57)
+
+Vérification au démarrage via **GitHub Releases** (décision PR #33 :
+sideload, pas de Play Store) — équivalent d'`electron-updater` desktop :
+
+- le **processus natif** (`UpdateChecker.kt`) interroge la dernière
+  release GitHub — seule exception réseau, la WebView reste à zéro
+  appel (permission INTERNET justifiée dans le manifest) ;
+- une version plus récente (semver numérique : 1.2.10 > 1.2.9) est
+  notifiée à l'interface par `CustomEvent` → bandeau in-app, jamais de
+  téléchargement forcé ;
+- hors ligne : **silencieux** (aucun bandeau, aucun crash) ;
+- l'installation reste un geste utilisateur (téléchargement de l'APK
+  depuis la release GitHub, « sources inconnues ») — le téléchargement
+  automatique + intent d'installation arrivent avec l'issue #58 (CI de
+  release).
+
+## Hors périmètre actuel (roadmap #58)
 
 - responsive portrait / cibles 44 px (#55)
 - stockage fichier + migration (#56)
