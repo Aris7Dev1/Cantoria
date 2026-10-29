@@ -171,3 +171,12 @@ test("la release attache l'APK nommé d'après la version de package.json", () =
     "la release attend l'APK Android en même temps que le desktop");
   assert.ok(/assembleRelease/.test(build), "APK release (signé debug faute de keystore)");
 });
+
+/* Régression du crash de compilation Kotlin en CI : un seul companion
+   object par classe (le double héritait des empilements de branches). */
+test("MainActivity ne déclare qu'un seul companion object", () => {
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  const count = (main.match(/companion object \{/g) || []).length;
+  assert.equal(count, 1, "un seul companion object autorisé en Kotlin");
+  assert.ok(/const val GITHUB_OWNER/.test(main), "les constantes GitHub sont dans le companion");
+});
