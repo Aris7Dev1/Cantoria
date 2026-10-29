@@ -67,6 +67,13 @@ class MainActivity : AppCompatActivity() {
         // JavaScript requis par l'interface (un seul fichier autonome, aucun appel réseau).
         view.settings.javaScriptEnabled = true
 
+        // localStorage : sans cet interrupteur, l'objet est NULL dans la WebView
+        // (DOM storage désactivé par défaut sur Android). Toute la persistance
+        // de l'app s'appuie dessus (carnet + cache de l'adaptateur fichier #56),
+        // avec des gardes try/catch — mais l'objet doit exister. Stockage privé
+        // de l'app uniquement, aucune permission requise.
+        view.settings.domStorageEnabled = true
+
         // §4.5 : surface minimale. Pas d'accès fichiers générique, pas de contenu externe.
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = false

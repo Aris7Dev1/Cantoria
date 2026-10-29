@@ -138,3 +138,12 @@ test("estimateStorageBytes est totalement défensif (jamais de crash quota)", ()
     "toute exception renvoie 0 (silencieux) — l'app ne plante jamais sur l'estimation");
   assert.ok(/if\(!k\) continue;/.test(body), "clés nulles ignorées");
 });
+
+/* Régression du crash Android « Cannot read properties of null (reading
+   'length') » : localStorage est NULL dans une WebView tant que le DOM
+   storage n'est pas activé — toute la persistance en dépend. */
+test("le DOM storage est activé (localStorage sinon null en WebView)", () => {
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/domStorageEnabled = true/.test(main),
+    "setDomStorageEnabled(true) requis : localStorage est null sinon");
+});
