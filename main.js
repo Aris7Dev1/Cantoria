@@ -219,6 +219,36 @@ function stopScreenBlocker() {
   screenBlockerId = null;
 }
 
+const BACKUP_DIR = "backups";
+const BACKUP_KEEP_DAYS = 30;
+
+function backupDirPath() {
+  return path.join(app.getPath("userData"), BACKUP_DIR);
+}
+
+function backupFileName(date) {
+  return "cantoria-backup-" + date.toISOString().slice(0, 10) + ".json";
+}
+
+async function pruneOldBackups() {
+  const dir = backupDirPath();
+  let entries;
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return;
+  }
+  const cutoff = Date.now() - BACKUP_KEEP_DAYS * 24 * 60 * 60 * 1000;
+  for (const name of entries) {
+    const m = /^cantoria-backup-(\d{4}-\d{2}-\d{2})\.json$/.exec(name);
+    if (!m) continue;
+    const ts = Date.parse(m[1] + "T00:00:00Z");
+    if (Number.isFinite(ts) && ts < cutoff) {
+      await fs.rm(path.join(dir, name), { force: true }).catch(() => {});
+    }
+  }
+}
+
 function registerIpc() {
   ipcMain.handle("dialog:open-document", async (event) => {
     if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
@@ -301,6 +331,19 @@ function registerIpc() {
       console.error("Vérification manuelle de mise à jour :", error?.message || error);
       return { supported: true, error: error?.message || "Erreur de vérification." };
     }
+  });
+
+  ipcMain.handle("backup:write-daily", async (event, content) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autoris\u00e9.");
+    if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > 20 * 1024 * 1024) {
+      throw new Error("Contenu de sauvegarde invalide ou trop volumineux.");
+    }
+
+    const dir = backupDirPath();
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, backupFileName(new Date())), content, { encoding: "utf8", mode: 0o600 });
+    await pruneOldBackups();
+    return { saved: true };
   });
 
   ipcMain.handle("scrolling:set", (event, scrolling) => {
