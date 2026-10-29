@@ -38,6 +38,42 @@ class CantoriaBridge(private val activity: Activity) {
     fun getAppVersion(): String =
         activity.packageManager.getPackageInfo(activity.packageName, 0).versionName ?: ""
 
+    // ---- Bibliothèque : fichier privé du stockage de l'app (issue #56) ----
+    // Équivalent Android du backup:write-daily côté écriture directe : le
+    // carnet vit dans filesDir (pas de quota localStorage ~5 Mo), MODE_PRIVATE.
+    // Le format (JSON, cantoria-songs-v1) est identique côté interface — le
+    // pont ne fait que transporter la chaîne, jamais l'interpréter.
+
+    @JavascriptInterface
+    fun saveLibrary(json: String): Boolean {
+        if (json.toByteArray(Charsets.UTF_8).size > MAX_TRANSFER_BYTES) return false
+        return try {
+            val tmp = File(activity.filesDir, LIBRARY_FILE + ".tmp")
+            tmp.writeText(json, Charsets.UTF_8)
+            // Écriture atomique : le carnet valide n'est jamais écrasé par un
+            // fichier à moitié écrit (principe n°1 de VISION).
+            val dest = File(activity.filesDir, LIBRARY_FILE)
+            if (!tmp.renameTo(dest)) {
+                val fos = activity.openFileOutput(LIBRARY_FILE, Activity.MODE_PRIVATE)
+                fos.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                tmp.delete()
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    @JavascriptInterface
+    fun loadLibrary(): String {
+        return try {
+            val f = File(activity.filesDir, LIBRARY_FILE)
+            if (!f.exists()) "" else f.readText(Charsets.UTF_8)
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
     // ---- Mises à jour (issue #57) ----
     // La vérification part du natif au démarrage ; l'interface peut la
     // redemander via ce canal (même discipline que le desktop : le natif

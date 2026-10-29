@@ -20,16 +20,13 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val ASSET_URL = "file:///android_asset/cantoria.html"
         const val SHIM_URL = "file:///android_asset/android-shim.js"
+        const val GITHUB_OWNER = "Aris7Dev1"
+        const val GITHUB_REPO = "Cantoria"
     }
 
     private lateinit var webView: WebView
     private lateinit var bridge: CantoriaBridge
     private var updateChecker: UpdateChecker? = null
-
-    companion object {
-        const val GITHUB_OWNER = "Aris7Dev1"
-        const val GITHUB_REPO = "Cantoria"
-    }
 
     // Contenu du shim lu une fois dans les assets : injecté par
     // evaluateJavascript à chaque chargement de page. L'injection directe

@@ -35,3 +35,40 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # Android (issue #58) : build de la coquille + tests unitaires Kotlin
+  # sur chaque PR touchant android/. Vérifie aussi le contrat « cantoria.html
+  # copié aux assets » via le helper d'installation (sans émulateur requis).
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Le SDK Android est préinstallé sur les runners ubuntu-latest
+      # (ANDROID_HOME=/usr/local/lib/android/sdk). L'action
+      # android-actions/setup-android@v3 échoue sur les runners récents
+      # (sdkmanager « Failed to find package 'tools' ») et est superflue.
+
+      - name: Copy cantoria.html to assets (contrat de la coquille)
+        run: node -e "require('fs').copyFileSync('cantoria.html','android/app/src/main/assets/cantoria.html')"
+
+      - name: Build debug APK + run Kotlin tests
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug testDebugUnitTest --no-daemon

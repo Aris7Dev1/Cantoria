@@ -35,8 +35,18 @@ class UpdateChecker(
         fun onError()
     }
 
-    private val mainHandler = Handler(Looper.getMainLooper())
+    /* Handler créé paresseusement : le constructeur reste pur (aucune
+       classe Android framework), donc testable en JVM unitaire locale —
+       Looper n'existe que sur un appareil/émulateur. */
+    private var mainHandler: Handler? = null
     private var inFlight = false
+
+    private fun handler(): Handler {
+        mainHandler?.let { return it }
+        val h = Handler(Looper.getMainLooper())
+        mainHandler = h
+        return h
+    }
 
     fun check(currentVersion: String, listener: Listener) {
         if (inFlight) return
@@ -99,14 +109,16 @@ class UpdateChecker(
     }
 
     private fun notify(listener: Listener, block: (Listener) -> Unit) {
-        mainHandler.post { block(listener) }
+        handler().post { block(listener) }
     }
 
     /* Comparaison semver : 1.2.10 > 1.2.9 (numérique par segment, pas
-       lexicographique). Testée par UpdateCheckerTest. */
+       lexicographique). Normalise le préfixe de tag « v »/« V » AVANT le
+       parsing (sinon « v2 » -> 0) ; chaque segment non numérique vaut 0.
+       Testée par UpdateCheckerTest (6 cas). */
     fun isNewer(candidate: String, current: String): Boolean {
-        val c = candidate.split('.').map { it.toIntOrNull() ?: 0 }
-        val cur = current.split('.').map { it.toIntOrNull() ?: 0 }
+        val c = normalize(candidate)
+        val cur = normalize(current)
         val n = maxOf(c.size, cur.size)
         for (i in 0 until n) {
             val a = c.getOrElse(i) { 0 }
@@ -115,6 +127,10 @@ class UpdateChecker(
         }
         return false
     }
+
+    private fun normalize(version: String): List<Int> =
+        version.trim().removePrefix("v").removePrefix("V")
+            .split('.').map { it.toIntOrNull() ?: 0 }
 }
 
 private fun java.io.InputStream.readNBytesOrEmpty(max: Long): ByteArray {
