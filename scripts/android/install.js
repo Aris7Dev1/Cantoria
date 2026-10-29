@@ -24,12 +24,7 @@ const gradlew = isWindows ? "gradlew.bat" : "./gradlew";
 const gradlewPath = path.join(androidDir, gradlew);
 
 if (!fs.existsSync(gradlewPath)) {
-  console.error([
-    "Wrapper Gradle introuvable (" + gradlew + ").",
-    "Deux options :",
-    "  1. Ouvre le dossier android/ dans Android Studio une fois — il génère le wrapper.",
-    "  2. Ou installe Gradle et lance : cd android && gradle wrapper --gradle-version 8.7",
-  ].join("\n"));
+  console.error("Wrapper Gradle introuvable (" + gradlew + ") — le dépôt devrait le contenir.");
   process.exit(1);
 }
 

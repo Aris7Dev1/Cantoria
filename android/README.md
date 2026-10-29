@@ -10,9 +10,11 @@ assets au build, **sans modification**.
 npm run android:install        # copie cantoria.html vers les assets + gradlew installDebug
 ```
 
-Prérequis : Android Studio (SDK 34), un émulateur API 26+ ou un appareil
-connecté (`adb devices`). Le wrapper Gradle (`gradlew`) est généré la première
-fois par Android Studio à l'ouverture du dossier `android/`.
+Prérequis : un JDK 17 (Android Studio en embarque un — définis `JAVA_HOME`
+vers lui si `java` n'est pas dans ton PATH), le SDK Android 34, et un
+émulateur API 26+ ou un appareil connecté (`adb devices`). Le wrapper Gradle
+(`gradlew` / `gradlew.bat`) est versionné dans le dépôt : au premier lancement,
+il télécharge Gradle 8.7 automatiquement, rien à installer.
 
 ## Tester le rendu (équivalent du test desktop)
 
