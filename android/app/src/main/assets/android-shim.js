@@ -50,6 +50,19 @@
         resolve(ok ? { saved: true } : { canceled: true });
       });
     },
+    saveLibrary: function (content) {
+      if (typeof content !== "string") {
+        return Promise.reject(new TypeError("Le carnet doit être une chaîne JSON."));
+      }
+      return new Promise(function (resolve) {
+        resolve({ saved: native.saveLibrary(content) });
+      });
+    },
+    loadLibrary: function () {
+      return new Promise(function (resolve) {
+        resolve(native.loadLibrary());
+      });
+    },
     writeDailyBackup: function (content) {
       if (typeof content !== "string") {
         return Promise.reject(new TypeError("Le contenu de sauvegarde doit \u00eatre une cha\u00eene."));
