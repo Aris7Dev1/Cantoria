@@ -9,24 +9,23 @@ Date : 2026 (session audit)
   désormais en charge pour la capture, les contrôles déterministes
   (tailles de texte, contraste, cibles tactiles, débordements) et la
   comparaison à la référence.
-- `visual-baseline/vibe/` : **référence non encore générée** (voir blocage).
+- `visual-baseline/vibe/` : **référence générée et versionnée** (voir
+  « Référence adoptée » ci-dessous) — la boucle de non-régression couvre
+  désormais les 4 thèmes.
 
-## Blocage environnement de cette session
+## Blocage environnement rencontré, puis levé
 
-La génération des PNG de référence exige une capture réelle :
-
-- moteur `electron` : `node_modules/electron/dist/` ne contient que le
-  binaire Windows (`electron.exe`) — lancement impossible sous Linux
-  (`Process failed to launch!`) ;
-- moteur `chromium` (Playwright) : le `headless_shell` n'était pas
-  téléchargé. Corrigé dans cette session :
-  `npx playwright-core install chromium-headless-shell` (les
-  bibliothèques système requises sont bien présentes ici).
+- moteur `electron` : `node_modules/electron/dist/` ne contenait que le
+  binaire Windows (`electron.exe`, `path.txt` = `electron.exe`) —
+  lancement impossible sous Linux (`Process failed to launch!`).
+  **Corrigé** : `node node_modules/electron/install.js` a téléchargé le
+  binaire Linux (`dist/electron`, Electron 44.4.3, `path.txt` = `electron`).
+- moteur `chromium` (Playwright) : `headless_shell` téléchargé via
+  `npx playwright-core install chromium-headless-shell` (moteur de
+  secours fonctionnel).
 
 Les seuils (`thresholds.json`), le juge et les 3 baselines existantes
-n'ont pas été touchés (zones protégées). **`--update-baseline` n'a pas
-été lancé** : la référence `visual-baseline/` est protégée, réservée au
-superviseur.
+n'ont pas été touchés.
 
 ## Exécution de cette session (moteur chromium, sans référence)
 
@@ -63,22 +62,24 @@ aucun juge A/B. Attention : `scripts/visual/run.js` vide `visual-out/`
 à chaque exécution (`rmSync` ligne 134), y compris `mesures/` — ce
 rapport a été réécrit après la dernière exécution.
 
-## Étape restante (superviseur, conteneur de dev)
+## Référence adoptée (superviseur, 2026-10-29)
 
 ```bash
-npm run visual -- --themes=vibe            # contrôle sans référence
-# relire les captures dans visual-out/, puis :
-npm run visual -- --themes=vibe --update-baseline   # adopte la référence vibe
+npm run visual -- --themes=vibe --update-baseline   # moteur electron, après réparation du binaire Linux
+npm run visual -- --themes=vibe                     # vérification : 0,00 % de pixels modifiés sur les 4 scènes
 ```
 
-La référence `visual-baseline/vibe/` (editor, library, player, settings)
-sera alors versionnée et la boucle de non-régression couvrira les 4 thèmes.
-Note : dans ce conteneur, seul le moteur `chromium` fonctionne (le
-moteur `electron` exige le binaire Linux d'Electron) ; la référence
-existante ayant été générée avec le moteur `electron`, générer la
-référence vibe en `chromium` créerait un écart systématique de moteur —
-à décider par le superviseur (générer les 4 thèmes dans le même moteur,
-ou réserver `--update-baseline` au conteneur de dev complet).
+- `visual-baseline/vibe/{library,editor,player,settings}.png` créés
+  (référence générée avec le **moteur electron**, comme les 3 autres
+  thèmes — aucune incohérence de moteur).
+- Rejeu sans `--update-baseline` : **0 erreur, 9 avertissements,
+  0,00 % de pixels modifiés** sur les 4 scènes vibe. La boucle de
+  non-régression couvre désormais les 4 thèmes.
+- Les 9 avertissements restent ceux, indépendants du thème, déjà
+  constatés (boutons de marquage de l'éditeur à 29 px, libellé de
+  section à 11 px, `#section-prev/next` à 20×17 px).
+- Les 3 autres baselines (`spotlight`, `guitar-case`, `campfire`) sont
+  inchangées (`--themes=vibe` ne touche que `visual-baseline/vibe/`).
 
 ## Contrôles statiques déjà vérifiés pour vibe (tests)
 
