@@ -92,18 +92,12 @@ test("+ depuis ×1 passe à ×1,25, persiste la vitesse et met à jour le badge 
   window.close();
 });
 
-test("bornes : à ×0,25 le bouton − est désactivé ; à ×2 le bouton + est désactivé", () => {
-  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.25 })]) });
+test("bornes : à ×0,1 le bouton − est désactivé ; à ×2 le bouton + est désactivé", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.1 })]) });
   openFirstSong(window);
   assert.equal(window.document.querySelector("#speed-down").disabled, true);
   assert.equal(window.document.querySelector("#speed-up").disabled, false);
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
-  window.document.querySelector("#speed-up").click();
+  for (let i = 0; i < 10; i++) window.document.querySelector("#speed-up").click();
   assert.equal(speedVal(window), "×2");
   assert.equal(window.document.querySelector("#speed-up").disabled, true);
   assert.equal(window.document.querySelector("#speed-down").disabled, false);

@@ -25,6 +25,12 @@ contextBridge.exposeInMainWorld("carnetDesktop", Object.freeze({
     }
     return ipcRenderer.invoke("dialog:save-json", content);
   },
+  setScrolling: (scrolling) => {
+    if (typeof scrolling !== "boolean") {
+      return Promise.reject(new TypeError("L'\u00e9tat de d\u00e9filement doit \u00eatre un bool\u00e9en."));
+    }
+    return ipcRenderer.invoke("scrolling:set", scrolling);
+  },
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
   onUpdateChecking: (callback) => subscribe("update:checking", callback),

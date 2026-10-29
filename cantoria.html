@@ -1769,7 +1769,7 @@
   /* Paliers de vitesse réguliers de 0,25, de ×0,25 à ×2. Une vitesse hors paliers
      (chanson importée avec une valeur exotique) reste valide : elle est affichée
      telle quelle et les boutons rejoignent le palier immédiatement supérieur/inférieur. */
-  var SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  var SPEED_STEPS = [0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   function formatSpeed(v){
     return "×" + String(v).replace(".", ",");
   }
@@ -1891,6 +1891,7 @@
     });
     if(openSection) html += "</div>";
     $("#stage-inner").innerHTML = html || '<div class="comment-row">Cette chanson est vide — touche ✎ pour l\'éditer.</div>';
+    invalidateSpotlightCache();
   }
 
   $("#btn-player-back").addEventListener("click", function(){ stopScroll(); cancelCountdown(); showView("library"); });
@@ -1960,9 +1961,11 @@
       applySpotlight();
       stopScroll();
       $("#play-toggle").textContent = "▶";
+      toast("Fin de la chanson");
       return;
     }
     stage.scrollTop = scrollPos;
+    lastProgrammaticScroll = scrollPos;
     applySpotlight();
     scrollRAF = requestAnimationFrame(scrollFrame);
   }
@@ -1971,10 +1974,29 @@
     scrollPos = $("#stage").scrollTop;
     lastFrameTs = null;
     scrollRAF = requestAnimationFrame(scrollFrame);
+    if(window.carnetDesktop && typeof window.carnetDesktop.setScrolling === "function"){
+      window.carnetDesktop.setScrolling(true).catch(function(){});
+    }
   }
   function stopScroll(){
     scrolling = false;
     if(scrollRAF){ cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+    if(window.carnetDesktop && typeof window.carnetDesktop.setScrolling === "function"){
+      window.carnetDesktop.setScrolling(false).catch(function(){});
+    }
+  }
+
+  /* Scroll manuel pendant la lecture : le RAF ecrase scrollTop depuis
+     scrollPos ; si l'utilisateur deplace la position (molette, barre, tactile),
+     on resynchronise scrollPos sur la position reelle au lieu de sauter
+     a l'ancienne position a la frame suivante. */
+  var lastProgrammaticScroll = null;
+  function syncScrollFromManual(){
+    if(!scrolling) return;
+    var stage = $("#stage");
+    if(lastProgrammaticScroll !== null && Math.abs(stage.scrollTop - lastProgrammaticScroll) < 1) return;
+    scrollPos = stage.scrollTop;
+    lastFrameTs = null;
   }
 
   /* Countdown before auto-scroll starts */
@@ -2149,36 +2171,61 @@
     if(appSettings.controlsPinned) cancelAutoHide();
     else armAutoHide();
   });
-  $("#stage").addEventListener("mousemove", function(){
+  function wakeControls(){
     if(appSettings.controlsPinned) return;
     cancelAutoHide();
     armAutoHide();
-  });
+  }
+  $("#stage").addEventListener("mousemove", wakeControls);
+  /* Tactile : pas de hover sur ecran tactile, le tap reveille le bandeau
+     (prerequis cible Android, decision PR #33 : aucun geste complexe). */
+  $("#stage").addEventListener("touchstart", wakeControls, { passive: true });
+  $("#stage").addEventListener("pointerdown", wakeControls);
   $("#controls").addEventListener("click", function(){ armAutoHide(); });
 
   /* Spotlight effect, also runs on manual scroll */
   var stageEl;
+  /* Offsets des lignes mesures une seule fois par rendu (dans le repere du
+     stage), puis recalcul de la proximite par simple arithmetique a chaque
+     frame : plus de getBoundingClientRect par ligne a 60 fps. */
+  var spotlightLineOffsets = null;
+  function invalidateSpotlightCache(){ spotlightLineOffsets = null; }
+  function measureSpotlightLines(){
+    var lines = $("#stage-inner").querySelectorAll(".line");
+    var stageTop = stageEl.getBoundingClientRect().top;
+    var offsets = [];
+    lines.forEach(function(line){
+      var lr = line.getBoundingClientRect();
+      offsets.push({ el: line, height: lr.height, top: lr.top - stageTop });
+    });
+    spotlightLineOffsets = offsets;
+  }
   function applySpotlight(){
     if(!stageEl) stageEl = $("#stage");
     var lines = $("#stage-inner").querySelectorAll(".line");
     if(!appSettings.spotlight){
       lines.forEach(function(line){ line.style.opacity = "1"; line.classList.remove("focus-line"); });
+      spotlightLineOffsets = null;
       return;
     }
-    var rect = stageEl.getBoundingClientRect();
-    var center = rect.top + rect.height * 0.38;
-    var threshold = rect.height * 0.55;
-    lines.forEach(function(line){
-      var lr = line.getBoundingClientRect();
-      var lc = lr.top + lr.height / 2;
+    if(!spotlightLineOffsets) measureSpotlightLines();
+    var offsets = spotlightLineOffsets;
+    if(!offsets.length) return;
+    var stageH = stageEl.clientHeight;
+    var center = stageH * 0.38;
+    var threshold = stageH * 0.55;
+    for(var i = 0; i < offsets.length; i++){
+      var entry = offsets[i];
+      var lc = entry.top + stageEl.scrollTop + entry.height / 2;
       var dist = Math.abs(lc - center);
       var factor = Math.max(0.22, 1 - dist / threshold);
-      line.style.opacity = factor.toFixed(2);
-      line.classList.toggle("focus-line", factor > 0.9);
-    });
+      entry.el.style.opacity = factor.toFixed(2);
+      entry.el.classList.toggle("focus-line", factor > 0.9);
+    }
   }
   var spotlightRAF = null;
   $("#stage").addEventListener("scroll", function(){
+    syncScrollFromManual();
     if(spotlightRAF) return;
     spotlightRAF = requestAnimationFrame(function(){ applySpotlight(); spotlightRAF = null; });
   });

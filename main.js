@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, session } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, powerSaveBlocker, session } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { autoUpdater } = require("electron-updater");
@@ -12,6 +12,7 @@ const ZOOM_DEFAULT = 1;
 
 let mainWindow = null;
 let updateTimer = null;
+let screenBlockerId = null;
 let updateCheckRunning = false;
 let updateListenersRegistered = false;
 let zoomFactor = ZOOM_DEFAULT;
@@ -211,6 +212,13 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "cantoria.html"));
 }
 
+function stopScreenBlocker() {
+  if (screenBlockerId !== null && powerSaveBlocker.isStarted(screenBlockerId)) {
+    powerSaveBlocker.stop(screenBlockerId);
+  }
+  screenBlockerId = null;
+}
+
 function registerIpc() {
   ipcMain.handle("dialog:open-document", async (event) => {
     if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
@@ -295,6 +303,20 @@ function registerIpc() {
     }
   });
 
+  ipcMain.handle("scrolling:set", (event, scrolling) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autoris\u00e9.");
+    if (typeof scrolling !== "boolean") throw new Error("\u00c9tat de d\u00e9filement invalide.");
+
+    if (scrolling) {
+      if (screenBlockerId === null || !powerSaveBlocker.isStarted(screenBlockerId)) {
+        screenBlockerId = powerSaveBlocker.start("prevent-display-sleep");
+      }
+    } else {
+      stopScreenBlocker();
+    }
+    return { blocked: scrolling };
+  });
+
   ipcMain.handle("update:install", (event) => {
     if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
     if (!app.isPackaged) return { installed: false, reason: "development" };
@@ -338,6 +360,7 @@ if (!gotLock) {
 
   app.on("before-quit", () => {
     if (updateTimer) clearInterval(updateTimer);
+    stopScreenBlocker();
   });
 
   app.on("window-all-closed", () => {
