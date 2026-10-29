@@ -28,6 +28,26 @@ const scenarios = [
       await page.waitForSelector("#player-view.active #stage-inner .line");
     },
   },
+  /* Scénarios mobiles (validation superviseur, issue #55) : viewport portrait
+     dédié (Pixel-like 412×915). Baselines séparées <thème>-mobile/.
+     Les seuils de thresholds.json s'appliquent tels quels — aucun n'est modifié. */
+  {
+    name: "library-portrait",
+    description: "Bibliothèque en portrait étroit (412×915) — cartes en colonne unique",
+    scope: "chrome",
+    viewport: { width: 412, height: 915 },
+    async run(page) { await page.waitForSelector(".song-card"); },
+  },
+  {
+    name: "player-portrait",
+    description: "Lecteur en portrait étroit — bandeau compact empilé",
+    scope: "stage",
+    viewport: { width: 412, height: 915 },
+    async run(page) {
+      await page.locator(".song-card", { hasText: "Le chemin du retour" }).click();
+      await page.waitForSelector("#player-view.active #stage-inner .line");
+    },
+  },
   {
     name: "settings",
     description: "Fenêtre des paramètres",
