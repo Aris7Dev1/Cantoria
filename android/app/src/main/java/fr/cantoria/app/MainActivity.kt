@@ -74,10 +74,12 @@ class MainActivity : AppCompatActivity() {
         // chaque chargement de page : cantoria.html reste SANS MODIFICATION.
         view.webViewClient = object : WebViewClient() {
             override fun onPageStarted(page: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                // document.head n'existe pas encore à ce stade ; documentElement
+                // est garanti dès l'analyse du document.
                 page.evaluateJavascript(
                     "(function(){var s=document.createElement('script');" +
                         "s.src='$SHIM_URL';" +
-                        "document.head.appendChild(s);})();", null)
+                        "(document.head||document.documentElement).appendChild(s);})();", null)
                 super.onPageStarted(page, url, favicon)
             }
         }
@@ -85,13 +87,9 @@ class MainActivity : AppCompatActivity() {
 
         // Fond de démarrage assorti au thème sombre de l'app (#17120f, campfire).
         view.setBackgroundColor(0xFF17120F.toInt())
-
-        // Plein écran sous la barre système (cible : tél posé à un mètre).
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            )
+        // Pas de layout « edge-to-edge » : l'app s'affiche dans la zone sûre,
+        // sous la barre de statut — aucun contenu caché par le bandeau natif.
+        // (L'usage plein écran immersif sera une décision UI dédiée.)
     }
 
     private fun installBridge(view: WebView) {
