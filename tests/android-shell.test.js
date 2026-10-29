@@ -153,3 +153,21 @@ test("le test semver Kotlin couvre les cas limites (1.2.10 > 1.2.9)", () => {
     "le cas numériquement correct est testé (pas lexicographique)");
   assert.ok(/junit/.test(read("app/build.gradle")), "JUnit branché dans Gradle");
 });
+
+/* Issue #58 : CI de build APK + attachement aux releases. */
+test("la CI construit l'APK Android sur chaque PR", () => {
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.ok(/android:/.test(ci), "job android présent dans ci.yml");
+  assert.ok(/assembleDebug testDebugUnitTest/.test(ci),
+    "build debug + tests Kotlin à chaque PR");
+});
+
+test("la release attache l'APK nommé d'après la version de package.json", () => {
+  const build = fs.readFileSync(path.join(ROOT, ".github/workflows/build.yml"), "utf8");
+  assert.ok(/Build Android APK/.test(build), "job de build APK dans build.yml");
+  assert.ok(/cantoria-\$\{VERSION\}-android\.apk/.test(build),
+    "nommage cantoria-<version>-android.apk");
+  assert.ok(/needs: \[build, android\]/.test(build),
+    "la release attend l'APK Android en même temps que le desktop");
+  assert.ok(/assembleRelease/.test(build), "APK release (signé debug faute de keystore)");
+});

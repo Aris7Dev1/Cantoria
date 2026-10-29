@@ -59,7 +59,22 @@ sideload, pas de Play Store) — équivalent d'`electron-updater` desktop :
   automatique + intent d'installation arrivent avec l'issue #58 (CI de
   release).
 
-## Hors périmètre actuel (roadmap #58)
+## Distribution (issue #58)
+
+- **Sur chaque PR** : le job `android` de la CI construit l'APK debug et
+  exécute les tests Kotlin — un `android/` cassé bloque le merge.
+- **Sur chaque tag `v*.*.*`** : `build.yml` construit l'APK **release**
+  (signé debug à défaut de keystore — décision superviseur « pas pour
+  l'instant »), le nomme `cantoria-<version>-android.apk` (version lue
+  dans `package.json`) et l'attache à la GitHub Release aux côtés des
+  installers desktop.
+- **Installation utilisateur (sideload)** : télécharger l'APK depuis la
+  release → ouvrir → autoriser « sources inconnues » → installer par-dessus
+  l'app existante (les chansons sont conservées : stockage privé + cache).
+- L'app installée détecte les nouvelles versions au démarrage (issue #57)
+  et propose de télécharger le nouvel APK.
+
+## Hors périmètre actuel
 
 - responsive portrait / cibles 44 px (#55)
 - stockage fichier + migration (#56)
