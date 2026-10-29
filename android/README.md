@@ -42,7 +42,20 @@ il télécharge Gradle 8.7 automatiquement, rien à installer.
   (le contrat attendu par l'interface), injecté à chaque chargement de page.
   `cantoria.html` ne sait pas qu'il tourne sur Android.
 
-## Hors périmètre actuel (roadmap #55-#58)
+## Stockage (issue #56)
+
+Sur Android, le carnet vit dans un **fichier privé** de l'app
+(`filesDir/cantoria-library.json`) via le pont (`saveLibrary`/`loadLibrary`),
+plus de quota `localStorage` (~5 Mo). Comportement :
+
+- au démarrage, le fichier est prioritaire ; s'il n'existe pas, le carnet
+  `localStorage` (état migré depuis une install antérieure) est **migré
+  vers le fichier** — sans jamais être vidé (il reste un cache synchronisé) ;
+- écriture **atomique** (`.tmp` + `renameTo`) : jamais de carnet à moitié écrit ;
+- un contenu illisible part en copie de secours, comme sur desktop ;
+- échec d'écriture : alerte persistante + le cache conserve la version.
+
+## Hors périmètre actuel (roadmap #57-#58)
 
 - responsive portrait / cibles 44 px (#55)
 - stockage fichier + migration (#56)
