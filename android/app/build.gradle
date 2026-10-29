@@ -19,6 +19,12 @@ android {
     namespace 'fr.cantoria.app'
     compileSdk 34
 
+    // AGP 8 : BuildConfig n'est plus généré par défaut — requis par le garde
+    // de debugging (BuildConfig.DEBUG) de MainActivity.
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'fr.cantoria.app'
         minSdk 26          // java.time requis par le bridge

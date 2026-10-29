@@ -76,12 +76,12 @@ class MainActivity : AppCompatActivity() {
         // Le shim (adaptateur cantoriaAndroid -> carnetDesktop) est injecté au début de
         // chaque chargement de page : cantoria.html reste SANS MODIFICATION.
         view.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(url: String?, favicon: android.graphics.Bitmap?) {
-                view.evaluateJavascript(
+            override fun onPageStarted(page: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                page.evaluateJavascript(
                     "(function(){var s=document.createElement('script');" +
                         "s.src='file:///android_asset/android-shim.js';" +
                         "document.head.appendChild(s);})();", null)
-                super.onPageStarted(url, favicon)
+                super.onPageStarted(page, url, favicon)
             }
         }
         view.webChromeClient = WebChromeClient()
