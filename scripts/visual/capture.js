@@ -65,27 +65,47 @@ async function resetState(page, theme) {
 }
 
 async function captureAll({ engine, repoRoot, outDir, themes, scenarios, thresholds, log = () => {} }) {
-  const viewport = { width: thresholds.viewport.width, height: thresholds.viewport.height };
-  const session = await launch({ engine, repoRoot, viewport });
+  /* Viewport par scénario (validation superviseur, issue #55) : un scénario
+     peut déclarer `viewport: { width, height }` pour une capture mobile ;
+     sans déclaration, on garde le viewport de thresholds.json (desktop) —
+     les seuils restent inchangés. Les scénarios sont regroupés par viewport
+     pour ne lancer qu'une session par taille. */
+  const defaultViewport = { width: thresholds.viewport.width, height: thresholds.viewport.height };
+  const groups = new Map();
+  for (const sc of scenarios) {
+    const vp = sc.viewport
+      ? { width: sc.viewport.width, height: sc.viewport.height }
+      : defaultViewport;
+    const key = `${vp.width}x${vp.height}`;
+    if (!groups.has(key)) groups.set(key, { viewport: vp, scenarios: [] });
+    groups.get(key).scenarios.push(sc);
+  }
+
   const results = [];
-  try {
-    for (const theme of themes) {
-      for (const sc of scenarios) {
-        await resetState(session.page, theme);
-        await sc.run(session.page);
-        await session.page.waitForTimeout(150); // fin des transitions de mise en page
-        const dir = path.join(outDir, theme);
-        fs.mkdirSync(dir, { recursive: true });
-        const png = path.join(dir, `${sc.name}.png`);
-        await session.page.screenshot({ path: png, animations: "disabled", caret: "hide" });
-        const metrics = await session.page.evaluate(collectMetrics, sc.root || null);
-        const violations = evaluateMetrics(metrics, thresholds, sc.scope);
-        results.push({ theme, scenario: sc.name, description: sc.description, scope: sc.scope, png, violations });
-        log(`${theme}/${sc.name} : ${violations.filter((v) => v.severity === "error").length} erreur(s), ${violations.filter((v) => v.severity === "warning").length} avertissement(s)`);
+  for (const { viewport, scenarios: groupScenarios } of groups.values()) {
+    const session = await launch({ engine, repoRoot, viewport });
+    try {
+      for (const theme of themes) {
+        for (const sc of groupScenarios) {
+          await resetState(session.page, theme);
+          await sc.run(session.page);
+          await session.page.waitForTimeout(150); // fin des transitions de mise en page
+          /* Baseline séparée pour les scénarios à viewport dédié : <thème>-mobile/.
+             Les captures desktop restent dans <thème>/ — références inchangées. */
+          const subDir = sc.viewport ? theme + "-mobile" : theme;
+          const dir = path.join(outDir, subDir);
+          fs.mkdirSync(dir, { recursive: true });
+          const png = path.join(dir, `${sc.name}.png`);
+          await session.page.screenshot({ path: png, animations: "disabled", caret: "hide" });
+          const metrics = await session.page.evaluate(collectMetrics, sc.root || null);
+          const violations = evaluateMetrics(metrics, thresholds, sc.scope);
+          results.push({ theme: subDir, scenario: sc.name, description: sc.description, scope: sc.scope, png, violations });
+          log(`${subDir}/${sc.name} : ${violations.filter((v) => v.severity === "error").length} erreur(s), ${violations.filter((v) => v.severity === "warning").length} avertissement(s)`);
+        }
       }
+    } finally {
+      await session.close();
     }
-  } finally {
-    await session.close();
   }
   return results;
 }
