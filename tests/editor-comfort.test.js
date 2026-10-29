@@ -4,6 +4,18 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+/* Confirmations via la modale HTML asynchrone (issue #46). */
+async function confirmAndFlush(window, trigger) {
+  trigger.click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  if (overlay.classList.contains("show")) {
+    window.document.querySelector("#confirm-ok").click();
+  }
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+
 const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const SONGS_KEY = "cantoria-songs-v1";
 const EDIT_BACKUP_PREFIX = "cantoria-edit-backup-";
@@ -18,9 +30,7 @@ function loadApp(seed = {}) {
       for (const [key, value] of Object.entries(seed)) {
         window.localStorage.setItem(key, value);
       }
-      let confirmAnswer = true;
-      window.confirm = function () { return confirmAnswer; };
-      window.__setConfirm = function (v) { confirmAnswer = v; };
+
     },
   });
   return dom.window;
@@ -83,17 +93,21 @@ test("undo/redo : les outils de section poussent aussi l'historique", () => {
     "l'annulation défait aussi le marquage de section");
 });
 
-test("sortir de l'éditeur avec des modifications non enregistrées demande confirmation", () => {
+test("sortir de l'éditeur avec des modifications non enregistrées demande confirmation", async () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   const body = openEditorOnSong(window);
   body.value = "[Am]Modifié sans sauvegarder";
-  window.__setConfirm(false); // l'utilisateur refuse de quitter
   window.document.querySelector("#btn-editor-back").click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  assert.ok(overlay.classList.contains("show"), "la confirmation s'affiche");
+  window.document.querySelector("#confirm-cancel").click(); // l'utilisateur refuse de quitter
+  await Promise.resolve();
   assert.ok(window.document.querySelector("#editor-view").classList.contains("active"),
     "le refus de confirmation garde l'éditeur ouvert");
 
-  window.__setConfirm(true); // l'utilisateur accepte de perdre
   window.document.querySelector("#btn-editor-back").click();
+  window.document.querySelector("#confirm-ok").click(); // l'utilisateur accepte de perdre
+  await Promise.resolve();
   assert.ok(window.document.querySelector("#library-view").classList.contains("active"),
     "l'acceptation quitte l'éditeur");
 });
@@ -101,10 +115,9 @@ test("sortir de l'éditeur avec des modifications non enregistrées demande conf
 test("sortir de l'éditeur sans modification ne demande rien", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   openEditorOnSong(window);
-  let confirmCalls = 0;
-  window.confirm = function () { confirmCalls++; return true; };
   window.document.querySelector("#btn-editor-back").click();
-  assert.equal(confirmCalls, 0, "aucune confirmation si rien n'a changé");
+  assert.ok(!window.document.querySelector("#confirm-overlay").classList.contains("show"),
+    "aucune confirmation si rien n'a changé");
   assert.ok(window.document.querySelector("#library-view").classList.contains("active"));
 });
 

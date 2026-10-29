@@ -4,6 +4,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+/* Les confirmations passent par la modale HTML asynchrone (issue #46) :
+   cliquer le déclencheur, confirmer si la modale s'ouvre, laisser se dérouler
+   les promesses, puis reprendre les assertions. */
+async function confirmAndFlush(window, trigger) {
+  trigger.click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  if (overlay.classList.contains("show")) {
+    window.document.querySelector("#confirm-ok").click();
+  }
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+
 const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const SONGS_KEY = "cantoria-songs-v1";
 
@@ -75,7 +89,7 @@ test("le résumé compte les copies des deux types", () => {
     /2 versions conservées/, "le résumé additionne carnet + édition");
 });
 
-test("une restauration depuis le sous-menu rafraîchit le résumé au retour", () => {
+test("une restauration depuis le sous-menu rafraîchit le résumé au retour", async () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   window.document.querySelector("#song-grid .song-card").click();
   window.document.querySelector("#btn-edit-current").click();
@@ -84,7 +98,7 @@ test("une restauration depuis le sous-menu rafraîchit le résumé au retour", (
 
   window.document.querySelector("#btn-settings-open").click();
   window.document.querySelector("#btn-manage-backups").click();
-  window.document.querySelector("#edit-backup-list .backup-edit-restore").click();
+  await confirmAndFlush(window, window.document.querySelector("#edit-backup-list .backup-edit-restore"));
   window.document.querySelector("#btn-backups-back").click();
   assert.match(window.document.querySelector("#backups-summary").textContent,
     /2 versions conservées/, "le résumé est à jour : la version restaurée remplace la chanson, la version écrasée devient une copie (jamais de perte)");

@@ -4,6 +4,18 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+/* Confirmations via la modale HTML asynchrone (issue #46). */
+async function confirmAndFlush(window, trigger) {
+  trigger.click();
+  const overlay = window.document.querySelector("#confirm-overlay");
+  if (overlay.classList.contains("show")) {
+    window.document.querySelector("#confirm-ok").click();
+  }
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+
 const HTML_PATH = path.join(__dirname, "..", "cantoria.html");
 const SONGS_KEY = "cantoria-songs-v1";
 const SETTINGS_KEY = "cantoria-settings";
@@ -86,14 +98,14 @@ test("l'alignement à gauche se traduit en règles CSS : lignes collées au bord
     "les libellés de section suivent");
 });
 
-test("le reset des paramètres restaure le centrage", () => {
+test("le reset des paramètres restaure le centrage", async () => {
   const window = loadApp({
     [SONGS_KEY]: JSON.stringify([song()]),
     [SETTINGS_KEY]: JSON.stringify({ lyricsAlign: "left" }),
   });
   openFirstSong(window);
   window.document.querySelector("#btn-settings-open").click();
-  window.document.querySelector("#btn-settings-reset").click();
+  await confirmAndFlush(window, window.document.querySelector("#btn-settings-reset"));
   assert.equal(stageInner(window).getAttribute("data-lyrics-align"), "center");
   assert.equal(storedSettings(window).lyricsAlign, "center");
 });
