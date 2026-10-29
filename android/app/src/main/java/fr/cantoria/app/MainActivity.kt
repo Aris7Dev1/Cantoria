@@ -24,6 +24,12 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var bridge: CantoriaBridge
+    private var updateChecker: UpdateChecker? = null
+
+    companion object {
+        const val GITHUB_OWNER = "Aris7Dev1"
+        const val GITHUB_REPO = "Cantoria"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +52,41 @@ class MainActivity : AppCompatActivity() {
         } else {
             webView.loadUrl(ASSET_URL)
         }
+
+        checkForUpdates()
+    }
+
+    /* Vérification de version via GitHub Releases (issue #57) : au démarrage
+       uniquement, depuis le processus natif (la WebView reste à zéro réseau).
+       Une version plus récente est proposée à l'interface par injection
+       d'événement — jamais de téléchargement forcé, l'installation reste
+       un geste utilisateur. */
+    private fun checkForUpdates() {
+        if (updateChecker == null) updateChecker = UpdateChecker(GITHUB_OWNER, GITHUB_REPO)
+        // Le pont relaie les demandes manuelles de l'interface vers le checker.
+        if (this::bridge.isInitialized) {
+            bridge.onUpdateAvailable = { version, apkUrl ->
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.dispatchEvent(new CustomEvent('android-update-available'," +
+                            "{detail:{version:'$version',apkUrl:'$apkUrl'}}));", null)
+                }
+            }
+        }
+        val currentVersion = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: return
+        } catch (e: Exception) { return }
+        updateChecker?.check(currentVersion, object : UpdateChecker.Listener {
+            override fun onUpdateAvailable(version: String, apkUrl: String) {
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.dispatchEvent(new CustomEvent('android-update-available'," +
+                            "{detail:{version:'$version',apkUrl:'$apkUrl'}}));", null)
+                }
+            }
+            override fun onUpToDate() { /* silencieux */ }
+            override fun onError() { /* hors ligne : silencieux (VISION) */ }
+        })
     }
 
     @SuppressLint("SetJavaScriptEnabled")

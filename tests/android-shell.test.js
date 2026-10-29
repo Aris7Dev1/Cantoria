@@ -45,10 +45,13 @@ test("le pont natif Kotlin couvre les méthodes critiques du shim", () => {
   });
 });
 
-test("le manifest Android ne déclare aucune permission", () => {
+test("le manifest Android ne déclare que la permission INTERNET justifiée", () => {
   const manifest = read("app/src/main/AndroidManifest.xml");
-  assert.ok(!/uses-permission/i.test(manifest),
-    "décision PR #33 : aucune permission Android (stockage privé + SAF n'en exigent aucune)");
+  const perms = [...manifest.matchAll(/<uses-permission android:name="([^"]+)"\s*\/>/g)].map((m) => m[1]);
+  assert.deepEqual(perms, ["android.permission.INTERNET"],
+    "seule INTERNET (UpdateChecker, issue #57) : le stockage privé + SAF n'exigent rien");
+  assert.ok(/exception r\u00e9seau de VISION/.test(manifest),
+    "la permission est justifiée par l'exception réseau de VISION");
 });
 
 test("la sécurité WebView suit §4.5 du document Android", () => {
@@ -114,4 +117,39 @@ test("le pont Kotlin valide les tailles (20 Mo) avant toute écriture", () => {
   assert.ok(saveGuard, "saveJson vérifie la taille avant d'ouvrir le sélecteur");
   const backupGuard = /fun writeDailyBackup\(json: String\): Boolean \{\s*if \(json\.toByteArray[\s\S]*?MAX_TRANSFER_BYTES\) return false/.exec(bridge);
   assert.ok(backupGuard, "writeDailyBackup vérifie la taille avant d'écrire");
+});
+
+/* Issue #57 : mises à jour sideload GitHub Releases — cohérence du
+   dispositif natif + WebView à zéro réseau. */
+test("le UpdateChecker existe et respecte la discipline réseau", () => {
+  const checker = read("app/src/main/java/fr/cantoria/app/UpdateChecker.kt");
+  assert.ok(/api\.github\.com/.test(checker), "interroge GitHub Releases");
+  assert.ok(/catch \(e: Exception\)/.test(checker) && /onError/.test(checker),
+    "hors ligne : silencieux, jamais bloquant");
+  assert.ok(/MAX_JSON_BYTES/.test(checker), "taille de réponse bornée (metadata uniquement)");
+});
+
+test("la permission INTERNET est déclarée et justifiée (exception réseau unique VISION)", () => {
+  const manifest = read("app/src/main/AndroidManifest.xml");
+  const m = /<uses-permission android:name="android.permission.INTERNET" \//.exec(manifest);
+  assert.ok(m, "permission INTERNET déclarée (UpdateChecker uniquement)");
+  assert.ok(/EXCLUSIVEMENT au UpdateChecker/.test(manifest) || /exclusivement au UpdateChecker/.test(manifest),
+    "justification documentée dans le manifest");
+});
+
+test("la WebView reste à zéro appel réseau (pas de fetch dans le HTML ni le shim)", () => {
+  const html = fs.readFileSync(path.join(ROOT, "cantoria.html"), "utf8");
+  const script = /<script>([\s\S]*)<\/script>/.exec(html)[1];
+  assert.ok(!/\bfetch\s*\(/.test(script) && !/XMLHttpRequest/.test(script),
+    "cantoria.html : aucun appel réseau (garantie existante)");
+  const shim = read("app/src/main/assets/android-shim.js");
+  assert.ok(!/\bfetch\s*\(/.test(shim) && !/XMLHttpRequest/.test(shim),
+    "shim : aucun appel réseau — le natif notifie par CustomEvent");
+});
+
+test("le test semver Kotlin couvre les cas limites (1.2.10 > 1.2.9)", () => {
+  const test = read("app/src/test/java/fr/cantoria/app/UpdateCheckerTest.kt");
+  assert.ok(/1\.2\.10/.test(test) && /1\.2\.9/.test(test),
+    "le cas numériquement correct est testé (pas lexicographique)");
+  assert.ok(/junit/.test(read("app/build.gradle")), "JUnit branché dans Gradle");
 });

@@ -38,6 +38,22 @@ class CantoriaBridge(private val activity: Activity) {
     fun getAppVersion(): String =
         activity.packageManager.getPackageInfo(activity.packageName, 0).versionName ?: ""
 
+    // ---- Mises à jour (issue #57) ----
+    // La vérification part du natif au démarrage ; l'interface peut la
+    // redemander via ce canal (même discipline que le desktop : le natif
+    // est le seul à toucher le réseau).
+
+    @Volatile var onUpdateAvailable: ((version: String, apkUrl: String) -> Unit)? = null
+
+    @JavascriptInterface
+    fun checkNow(): Boolean {
+        val cb = onUpdateAvailable
+        if (cb == null) return false
+        // Le MainActivity enregistre le callback ; ici on ne fait que
+        // signaler qu'une demande manuelle est possible.
+        return true
+    }
+
     // ---- Écran (équivalent powerSaveBlocker du desktop) ----
 
     @JavascriptInterface
