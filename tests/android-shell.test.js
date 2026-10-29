@@ -115,3 +115,26 @@ test("le pont Kotlin valide les tailles (20 Mo) avant toute écriture", () => {
   const backupGuard = /fun writeDailyBackup\(json: String\): Boolean \{\s*if \(json\.toByteArray[\s\S]*?MAX_TRANSFER_BYTES\) return false/.exec(bridge);
   assert.ok(backupGuard, "writeDailyBackup vérifie la taille avant d'écrire");
 });
+
+/* Régression du bug d'import Android : la CSP de cantoria.html
+   (script-src 'unsafe-inline') bloque toute balise <script src> — le shim
+   doit donc être injecté par CONTENU (evaluateJavascript), jamais par src. */
+test("le shim est injecté par contenu, pas par balise script src (CSP)", () => {
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/evaluateJavascript\(loadShimContent\(\), null\)/.test(main),
+    "le contenu du shim est injecté via evaluateJavascript");
+  assert.ok(!/createElement\('script'\)/.test(main),
+    "aucune injection par <script src> (bloquée par la CSP script-src 'unsafe-inline')");
+  assert.ok(/assets\.open\("android-shim\.js"\)/.test(main),
+    "le contenu est lu depuis les assets");
+});
+
+test("estimateStorageBytes est totalement défensif (jamais de crash quota)", () => {
+  const html = fs.readFileSync(path.join(ROOT, "cantoria.html"), "utf8");
+  const m = /function estimateStorageBytes\(\)\{([\s\S]*?)\n  \}/.exec(html);
+  assert.ok(m, "fonction présente");
+  const body = m[1];
+  assert.ok(/catch\(e\)\{\s*return 0;\s*\}/.test(body),
+    "toute exception renvoie 0 (silencieux) — l'app ne plante jamais sur l'estimation");
+  assert.ok(/if\(!k\) continue;/.test(body), "clés nulles ignorées");
+});
