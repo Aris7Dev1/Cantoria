@@ -327,12 +327,12 @@
   }
   .stepper{display:flex;align-items:center;gap:6px;}
   .stepper button{
-    width:32px;height:32px;border-radius:8px;background:var(--bg-panel-2);border:1px solid var(--border);color:var(--ink-bright);font-size:15px;
+    width:40px;height:40px;border-radius:8px;background:var(--bg-panel-2);border:1px solid var(--border);color:var(--ink-bright);font-size:15px;
   }
   .stepper button:disabled{opacity:.35;cursor:default;}
   .stepper .val{font-family:var(--font-chord);font-size:13px;min-width:44px;text-align:center;color:var(--gold);}
   #controls .segmented{flex-shrink:0;}
-  #controls .segmented button{padding:8px 10px;font-size:13px;line-height:1.2;min-height:32px;min-width:32px;}
+  #controls .segmented button{padding:8px 10px;font-size:13px;line-height:1.2;min-height:40px;min-width:40px;}
   #btn-pin-controls.active{color:var(--gold);}
   #btn-pin-controls.active svg{fill:var(--gold);}
 
@@ -390,6 +390,31 @@
     outline-offset:2px;
   }
   /* Respect de prefers-reduced-motion : plus d'animation décorative. */
+  /* Portrait étroit (téléphone, cible Android PR #33) : le bandeau
+     horizontal prévu pour une fenètre large passe en disposition compacte.
+     Les groupes gardent leur libellé flottant ; la rangée s'empile en deux
+     lignes maximum sans masquer la zone de lecture. */
+  @media (max-width: 480px), (max-aspect-ratio: 3/4) and (max-width: 860px){
+    #controls{
+      flex-direction:column;align-items:stretch;gap:6px;
+      padding:6px 10px calc(8px + env(safe-area-inset-bottom));
+    }
+    #controls .ctrl-row{justify-content:center;gap:8px;flex-wrap:wrap;}
+    #controls .ctrl-row .label{width:auto;}
+    .ctrl-group{margin:8px 0 0;padding:3px 8px 2px;flex:0 1 auto;}
+    #play-toggle{width:52px;height:52px;}
+    .stepper button{width:44px;height:44px;}
+    #controls .segmented button{min-height:44px;min-width:44px;padding:8px 9px;font-size:12.5px;}
+    #stage{padding:12vh 10px 30vh;}
+    #stage-inner{font-size:calc(var(--reader-scale, 1) * 1.05rem / var(--zoom, 1));}
+    .song-card .title{font-size:calc(19px * var(--card-scale, 1));}
+    .song-card .artist{font-size:calc(15px * var(--card-scale, 1));}
+    #song-grid{grid-template-columns:1fr;padding:6px 12px 100px;}
+    .lib-actions{padding:10px 12px;}
+    .lib-filters{padding:0 12px 10px;}
+    #library-view header{padding:20px 12px 10px;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{
       animation-duration:.01ms !important;
