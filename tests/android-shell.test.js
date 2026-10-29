@@ -60,10 +60,11 @@ test("la sécurité WebView suit §4.5 du document Android", () => {
   assert.ok(!/setAllowFileAccessFromFileURLs\s*=\s*true/.test(main));
 });
 
-test("le debugging WebView est réservé au mode debug", () => {
+test("le debugging WebView est réservé au mode debuggable", () => {
   const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
-  const m = /if \(BuildConfig\.DEBUG\) \{\s*WebView\.setWebContentsDebuggingEnabled\(true\)/.exec(main);
-  assert.ok(m, "setWebContentsDebuggingEnabled doit être gardé par BuildConfig.DEBUG uniquement");
+  const m = /isDebuggable[\s\S]{0,200}WebView\.setWebContentsDebuggingEnabled\(true\)/.exec(main);
+  assert.ok(m, "setWebContentsDebuggingEnabled doit être gardé par FLAG_DEBUGGABLE du manifest");
+  assert.ok(/FLAG_DEBUGGABLE/.test(main), "le garde lit le flag du manifest (pas BuildConfig)");
 });
 
 test("la rotation ne recharge pas la WebView (configChanges)", () => {

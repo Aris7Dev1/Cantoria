@@ -6,7 +6,7 @@ package fr.cantoria.app
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.os.Build
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebChromeClient
@@ -18,20 +18,20 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        // Debugging WebView : chrome://inspect (desktop Chrome / Edge) — mode debug uniquement.
-        // En release, jamais activé : aucun canal de debug exposé.
         const val ASSET_URL = "file:///android_asset/cantoria.html"
+        const val SHIM_URL = "file:///android_asset/android-shim.js"
     }
 
     private lateinit var webView: WebView
     private lateinit var bridge: CantoriaBridge
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inspection chrome://inspect uniquement en build debug (jamais en release).
-        if (BuildConfig.DEBUG) {
+        // Inspection chrome://inspect : uniquement si l'app est debuggable
+        // (flag du manifest, lu ici — aucune dépendance à BuildConfig généré).
+        val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebuggable) {
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
@@ -56,12 +56,9 @@ class MainActivity : AppCompatActivity() {
         // §4.5 : surface minimale. Pas d'accès fichiers générique, pas de contenu externe.
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            view.settings.allowUniversalAccessFromFileURLs = false
-            view.settings.allowFileAccessFromFileURLs = false
-        }
+        view.settings.allowUniversalAccessFromFileURLs = false
+        view.settings.allowFileAccessFromFileURLs = false
         view.settings.databaseEnabled = false
-        view.settings.geolocationEnabled = false
         view.settings.mediaPlaybackRequiresUserGesture = true
         view.settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         view.settings.cacheMode = WebSettings.LOAD_NO_CACHE
@@ -79,7 +76,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(page: WebView, url: String?, favicon: android.graphics.Bitmap?) {
                 page.evaluateJavascript(
                     "(function(){var s=document.createElement('script');" +
-                        "s.src='file:///android_asset/android-shim.js';" +
+                        "s.src='$SHIM_URL';" +
                         "document.head.appendChild(s);})();", null)
                 super.onPageStarted(page, url, favicon)
             }
@@ -94,14 +91,14 @@ class MainActivity : AppCompatActivity() {
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        )
+            )
     }
 
     private fun installBridge(view: WebView) {
-        bridge = CantoriaBridge(this)
         // Pont JS équivalent window.carnetDesktop (voir preload.js côté desktop).
         // addJavascriptInterface est sûr ici : l'interface n'est exposée qu'à notre page
         // (pas de navigation externe), et chaque méthode valide ses entrées.
+        bridge = CantoriaBridge(this)
         view.addJavascriptInterface(bridge, "cantoriaAndroid")
     }
 
@@ -112,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         webView.saveState(outState)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
