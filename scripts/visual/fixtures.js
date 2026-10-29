@@ -5,7 +5,7 @@
 const SONGS_KEY = "cantoria-songs-v1";
 const SETTINGS_KEY = "cantoria-settings";
 const THEME_KEY = "cantoria-theme";
-const THEMES = ["spotlight", "guitar-case", "campfire"];
+const THEMES = ["spotlight", "guitar-case", "campfire", "vibe"];
 
 const T0 = 1700000000000;
 
