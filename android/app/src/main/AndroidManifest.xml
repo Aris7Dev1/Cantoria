@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Coquille WebView Cantoria — aucune permission Android (décision PR #33).
-     Le stockage privé (filesDir) et le Storage Access Framework n'en exigent aucune. -->
+<!-- Coquille WebView Cantoria (décision PR #33).
+     Permission INTERNET : l'unique exception réseau de VISION.md (« le
+     processus principal interroge GitHub Releases pour la mise à jour
+     automatique, et uniquement cela ») s'applique à la coquille Android —
+     équivalent du main.js desktop. Elle sert EXCLUSIVEMENT au UpdateChecker
+     (issue #57) : la WebView reste à zéro appel réseau. Le stockage privé
+     (filesDir) et le Storage Access Framework n'exigent aucune permission. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="Cantoria"

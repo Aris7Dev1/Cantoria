@@ -33,6 +33,19 @@
     });
   }
 
+  var listeners = { available: [] };
+
+  // Le natif (MainActivity) diffuse un CustomEvent quand une mise à jour
+  // GitHub Releases plus récente est trouvée — on traduit vers les
+  // callbacks carnetDesktop.onUpdateAvailable (contrat desktop).
+  window.addEventListener("android-update-available", function (e) {
+    var detail = (e && e.detail) || {};
+    listeners.available.forEach(function (cb) {
+      try { cb({ version: detail.version || "", apkUrl: detail.apkUrl || "" }); }
+      catch (err) {}
+    });
+  });
+
   window.carnetDesktop = Object.freeze({
     platform: "android",
     isElectron: false,
@@ -76,10 +89,23 @@
       native.setScrolling(scrolling);
       return Promise.resolve({ blocked: scrolling });
     },
-    checkForUpdates: function () { return Promise.resolve({ supported: false, reason: "android-pending-issue-57" }); },
-    installUpdate: function () { return Promise.resolve({ installed: false, reason: "android-pending-issue-57" }); },
+    checkForUpdates: function () {
+      // La vérification est déclenchée au démarrage par le natif (issue #57).
+      // L'interface peut la redemander : le natif expose un canal dédié.
+      if (typeof native.checkNow === "function") {
+        return Promise.resolve(native.checkNow());
+      }
+      return Promise.resolve({ supported: false, reason: "already-checked-at-startup" });
+    },
+    installUpdate: function () { return Promise.resolve({ installed: false, reason: "sideload-user-gesture" }); },
     onUpdateChecking: function () { return function () {}; },
-    onUpdateAvailable: function () { return function () {}; },
+    onUpdateAvailable: function (callback) {
+      listeners.available.push(callback);
+      return function () {
+        var i = listeners.available.indexOf(callback);
+        if (i >= 0) listeners.available.splice(i, 1);
+      };
+    },
     onUpdateProgress: function () { return function () {}; },
     onUpdateDownloaded: function () { return function () {}; },
     onUpdateNotAvailable: function () { return function () {}; },
