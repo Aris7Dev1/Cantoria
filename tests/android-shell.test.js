@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const ROOT = path.join(__dirname, "..");
 const ANDROID = path.join(ROOT, "android");
@@ -78,8 +79,13 @@ test("cantoria.html n'est pas dupliqué à la main : copié au build", () => {
   const gradle = read("app/build.gradle");
   assert.ok(/from rootProject\.file\('\.\.\/cantoria\.html'\)/.test(gradle),
     "le build copie cantoria.html depuis la racine (source de vérité unique)");
-  assert.ok(!fs.existsSync(path.join(ANDROID, "app/src/main/assets/cantoria.html")),
-    "aucune copie versionnée de cantoria.html dans les assets (copie au build uniquement)");
+  /* On vérifie l'état VERSIONNÉ (git ls-files), pas la présence physique :
+     un poste de dev qui a déjà lancé android:install possède la copie de build
+     sur son disque — c'est normal, elle ne doit juste pas être commitée. */
+  const listed = spawnSync("git", ["ls-files", "android/app/src/main/assets/cantoria.html"],
+    { cwd: ROOT, encoding: "utf8" }).stdout.trim();
+  assert.equal(listed, "",
+    "cantoria.html ne doit pas être versionné dans les assets (copie au build uniquement)");
 });
 
 test("l'icône launcher existe aux 5 densités Android", () => {
