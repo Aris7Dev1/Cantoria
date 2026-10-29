@@ -146,12 +146,12 @@ test("bornes du stepper de vitesse : pas de dépassement, boutons disabled cohé
   assert.equal(speedVal(window), "×2", "plafond ×2 respecté");
   window.close();
 
-  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.25 })]) });
+  const window2 = loadApp({ [SONGS_KEY]: JSON.stringify([song({ speed: 0.1 })]) });
   openFirstSong(window2);
-  assert.equal(speedVal(window2), "×0,25");
-  assert.equal(window2.document.querySelector("#speed-down").disabled, true, "×0,25 : bouton − désactivé");
+  assert.equal(speedVal(window2), "×0,1");
+  assert.equal(window2.document.querySelector("#speed-down").disabled, true, "×0,1 : bouton − désactivé");
   keydown(window2, { key: "ArrowLeft", ctrlKey: true });
-  assert.equal(speedVal(window2), "×0,25", "plancher ×0,25 respecté");
+  assert.equal(speedVal(window2), "×0,1", "plancher ×0,1 respecté");
   window2.close();
 });
 
