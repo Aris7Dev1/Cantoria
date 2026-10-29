@@ -344,6 +344,16 @@
     z-index:50;max-width:82vw;text-align:center;white-space:normal;line-height:1.45;
   }
   #toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+  #storage-alert{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--bg-panel);border:1px solid var(--danger);border-radius:14px;
+    color:var(--ink-bright);padding:14px 18px;max-width:min(560px,calc(100vw - 32px));
+    z-index:110;display:none;flex-direction:column;gap:10px;
+    box-shadow:0 16px 42px rgba(0,0,0,.42);
+  }
+  #storage-alert.show{display:flex;}
+  #storage-alert-text{font-size:13.5px;line-height:1.55;}
+  #storage-alert .storage-alert-actions{display:flex;gap:8px;justify-content:flex-end;}
 
   #update-banner{
     position:fixed;top:14px;right:14px;z-index:100;display:none;
@@ -800,6 +810,13 @@
 
 </div>
 <div id="toast" class="">Paramètres réinitialisés</div>
+<div id="storage-alert" role="alert" aria-live="assertive" aria-labelledby="storage-alert-text">
+  <div id="storage-alert-text"></div>
+  <div class="storage-alert-actions">
+    <button class="btn primary" id="storage-alert-export">Exporter maintenant</button>
+    <button class="btn ghost" id="storage-alert-dismiss">Fermer</button>
+  </div>
+</div>
 <div id="update-banner" role="status" aria-live="polite">
   <div class="update-icon">↻</div>
   <div class="update-copy">
@@ -855,13 +872,67 @@
     };
   }
 
+  var storageAlertShown = false;
+  function showStorageAlert(message){
+    var alertEl = $("#storage-alert");
+    if(!alertEl) return;
+    $("#storage-alert-text").textContent = message;
+    alertEl.classList.add("show");
+    storageAlertShown = true;
+  }
+  function hideStorageAlert(){
+    var alertEl = $("#storage-alert");
+    if(alertEl) alertEl.classList.remove("show");
+  }
+  if($("#storage-alert-dismiss")) $("#storage-alert-dismiss").addEventListener("click", hideStorageAlert);
+  if($("#storage-alert-export")) $("#storage-alert-export").addEventListener("click", function(){ exportAllSongs(); });
+
   function saveSongs(){
     try{
       localStorage.setItem(SONGS_STORAGE_KEY, JSON.stringify(songs));
+      if(storageAlertShown) hideStorageAlert();
+      checkStorageUsage();
+      writeDailyBackup();
       return true;
     }catch(e){
-      toast("Impossible de sauvegarder le carnet localement");
+      /* Principe n°1 de VISION : ne jamais perdre les chansons. Un échec
+         de sauvegarde ne se résume pas à un toast éphémère : alerte
+         persistante + sortie de secours immédiate. */
+      showStorageAlert("Impossible de sauvegarder le carnet localement (stockage plein ?). Exporte ton carnet maintenant pour ne rien perdre.");
       return false;
+    }
+  }
+
+  /* Occupation du localStorage : avertissement dès 80 % du quota usuel
+     (~5 Mo). Estimation en sommant les clés et valeurs (UTF-16). */
+  var STORAGE_QUOTA_BYTES = 5 * 1024 * 1024;
+  var STORAGE_WARN_RATIO = 0.8;
+  var storageWarned = false;
+  function estimateStorageBytes(){
+    var total = 0;
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(k) total += (k.length + (localStorage.getItem(k) || "").length) * 2;
+    }
+    return total;
+  }
+  /* Copie de sécurité quotidienne du carnet dans le dossier de
+     l'application (hors localStorage) via le processus principal : un
+     fichier cantoria-backup-YYYY-MM-DD.json par jour, rétention 30 jours.
+     Best effort : silencieux si Electron absent (navigateur). */
+  function writeDailyBackup(){
+    if(!window.carnetDesktop || typeof window.carnetDesktop.writeDailyBackup !== "function") return;
+    try{
+      window.carnetDesktop.writeDailyBackup(JSON.stringify(songs)).catch(function(){});
+    }catch(e){}
+  }
+  function checkStorageUsage(){
+    if(storageWarned) return;
+    var used = estimateStorageBytes();
+    if(used >= STORAGE_QUOTA_BYTES * STORAGE_WARN_RATIO){
+      storageWarned = true;
+      showStorageAlert("Le carnet approche la limite du stockage local (" +
+        Math.round(used / 1024) + " Ko sur ~5 Mo). Pense à exporter une copie de sécurité.");
     }
   }
 
@@ -2726,6 +2797,8 @@
   loadSongs();
   renderLibrary();
   syncPinButton();
+  checkStorageUsage();
+  writeDailyBackup();
 })();
 </script>
 
