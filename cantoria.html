@@ -972,16 +972,23 @@
   var STORAGE_WARN_RATIO = 0.8;
   var storageWarned = false;
   function estimateStorageBytes(){
+    /* Défense en profondeur : sur WebView, localStorage peut se comporter de
+       façon inattendue (clés nulles, accès levant, longueur muable pendant
+       l'itération). L'estimation de quota ne doit JAMAIS faire planter
+       l'app — en cas de doute, on renvoie 0 (pas d'alerte) et on continue. */
     var total = 0;
-    /* Robustesse : sur WebView, key(i) peut renvoyer null (fragments internes
-       de Chromium, itération pendant une mutation) — la boucle doit survivre. */
-    for(var i = 0; i < localStorage.length; i++){
-      var k = null;
-      try{ k = localStorage.key(i); }catch(e){ continue; }
-      if(!k) continue;
-      var v = null;
-      try{ v = localStorage.getItem(k); }catch(e){}
-      total += (k.length + (v || "").length) * 2;
+    try{
+      var len = localStorage.length;
+      for(var i = 0; i < len; i++){
+        var k = null;
+        try{ k = localStorage.key(i); }catch(e){ continue; }
+        if(!k) continue;
+        var v = null;
+        try{ v = localStorage.getItem(k); }catch(e){}
+        total += ((k && k.length ? k.length : 0) + (v && v.length ? v.length : 0)) * 2;
+      }
+    }catch(e){
+      return 0;
     }
     return total;
   }

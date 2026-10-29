@@ -115,3 +115,49 @@ test("le pont Kotlin valide les tailles (20 Mo) avant toute écriture", () => {
   const backupGuard = /fun writeDailyBackup\(json: String\): Boolean \{\s*if \(json\.toByteArray[\s\S]*?MAX_TRANSFER_BYTES\) return false/.exec(bridge);
   assert.ok(backupGuard, "writeDailyBackup vérifie la taille avant d'écrire");
 });
+
+/* Régression du bug d'import Android : la CSP de cantoria.html
+   (script-src 'unsafe-inline') bloque toute balise <script src> — le shim
+   doit donc être injecté par CONTENU (evaluateJavascript), jamais par src. */
+test("le shim est injecté par contenu, pas par balise script src (CSP)", () => {
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/evaluateJavascript\(loadShimContent\(\), null\)/.test(main),
+    "le contenu du shim est injecté via evaluateJavascript");
+  assert.ok(!/createElement\('script'\)/.test(main),
+    "aucune injection par <script src> (bloquée par la CSP script-src 'unsafe-inline')");
+  assert.ok(/assets\.open\("android-shim\.js"\)/.test(main),
+    "le contenu est lu depuis les assets");
+});
+
+test("estimateStorageBytes est totalement défensif (jamais de crash quota)", () => {
+  const html = fs.readFileSync(path.join(ROOT, "cantoria.html"), "utf8");
+  const m = /function estimateStorageBytes\(\)\{([\s\S]*?)\n  \}/.exec(html);
+  assert.ok(m, "fonction présente");
+  const body = m[1];
+  assert.ok(/catch\(e\)\{\s*return 0;\s*\}/.test(body),
+    "toute exception renvoie 0 (silencieux) — l'app ne plante jamais sur l'estimation");
+  assert.ok(/if\(!k\) continue;/.test(body), "clés nulles ignorées");
+});
+
+/* Régression du crash Android « Cannot read properties of null (reading
+   'length') » : localStorage est NULL dans une WebView tant que le DOM
+   storage n'est pas activé — toute la persistance en dépend. */
+test("le DOM storage est activé (localStorage sinon null en WebView)", () => {
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/domStorageEnabled = true/.test(main),
+    "setDomStorageEnabled(true) requis : localStorage est null sinon");
+});
+
+/* Régression de l'import Android silencieusement annulé : le premier poll
+   de takeOpenedDocument consommait l'état "pending" — le poll suivant
+   lisait null et le shim annulait l'import avant même le choix du fichier.
+   "pending" doit rester en place jusqu'au résultat final. */
+test("takeOpenedDocument ne consomme jamais l'état pending", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  const m = /fun takeOpenedDocument\(\): String \{([\s\S]*?)\n    \}/.exec(bridge);
+  assert.ok(m, "takeOpenedDocument présent");
+  assert.ok(/if \(result != "pending"\) pendingOpenCallback = null/.test(m[1]),
+    "seuls les états finaux sont consommés — jamais \"pending\"");
+  assert.ok(/@Volatile private var pendingOpenCallback/.test(bridge),
+    "le champ partagé entre threads UI et pont JS est @Volatile");
+});
