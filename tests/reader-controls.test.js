@@ -273,13 +273,23 @@ test("structure : les cinq groupes de commandes sont encadrés avec un libellé"
   window.close();
 });
 
-test("structure : les contrôles tiennent sur une seule ligne", () => {
+test("structure : le bandeau desktop reste une zone fluide sans empilement", () => {
+  /* Issue #64 : le bandeau est désormais structuré en rangées
+     (essentielle, secondaire, boutons) pour permettre le repli mobile —
+     mais sur desktop, aucune media query ne s'applique : les trois rangées
+     restent dans le flux du #controls flex row, sans empilement vertical. */
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   const controls = window.document.querySelector("#controls");
-  assert.equal(window.document.querySelectorAll("#controls .ctrl-row").length, 1, "un seul .ctrl-row");
-  assert.equal(window.getComputedStyle(controls).flexDirection, "row", "#controls en flex row");
-  for (const id of ["play-toggle", "speed-stepper", "tr-up", "fs-up", "countdown-picker", "btn-pin-controls"]) {
+  assert.ok(window.document.querySelectorAll("#controls .ctrl-row").length >= 1,
+    "les rangées du bandeau existent (refactor #64)");
+  assert.equal(window.getComputedStyle(controls).flexDirection, "row",
+    "#controls en flex row (desktop : jamais empilé hors media query)");
+  for (const id of ["play-toggle", "speed-stepper", "tr-up", "fs-up", "countdown-picker", "btn-pin-controls", "btn-toggle-secondary"]) {
     assert.ok(window.document.querySelector("#controls #" + id), "#" + id + " présent dans le bandeau");
   }
+  // desktop : la rangée secondaire est visible (pas de classe de repli au chargement
+  // dans un viewport large — le repli est un état interactif, pas un défaut desktop)
+  const computed = window.getComputedStyle(window.document.querySelector("#controls-secondary-row"));
+  assert.equal(computed.display, "flex", "rangée secondaire visible sur desktop");
   window.close();
 });
