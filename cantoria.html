@@ -336,6 +336,18 @@
   #btn-pin-controls.active{color:var(--gold);}
   #btn-pin-controls.active svg{fill:var(--gold);}
 
+  /* Bandeau compact mobile (issue #64) : sur viewport étroit, la rangée
+     secondaire (transpo, texte, section, décompte) est repliée par défaut ;
+     le chevron la révèle. Le réglage est mémorisé (controlsCompactMobile).
+     Sur desktop (>=861px), les rangées restent fusionnées visuellement —
+     aucune régression du bandeau horizontal d'origine. */
+  /* Le repli n'a d'effet VISUEL qu'en portrait (media query ci-dessous) :
+     sur desktop, la rangée secondaire reste toujours visible — le réglage
+     controlsCompactMobile ne concerne que l'usage mobile. */
+  #btn-toggle-secondary{display:none;}
+  .ctrl-row-secondary{display:flex;}
+  #controls.controls-collapsed #btn-toggle-secondary svg{transform:rotate(180deg);}
+
   #import-input{display:none;}
   #toast{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -401,6 +413,9 @@
     }
     #controls .ctrl-row{justify-content:center;gap:8px;flex-wrap:wrap;}
     #controls .ctrl-row .label{width:auto;}
+    #btn-toggle-secondary{display:flex;min-width:44px;min-height:44px;align-items:center;justify-content:center;}
+    .ctrl-row-main{flex-direction:row;justify-content:center;}
+    #controls.controls-collapsed .ctrl-row-secondary{display:none;}
     .ctrl-group{margin:8px 0 0;padding:3px 8px 2px;flex:0 1 auto;}
     #play-toggle{width:52px;height:52px;}
     .stepper button{width:44px;height:44px;}
@@ -636,6 +651,11 @@
           <span class="ctrl-group-label">Vitesse</span>
           <button id="speed-down" aria-label="Vitesse inférieure" title="Vitesse − (Ctrl+←)">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" aria-label="Vitesse supérieure" title="Vitesse + (Ctrl+→)">+</button>
         </div>
+        <button class="btn icon ghost" id="btn-toggle-secondary" aria-label="Afficher les commandes secondaires" aria-expanded="false" title="Commandes secondaires (transposition, texte, section, décompte)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+      </div>
+      <div class="ctrl-row ctrl-row-secondary" id="controls-secondary-row">
         <div class="ctrl-group stepper">
           <span class="ctrl-group-label">Transpo</span>
           <button id="tr-down" aria-label="Transposition inférieure" title="Transposition − (Ctrl+Shift+↓)">−</button><span class="val" id="tr-val">0</span><button id="tr-up" aria-label="Transposition supérieure" title="Transposition + (Ctrl+Shift+↑)">+</button>
@@ -657,6 +677,8 @@
             <button data-seconds="15">15s</button>
           </div>
         </div>
+      </div>
+      <div class="ctrl-row ctrl-row-main">
         <div class="spacer"></div>
         <button class="btn icon ghost" id="btn-help-open-player" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
@@ -2601,6 +2623,7 @@
   var appSettings = {
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
     cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song", lyricsAlign: "center",
+    controlsCompactMobile: true,
     cardFields: { key: true, capo: true, chords: true, speed: true }
   };
   (function loadSettings(){
@@ -2619,6 +2642,24 @@
   function saveSettings(){
     try{ localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings)); }catch(e){}
   }
+  /* Bandeau compact mobile (issue #64) : révélation/refermeture de la
+     rangée secondaire par le chevron. Le réglage est mémorisé et appliqué
+     à l'ouverture du lecteur. Le masquage auto 3 s continue de fonctionner
+     dans les deux états (wakeControls touche #controls entier). */
+  var secondaryIsOpen = !appSettings.controlsCompactMobile;
+  function applySecondaryVisibility(){
+    $("#controls").classList.toggle("controls-collapsed", !secondaryIsOpen);
+    var t = $("#btn-toggle-secondary");
+    t.setAttribute("aria-expanded", secondaryIsOpen ? "true" : "false");
+    t.setAttribute("aria-label", secondaryIsOpen ? "Masquer les commandes secondaires" : "Afficher les commandes secondaires");
+  }
+  $("#btn-toggle-secondary").addEventListener("click", function(){
+    secondaryIsOpen = !secondaryIsOpen;
+    appSettings.controlsCompactMobile = !secondaryIsOpen;
+    saveSettings();
+    applySecondaryVisibility();
+  });
+  applySecondaryVisibility();
   function syncSettingsUI(){
     $("#setting-spotlight").classList.toggle("active", appSettings.spotlight);
     $("#setting-spotlight").setAttribute("aria-pressed", appSettings.spotlight ? "true" : "false");
