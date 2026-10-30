@@ -192,3 +192,14 @@ test("UpdateChecker reste constructible en JVM pure (Handler paresseux)", () => 
     "aucun Handler créé au niveau du champ/construction — uniquement via handler()");
   assert.ok(/fun handler\(\): Handler \{/.test(checker), "création paresseuse par handler()");
 });
+
+/* Régression du versionCode : la concaténation simple des chiffres
+   (1.4.0 -> 140) cassait la croissance entre releases et restait sous
+   l'ancien fallback 10300. Formule : segments paddés sur 2 chiffres. */
+test("le versionCode Android est calculé par segments paddés (croissant)", () => {
+  const gradle = read("app/build.gradle");
+  assert.ok(/code = code \* 100 \+/.test(gradle),
+    "formule par segments (×100 par segment) présente");
+  assert.ok(!/replaceAll\('\[\^0-9\]', ''\)/.test(gradle),
+    "l'ancienne concaténation simple est retirée");
+});
