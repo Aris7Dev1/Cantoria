@@ -11,7 +11,7 @@ plugins {
    l'update par-dessus un APK existant) — la concaténation simple des chiffres
    (1.4.0 -> 140) cassait l'ordre et restait sous l'ancien fallback. */
 def computeVersionCode = { v ->
-    def parts = v.split('\.')
+    def parts = v.split(/\./)
     def code = 0
     parts.each { p -> code = code * 100 + (p.isInteger() ? p.toInteger() : 0) }
     return Math.max(1, code)
