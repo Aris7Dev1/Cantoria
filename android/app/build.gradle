@@ -6,11 +6,22 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+/* versionCode : chaque segment semver paddé sur 2 chiffres (1.4.0 -> 10400,
+   1.10.3 -> 11003). Toujours croissant entre releases (exigence Android pour
+   l'update par-dessus un APK existant) — la concaténation simple des chiffres
+   (1.4.0 -> 140) cassait l'ordre et restait sous l'ancien fallback. */
+def computeVersionCode = { v ->
+    def parts = v.split('\.')
+    def code = 0
+    parts.each { p -> code = code * 100 + (p.isInteger() ? p.toInteger() : 0) }
+    return Math.max(1, code)
+}
+
 def pkgVersion = {
     def f = rootProject.file('../package.json')
     if (f.exists()) {
         def json = new JsonSlurper().parseText(f.text)
-        return [versionName: json.version, versionCode: Math.max(1, Integer.parseInt(json.version.replaceAll('[^0-9]', '')))]
+        return [versionName: json.version, versionCode: computeVersionCode(json.version)]
     }
     return [versionName: '1.3.0', versionCode: 10300]
 }()
