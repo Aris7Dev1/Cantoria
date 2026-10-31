@@ -4,7 +4,7 @@ Lis `VISION.md` avant toute tâche. En cas de conflit, `VISION.md` l'emporte. Ne
 
 ## Projet
 
-Application de bureau Electron (Windows, macOS, Linux) : carnet de paroles et d'accords à défilement automatique, hors ligne.
+Application de bureau Electron (Windows, macOS, Linux) **et Android/ChromeOS (coquille WebView)** : carnet de paroles et d'accords à défilement automatique, hors ligne. L'interface (`cantoria.html`) est unique ; Android l'embarque via `android/` (pont JS natif, sans modification du HTML).
 
 ## Structure
 
@@ -16,10 +16,12 @@ update-config.json         Comportement de la mise à jour (pas d'URL de dépôt
 scripts/prepare-release.js Injecte le dépôt GitHub dans package.json (CI uniquement)
 scripts/agent/             Runner de l'agent codeur (issue -> pull request) : zone protégée
 scripts/visual/            Boucle visuelle (captures, contrôles, juge) : zone protégée
+scripts/android/           Helper d'installation multiplateforme (node install.js)
+android/                   Coquille Android WebView : Kotlin (MainActivity, CantoriaBridge, UpdateChecker), shim, gradle, tests JUnit
 assets/                    Icônes (.ico, .icns, .png, .svg)
 tests/                     Tests (node:test + jsdom)
 docs/agent/                Guide du workflow agent et premières issues
-.github/workflows/         CI (ci.yml) et publication des releases (build.yml)
+.github/workflows/         CI (ci.yml), publication des releases (build.yml), régénération des baselines visuelles (visual-baselines.yml) : zone superviseur
 ```
 
 ## Commandes
@@ -31,7 +33,10 @@ npm run check      # vérification de syntaxe (main.js, preload.js, scripts/agen
 npm test           # tests unitaires et de non-régression
 npm run agent -- N # (superviseur) lance l'agent sur l'issue N, voir docs/agent/README.md
 npm run visual     # (superviseur) captures + contrôles visuels, voir docs/visual/README.md
+npm run android:install  # build APK + installation sur émulateur/appareil connecté (copie cantoria.html vers les assets, lance gradlew)
 ```
+
+Les baselines visuelles (`visual-baseline/`) se régénèrent **exclusivement** via le workflow GitHub `Visual baselines` (onglet Actions → Run workflow) : la CI génère et committe ; aucun poste local n'écrit dedans (leçon des EPERM et des suppressions accidentelles).
 
 Avant de proposer une pull request : `npm run check` **et** `npm test` doivent passer.
 
@@ -47,6 +52,7 @@ Tu travailles dans un conteneur de développement (`.devcontainer/`, Linux, util
 ## Règles de travail
 
 - **Une tâche = une branche = une pull request.** Ne jamais pousser sur `main`, ne jamais fusionner.
+- **Une branche mergée est close.** Ne plus jamais y pousser : un correctif post-merge part d'une nouvelle branche depuis `main`. Avant tout push de correctif, vérifier que le commit visé est bien dans `main` (`git merge-base --is-ancestor <commit> origin/main`). Leçons des merges #63 et #68 : deux correctifs poussés sur des branches déjà mergées n'ont jamais atteint `main` et ont créé des bugs silencieux (bloc stockage perdu, fixtures perdues).
 - Reste dans le périmètre de l'issue. Pas de refactoring non demandé, pas de renommage de masse.
 - **Tout comportement modifié ou corrigé est couvert par un test.** Un test qu'on affaiblit pour le faire passer est un échec, pas une réussite.
 - Pas de nouvelle dépendance, pas de nouvelle permission Electron sans issue validée par le superviseur.
@@ -55,7 +61,7 @@ Tu travailles dans un conteneur de développement (`.devcontainer/`, Linux, util
 
 ## Zones interdites sans validation du superviseur
 
-`VISION.md`, `AGENTS.md`, `.vibe/`, `docs/adr/`, `.github/workflows/`, `.devcontainer/`, `scripts/visual/` et `visual-baseline/` (instruments de mesure : seuils, juge, références), `package.json` (sections `build`, `publish`, `appId`, version), `update-config.json`, secrets et signature de code, nom du produit.
+`VISION.md`, `AGENTS.md`, `.vibe/`, `docs/adr/`, `.github/workflows/`, `.devcontainer/`, `scripts/visual/` et `visual-baseline/` (instruments de mesure : seuils, juge, références), `package.json` (sections `build`, `publish`, `appId`, version), `update-config.json`, secrets et signature de code, nom du produit. Toute évolution de **permission Android** (`AndroidManifest.xml`) exige une validation explicite du superviseur (précédent : `INTERNET` pour l'issue #57, justification documentée dans le manifest).
 
 Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `package.json` pour la CI.
 
@@ -76,6 +82,10 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 ## Tests
 
 - `tests/library-recovery.test.js` : charge le HTML dans jsdom avec un `localStorage` préparé (bibliothèque valide, illisible, mal formée, pruning des copies).
+- `tests/android-shell.test.js` : cohérence de la coquille Android (manifest, permissions, pont Kotlin, workflows CI) — lecture statique des fichiers Kotlin/Gradle/YAML.
+- `tests/storage-adapter.test.js` : adaptateur de stockage Android (fichier privé via pont, migration douce depuis `localStorage`, aller-retour JSON, comportement desktop inchangé).
+- `tests/responsive-portrait.test.js`, `tests/compact-controls.test.js`, `tests/touch-cleanup.test.js` : responsive mobile, bandeau replié (#64), masquage des raccourcis clavier sur tactile.
+- Les tests Kotlin (`android/app/src/test/`) tournent en CI via `./gradlew test` (JUnit), pas via `npm test` : les modifier exige que la CI `android` passe.
 - `tests/no-network.test.js` : garde-fous « zéro réseau » et preload.
 - `tests/agent-lib.test.js` et `tests/agent-runner.test.js` : politique et simulation complète du runner (faux `vibe` et faux `gh` dans `tests/fixtures/`) ; `tests/gateway.test.js` : passerelle Mistral. Hors de ton périmètre : ne les modifie pas.
 - Pour tester une fonction de l'interface, charge le HTML via jsdom comme dans `library-recovery.test.js`. Si une logique pure (transposition, parsing ChordPro) devient difficile à tester, propose son extraction dans un module dans une issue dédiée.
@@ -86,7 +96,10 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 
 - `package-lock.json` : le régénérer (`npm install --package-lock-only`) après tout changement de dépendances ou de version.
 - Paliers de vitesse irréguliers (voir « Questions ouvertes » dans `VISION.md`).
-- Signature de code Windows et macOS non configurée (l'auto-update macOS en dépend).
+- Signature de code Windows et macOS non configurée (l'auto-update macOS en dépend). APK Android signé debug : le jour d'un keystore release, les utilisateurs devront désinstaller/réinstaller une fois.
+- Quota de stockage des artefacts GitHub Actions (plan free) : rétention courte en place (`retention-days: 1`), à surveiller si les builds deviennent fréquents.
+- `main.js` impose `minWidth: 860` à la fenêtre Electron : les captures mobiles doivent passer par le moteur Chromium (voir workflow `visual-baselines.yml`), jamais par Electron (écrêtage du viewport).
+- Le juge visuel signale 1 erreur récurrente sur le thème `guitar-case` (seuil scène) : à faire évaluer par le superviseur avec le rapport du run.
 
 ## Quand tu es lancé par le runner
 
