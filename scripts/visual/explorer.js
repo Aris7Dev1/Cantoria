@@ -56,6 +56,21 @@ async function visibleTargets(page) {
       out.push({ text, sel });
       if (out.length >= 25) break; // borné : le prompt reste compact
     }
+    /* Cartes cliquables (leçon du run 5 : les chansons de la bibliothèque
+       sont des .song-card, pas des boutons — le titre seul matche plusieurs
+       éléments et le clic timeout). On les expose comme cibles de premier
+       rang avec un sélecteur de classe robuste. */
+    const cards = document.querySelectorAll('.song-card');
+    for (const el of cards) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.bottom < 0 || r.top > window.innerHeight) continue;
+      const title = (el.querySelector('.title') || {}).textContent || "";
+      const t = title.trim().slice(0, 40);
+      if (!t) continue;
+      out.push({ text: t, card: true });
+      if (out.length >= 25) break;
+    }
     return out;
   });
 }
@@ -131,13 +146,17 @@ async function callChat({ messages, fetchImpl = fetch }) {
 }
 
 /* Exécute une action sur la page — primitives fermées, jamais de code arbitraire. */
-async function applyAction(page, act, notes) {
+async function applyAction(page, act, notes, targets) {
   switch (act.action) {
     case "click": {
       const a = act.args.trim();
       try {
         if (/^[a-zA-Z.#][\w#.\- >.:]*$/.test(a) && a.length < 80) {
           await page.click(a, { timeout: 6000 });
+        } else if (act.target && act.target.card) {
+          /* Carte de chanson : cliquer la carte contenant ce titre exact —
+             le .song-card est l'élément cliquable, pas le titre. */
+          await page.locator('.song-card', { hasText: a }).first().click({ timeout: 6000 });
         } else {
           await page.getByText(a, { exact: false }).first().click({ timeout: 6000 });
         }
@@ -227,7 +246,7 @@ async function main() {
       } catch (e) { history.push(`erreur modèle : ${e.message}`); break; }
       if (!act) { history.push("réponse modèle invalide"); steps++; continue; }
       steps++;
-      const desc = await applyAction(page, act, notes);
+      const desc = await applyAction(page, act, notes, targets);
       if (act.action === "done") { history.push(`terminé : ${act.args}`); break; }
       let entry = `${desc}${act.observation ? ` — ${act.observation}` : ""}`;
       if (dialogLog.length) {
