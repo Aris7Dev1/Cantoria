@@ -76,3 +76,19 @@ test("callChat : fetchImpl optionnel (défaut fetch natif) — régression du ru
   assert.ok(!/callChat\(\{ messages: buildTurnMessages[\s\S]*?fetchImpl \}\)/.test(src),
     "la boucle ne passe plus de fetchImpl indéfini");
 });
+
+/* Leçons du premier rapport réel (01/11) : carnet vide = but impossible +
+boucle de notes identiques. L'explorateur doit seeder un carnet vivant et
+couper court aux boucles. */
+test("l'explorateur sème un carnet vivant (fixtures) avant exploration", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /seedEntries/, "seed via les fixtures de la boucle visuelle");
+  assert.match(src, /addInitScript/, "seed posé AVANT le premier chargement");
+});
+
+test("anti-boucle : trois observations identiques arrêtent l'exploration", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /anti-boucle/, "garde anti-boucle présente");
+  assert.match(src, /prevObs1 === prevObs2|lastObs === prevObs1 && lastObs === prevObs2/,
+    "détection de répétition d'observations");
+});

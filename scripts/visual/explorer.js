@@ -156,6 +156,15 @@ async function main() {
   const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-gpu"] });
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
+  /* Seed avant le premier chargement : l'explorateur découvre un carnet VIVANT
+     (leçon du premier rapport : but « concert » impossible sur un carnet vide,
+     l'explorateur bouclait sur « Ton carnet est vide »). On réutilise les
+     fixtures de la boucle visuelle — même source que les captures. */
+  const { seedEntries } = require("./fixtures");
+  const seed = seedEntries(process.env.EXPLORER_THEME || "spotlight");
+  await page.addInitScript((entries) => {
+    for (const k of Object.keys(entries)) localStorage.setItem(k, entries[k]);
+  }, seed);
   await page.goto("file://" + path.join(ROOT, "cantoria.html"));
 
   const lines = ["## Rapport d'exploration IA (issue #76)", ""];
@@ -165,6 +174,7 @@ async function main() {
   const history = [];
   const notes = [];
   const frictions = [];
+  let prevObs1 = "", prevObs2 = "";
   let calls = 0;
   let steps = 0;
 
@@ -184,6 +194,16 @@ async function main() {
       const entry = `${desc}${act.observation ? ` — ${act.observation}` : ""}`;
       history.push(entry);
       if (/ÉCHOUÉ/.test(desc)) frictions.push(entry);
+      /* Anti-boucle (leçon du premier rapport : 12 notes identiques d'affilée
+         sur un écran bloqué). Trois observations consécutives quasi identiques
+         = l'explorateur tourne en rond : on termine avec un constat honnête. */
+      const lastObs = (act.observation || "").slice(0, 60);
+      if (lastObs && lastObs === prevObs1 && lastObs === prevObs2) {
+        history.push(`anti-boucle : trois observations identiques, exploration arrêtée (l'état ne change pas malgré les actions)`);
+        lines.push(`_Exploration arrêtée par l'anti-boucle après ${steps} étapes : l'interface semblait ne plus réagir._`);
+        break;
+      }
+      prevObs2 = prevObs1; prevObs1 = lastObs;
       await page.waitForTimeout(250);
     }
   } finally {
