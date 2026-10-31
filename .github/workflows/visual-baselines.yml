@@ -55,6 +55,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # npm ci restaure parfois le paquet electron depuis le cache SANS son
+      # binaire (postinstall sauté) -> spawn ENOENT au lancement du visual.
+      # On garantit le binaire explicitement : idempotent (no-op si présent).
+      - name: Garantir le binaire Electron
+        run: |
+          if [ ! -x node_modules/electron/dist/electron ]; then
+            echo "Binaire Electron absent — téléchargement…"
+            node node_modules/electron/install.js
+          else
+            echo "Binaire Electron présent."
+          fi
+          test -x node_modules/electron/dist/electron
+
       - name: Régénérer les baselines (contrôle)
         run: node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0} --update-baseline', github.event.inputs.scenarios) || '' }}
         env:
