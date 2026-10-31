@@ -28,6 +28,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bridge: CantoriaBridge
     private var updateChecker: UpdateChecker? = null
 
+    // Échappement d'une valeur pour une chaîne littérale JavaScript :
+    // backslash, apostrophe, guillemets et sauts de ligne neutralisés, afin
+    // qu'aucune valeur venant de GitHub Releases ne puisse sortir de la chaîne.
+    private fun jsString(value: String): String =
+        value.replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\"", "\\\"")
+            .replace("\r", "\\r")
+            .replace("\n", "\\n")
+
+    private fun dispatchUpdateEvent(version: String, apkUrl: String) {
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('android-update-available'," +
+                    "{detail:{version:'${jsString(version)}',apkUrl:'${jsString(apkUrl)}'}}));", null)
+        }
+    }
+
     // Contenu du shim lu une fois dans les assets : injecté par
     // evaluateJavascript à chaque chargement de page. L'injection directe
     // du CONTENU (et non d'un <script src>) n'est pas soumise à la CSP de la
@@ -77,11 +95,7 @@ class MainActivity : AppCompatActivity() {
         // Le pont relaie les demandes manuelles de l'interface vers le checker.
         if (this::bridge.isInitialized) {
             bridge.onUpdateAvailable = { version, apkUrl ->
-                runOnUiThread {
-                    webView.evaluateJavascript(
-                        "window.dispatchEvent(new CustomEvent('android-update-available'," +
-                            "{detail:{version:'$version',apkUrl:'$apkUrl'}}));", null)
-                }
+                dispatchUpdateEvent(version, apkUrl)
             }
         }
         val currentVersion = try {
@@ -89,11 +103,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) { return }
         updateChecker?.check(currentVersion, object : UpdateChecker.Listener {
             override fun onUpdateAvailable(version: String, apkUrl: String) {
-                runOnUiThread {
-                    webView.evaluateJavascript(
-                        "window.dispatchEvent(new CustomEvent('android-update-available'," +
-                            "{detail:{version:'$version',apkUrl:'$apkUrl'}}));", null)
-                }
+                dispatchUpdateEvent(version, apkUrl)
             }
             override fun onUpToDate() { /* silencieux */ }
             override fun onError() { /* hors ligne : silencieux (VISION) */ }
