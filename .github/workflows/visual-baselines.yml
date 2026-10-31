@@ -69,7 +69,9 @@ jobs:
           test -x node_modules/electron/dist/electron
 
       - name: Régénérer les baselines (contrôle)
-        run: node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0} --update-baseline', github.event.inputs.scenarios) || '' }}
+        # xvfb-run : Electron exige un serveur X, absent des runners headless
+        # (le script npm local l'enrobe déjà — ici pareil).
+        run: xvfb-run -a node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0} --update-baseline', github.event.inputs.scenarios) || '' }}
         env:
           VISUAL_ELECTRON: node_modules/electron/dist/electron
 
