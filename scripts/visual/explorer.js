@@ -89,7 +89,10 @@ function parseAction(text) {
   } catch (e) { return null; }
 }
 
-async function callChat({ messages, fetchImpl }) {
+async function callChat({ messages, fetchImpl = fetch }) {
+  /* Défaut : fetch natif de Node 22 (testable par injection, utilisable en CI
+     sans paramètre — bug du run du 01/11 : fetchImpl indéfini -> ReferenceError
+     au premier appel, exploration morte à l'étape 0). */
   const res = await fetchImpl(`${BASE_URL.replace(/\/+$/, "")}/v1/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${API_KEY}` },
@@ -171,7 +174,7 @@ async function main() {
       calls++;
       let act = null;
       try {
-        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1 }), fetchImpl });
+        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1 }) });
         act = parseAction(out.text);
       } catch (e) { history.push(`erreur modèle : ${e.message}`); break; }
       if (!act) { history.push("réponse modèle invalide"); steps++; continue; }

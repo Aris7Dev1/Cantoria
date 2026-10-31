@@ -65,3 +65,14 @@ test("applyAction : les notes sont consignées, done arrête, actions fermées",
   const done = await e.applyAction(fakePage, { action: "done", args: "" }, notes);
   assert.equal(done, null, "done = arrêt");
 });
+
+test("callChat : fetchImpl optionnel (défaut fetch natif) — régression du run du 01/11", async () => {
+  // Le bug : callChat exigeait fetchImpl -> ReferenceError au premier appel de
+  // la boucle, exploration morte à l'étape 0 (« 0 étapes, 1 appel »).
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /callChat\(\{ messages, fetchImpl = fetch \}\)/,
+    "défaut fetch natif si non injecté");
+  // la boucle n'appelle plus avec un fetchImpl indéfini
+  assert.ok(!/callChat\(\{ messages: buildTurnMessages[\s\S]*?fetchImpl \}\)/.test(src),
+    "la boucle ne passe plus de fetchImpl indéfini");
+});
