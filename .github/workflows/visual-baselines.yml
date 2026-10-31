@@ -3,7 +3,7 @@ name: Visual baselines
 # Régénération des baselines visuelles en CI (décision superviseur) :
 # libère le poste local du problème de montage read-only et garantit des
 # références produites dans un environnement reproductible.
-#   - workflow_dispatch avec scenarios : régénérer + COMMITTER + pousser
+#   - workflow_dispatch avec scenarios : regénérer + COMMITTER + pousser
 #     (usage : après un changement UI validé)
 #   - workflow_dispatch sans scenarios : contrôle seul, artefact rapport
 #   - pull_request : contrôle de non-régression sur les captures
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       scenarios:
-        description: "Scénarios à régénérer (vide = tous) — ex: player-portrait,player-portrait"
+        description: "Scénarios à regénérer (vide = tous) — ex: player-portrait,player-portrait"
         required: false
         default: ""
   pull_request:
