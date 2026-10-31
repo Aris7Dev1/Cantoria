@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: visual-${{ github.ref }}
@@ -108,11 +109,17 @@ jobs:
           fi
           echo "Aucune baseline supprimée."
 
-      - name: Upload rapport (PR)
+      # Rapport en COMMENTAIRE de PR, pas en artefact : le quota de stockage
+      # des artefacts (plan free) a fait échouer des PR pour quelques Mo de
+      # rapport — un commentaire ne consomme aucun stockage.
+      - name: Rapport en commentaire de PR
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: visual-report
-          path: visual-out/
-          retention-days: 1
-          if-no-files-found: ignore
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -f visual-out/report.md ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file visual-out/report.md || true
+          else
+            echo "Pas de rapport généré."
+          fi
