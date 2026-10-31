@@ -92,3 +92,23 @@ test("anti-boucle : trois observations identiques arrêtent l'exploration", () =
   assert.match(src, /prevObs1 === prevObs2|lastObs === prevObs1 && lastObs === prevObs2/,
     "détection de répétition d'observations");
 });
+
+/* Leçon du 2e rapport : les clics timeoutaient sur des libellés devinés
+   (« Bouton 'Nouvelle chanson' » au lieu de « ＋ Nouvelle chanson »).
+   Le modèle doit recevoir la liste RÉELLE des éléments visibles à chaque tour. */
+test("chaque tour inclut la liste réelle des éléments interactifs visibles", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /visibleTargets/, "extraction des cibles visibles");
+  assert.match(src, /Éléments interactifs visibles/, "la liste est dans le prompt");
+  assert.match(src, /TEXTE EXACT/, "règle : texte exact, jamais reformulé");
+  const msgs = e.buildTurnMessages({ goal: "g", history: [], screenshot: Buffer.from("x"), step: 1,
+    targets: [{ text: "＋ Nouvelle chanson", sel: "#btn-new" }] });
+  assert.ok(msgs[1].content[0].text.includes("＋ Nouvelle chanson"),
+    "le libellé exact apparaît dans le prompt");
+  assert.ok(msgs[1].content[0].text.includes("#btn-new"), "le sélecteur est fourni");
+});
+
+test("visibleTargets : borne le nombre de cibles (prompt compact)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /out\.length >= 25/, "25 cibles maximum par tour");
+});

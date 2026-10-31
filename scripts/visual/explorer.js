@@ -38,6 +38,28 @@ function loadGoals() {
   return ["Tu es un guitariste qui découvre l'application pour la première fois : crée une chanson avec des accords, lance le défilement, transpose, navigue entre les vues. Note tout ce qui te semble confus, cassé, ou qui ne réagit pas comme prévu."];
 }
 
+/* Extrait les éléments interactifs VISIBLES de la page : le modèle choisit
+   dans une liste réelle au lieu de deviner les libellés (leçon du 2e rapport :
+   clics sur « Bouton 'Nouvelle chanson' » — description décorée introuvable
+   -> timeout -> hallucination que le clic a marché). */
+async function visibleTargets(page) {
+  return page.evaluate(() => {
+    const out = [];
+    const els = document.querySelectorAll('button, [role="button"], input[type="text"], input[type="search"], textarea, a[href]');
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.bottom < 0 || r.top > window.innerHeight) continue; // hors écran vertical
+      const text = (el.textContent || "").trim().slice(0, 40) || el.getAttribute("placeholder") || el.getAttribute("aria-label") || "";
+      if (!text) continue;
+      const sel = el.id ? "#" + el.id : undefined;
+      out.push({ text, sel });
+      if (out.length >= 25) break; // borné : le prompt reste compact
+    }
+    return out;
+  });
+}
+
 /* Le menu d'actions disponibles pour l'explorateur : des primitives sûres,
    fermées (pas d'accès arbitraire au système), exprimées en JSON. */
 const ACTIONS = [
@@ -50,12 +72,15 @@ const ACTIONS = [
   { id: "done", args: "résumé final en une phrase", desc: "Terminer l'exploration" },
 ];
 
-function buildTurnMessages({ goal, history, screenshot, step }) {
+function buildTurnMessages({ goal, history, screenshot, step, targets }) {
   const b64 = (buf) => "data:image/png;base64," + Buffer.from(buf).toString("base64");
+  const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}`).join("\n");
   const text = [
     `But de l'utilisateur à accomplir : ${goal}`,
     "",
     `Étape ${step}. Voici la capture d'écran de l'état actuel de l'application.`,
+    targets && targets.length ? `Éléments interactifs visibles à l'écran :
+${targetList}` : "",
     history.length ? "Historique de tes actions récentes (les plus récentes en dernier) :" : "C'est le début de l'exploration.",
     ...history.slice(-12).map((h) => `- ${h}`),
     "",
@@ -63,6 +88,8 @@ function buildTurnMessages({ goal, history, screenshot, step }) {
     '{"action":"click|fill|press|scroll|back|note|done","args":"...","observation":"phrase courte sur ce que tu vois ou viens de constater"}',
     "",
     "Règles :",
+    "- pour « click » et « fill » : utilise le TEXTE EXACT de la liste des éléments interactifs ci-dessus (ou son sélecteur #id) — JAMAIS une description reformulée ;",
+    "- pour « fill », args = sélecteur || valeur à saisir (ex : « #f-title || Ma chanson ») ;",
     "- avance toujours vers le but ; si un élément ne réagit pas comme prévu, note-le (action note) puis tente autre chose ;",
     "- « observation » doit être concrète (ce que tu vois, pas des généralités) ;",
     "- quand le but est accompli ou que tu es bloqué, action « done » avec un résumé.",
@@ -181,10 +208,12 @@ async function main() {
   try {
     while (steps < MAX_ACTIONS && calls < MAX_CALLS) {
       const screenshot = await page.screenshot({ type: "png" });
+      let targets = [];
+      try { targets = await visibleTargets(page); } catch (e) { /* pas bloquant */ }
       calls++;
       let act = null;
       try {
-        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1 }) });
+        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1, targets }) });
         act = parseAction(out.text);
       } catch (e) { history.push(`erreur modèle : ${e.message}`); break; }
       if (!act) { history.push("réponse modèle invalide"); steps++; continue; }
@@ -229,6 +258,6 @@ async function main() {
   process.stdout.write(lines.join("\n"));
 }
 
-module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, ACTIONS };
+module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, visibleTargets, ACTIONS };
 
 if (require.main === module) main().catch((e) => { console.error("Explorateur en échec :", e.message); process.exit(0); });
