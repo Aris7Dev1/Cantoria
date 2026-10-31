@@ -95,8 +95,24 @@ jobs:
       - name: Copy cantoria.html to assets
         run: node -e "require('fs').copyFileSync('cantoria.html','android/app/src/main/assets/cantoria.html')"
 
+      # Keystore release restauré depuis les secrets (jamais commité, *.jks gitignoré).
+      # Sans secrets définis, le build retombe sur la clé debug avec avertissement.
+      - name: Restore release keystore from secrets
+        if: ${{ secrets.ANDROID_KEYSTORE != '' }}
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          mkdir -p app/build/keystore
+          echo "$ANDROID_KEYSTORE" | base64 -d > app/build/keystore/cantoria-release.jks
+          ls -la app/build/keystore/
+
       - name: Build release APK + run Kotlin tests
         working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease testReleaseUnitTest --no-daemon

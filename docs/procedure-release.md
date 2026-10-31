@@ -41,8 +41,10 @@ Le `--force` sur un tag n'est acceptable QUE dans ce cas. Si une release a déj�
 ## Ce que fait le workflow `build.yml`
 
 1. Matrice desktop (Windows/macOS/Linux) : `npm run dist:*` → installateurs.
-2. Job Android : `assembleRelease` (signé debug, faute de keystore) → APK renommé
-   `cantoria-<version>-android.apk`.
+2. Job Android : restauration du keystore release depuis les secrets
+   (`ANDROID_KEYSTORE` en base64, + mots de passe/alias) puis `assembleRelease`
+   signé release → APK renommé `cantoria-<version>-android.apk`.
+   Sans secrets keystore, repli sur la signature debug avec avertissement.
 3. Job `release` (attend `[build, android]`) : publie la GitHub Release avec les
    4 artefacts et les **notes auto-générées** (`generate_release_notes: true`).
 

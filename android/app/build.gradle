@@ -44,16 +44,47 @@ android {
         versionCode pkgVersion.versionCode
     }
 
+    /* Keystore release : JAMAIS dans le dépôt (*.jks est gitignoré). En CI, le
+       keystore est restauré depuis le secret ANDROID_KEYSTORE (base64) vers
+       app/build/keystore/cantoria-release.jks ; en local, poser le fichier à
+       la racine du projet android/ ou définir CANTORIA_KEYSTORE_PATH. Sans aucune
+       source de keystore, le release retombe sur la clé debug (sideload de
+       développement uniquement) avec un avertissement explicite. */
+    def keystoreFile = {
+        def fromEnv = System.getenv('CANTORIA_KEYSTORE_PATH')
+        if (fromEnv) return file(fromEnv)
+        def fromSecret = new File(buildDir, "keystore/cantoria-release.jks")
+        if (fromSecret.exists()) return fromSecret
+        def local = rootProject.file('cantoria-release.jks')
+        if (local.exists()) return local
+        return null
+    }()
+
+    signingConfigs {
+        release {
+            if (keystoreFile != null) {
+                storeFile keystoreFile
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: project.findProperty('ANDROID_KEYSTORE_PASSWORD') ?: ''
+                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: project.findProperty('ANDROID_KEY_ALIAS') ?: ''
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: project.findProperty('ANDROID_KEY_PASSWORD') ?: ''
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Debuggable : la WebView est inspectable via chrome://inspect (issue #54).
             debuggable true
         }
         release {
-            // Pas de keystore pour l'instant (décision superviseur PR #33) :
-            // release signée avec la clé debug pour permettre le sideload.
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            if (keystoreFile != null) {
+                signingConfig signingConfigs.release
+            } else {
+                // Repli explicite : développement/sideload sans keystore.
+                println "AVERTISSEMENT : aucun keystore release trouvé, l'APK release est signé avec la clé debug (non distribuable)."
+                signingConfig signingConfigs.debug
+            }
         }
     }
 
