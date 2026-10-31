@@ -162,17 +162,34 @@ async function callChat({ messages, fetchImpl = fetch }) {
 }
 
 /* Exécute une action sur la page — primitives fermées, jamais de code arbitraire. */
+/* Résout la cible visée par une action : l'args du modèle contre la liste
+   des cibles réelles du tour (leçon run 8 : la branche act.target.card
+   n'était JAMAIS prise car parseAction ne remplissait pas act.target —
+   le clic carte retombait sur getByText et timeoutait). */
+function resolveTarget(act, targets) {
+  if (!targets || !targets.length) return null;
+  const a = (act.args || "").trim().toLowerCase();
+  if (!a) return null;
+  // correspondance exacte d'abord, puis préfixe (le modèle tronque parfois)
+  return targets.find((t) => (t.text || "").toLowerCase() === a)
+      || targets.find((t) => a.startsWith((t.text || "").toLowerCase()))
+      || null;
+}
+
 async function applyAction(page, act, notes, targets) {
   switch (act.action) {
     case "click": {
       const a = act.args.trim();
+      const target = resolveTarget(act, targets);
       try {
         if (/^[a-zA-Z.#][\w#.\- >.:]*$/.test(a) && a.length < 80) {
           await page.click(a, { timeout: 6000 });
-        } else if (act.target && act.target.card) {
+        } else if (target && target.card) {
           /* Carte de chanson : cliquer la carte contenant ce titre exact —
              le .song-card est l'élément cliquable, pas le titre. */
           await page.locator('.song-card', { hasText: a }).first().click({ timeout: 6000 });
+        } else if (target && target.sel) {
+          await page.click(target.sel, { timeout: 6000 });
         } else {
           await page.getByText(a, { exact: false }).first().click({ timeout: 6000 });
         }
@@ -330,6 +347,6 @@ async function main() {
   process.stdout.write(lines.join("\n"));
 }
 
-module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, visibleTargets, ACTIONS };
+module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, visibleTargets, resolveTarget, ACTIONS };
 
 if (require.main === module) main().catch((e) => { console.error("Explorateur en échec :", e.message); process.exit(0); });

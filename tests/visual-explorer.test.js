@@ -159,3 +159,25 @@ test("cibles hors écran exposées + scroll vers une cible nommée (run 7)", () 
   assert.match(src, /hors écran : fais défiler/, "le prompt indique comment les atteindre");
   assert.match(src, /scrollIntoViewIfNeeded/, "scroll vers une cible nommée");
 });
+
+/* Leçon du run 8 : la branche act.target.card n'était jamais prise —
+   parseAction ne remplissait pas act.target. La cible est désormais
+   résolue côté orchestrateur contre la liste réelle du tour. */
+test("resolveTarget : l'args du modèle retrouve la cible réelle (carte, swatch)", () => {
+  const targets = [
+    { text: "＋ Nouvelle chanson", sel: "#btn-new" },
+    { text: "Ballade de minuit", card: true },
+    { text: "Thème Vibe", sel: '.swatch[data-theme="vibe"]' },
+  ];
+  // carte par titre exact
+  const card = e.resolveTarget({ args: "Ballade de minuit" }, targets);
+  assert.ok(card && card.card, "la carte est résolue");
+  // par préfixe (le modèle tronque parfois)
+  const pref = e.resolveTarget({ args: "Ballade de minuit (reprise)" }, targets);
+  assert.ok(pref && pref.card, "résolution par préfixe");
+  // bouton par texte
+  const btn = e.resolveTarget({ args: "＋ Nouvelle chanson" }, targets);
+  assert.equal(btn.sel, "#btn-new");
+  // inconnu : null (retombera sur getByText)
+  assert.equal(e.resolveTarget({ args: "n'importe quoi" }, targets), null);
+});
