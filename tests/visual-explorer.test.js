@@ -218,3 +218,13 @@ test("fill sans valeur = erreur explicite, jamais un fill vide silencieux", () =
   assert.match(src, /valeur manquante : convention/, "erreur explicite si valeur absente");
   assert.match(src, /if \(!val\)/, "garde sur la valeur vide");
 });
+
+/* Leçon du run 12 : le modèle cherchait « Marquer comme favori » — un
+   libellé CONTAMINÉ par le but — alors que « Basculer favori » était
+   dans sa liste. Une cible absente de la liste doit échouer vite et
+   clairement. */
+test("cible absente de la liste : échec rapide, pas de timeout de 6 s", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /absent de la liste des éléments visibles/, "message net");
+  assert.match(src, /le BUT utilise des mots génériques/, "règle anti-contamination dans le prompt");
+});

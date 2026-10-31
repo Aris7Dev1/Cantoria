@@ -121,6 +121,7 @@ ${targetList}${modalInfo}` : "",
     "Règles :",
     "- pour « click » et « fill » : utilise le TEXTE EXACT de la liste des éléments interactifs ci-dessus (ou son sélecteur #id) — JAMAIS une description reformulée ;",
     "- pour « fill », args = sélecteur || valeur à saisir (ex : « #f-title || Ma chanson ») ;",
+    "- ATTENTION : le BUT utilise des mots génériques (« marque en favori ») qui ne sont PAS les libellés de l'application — un élément absent de la liste n'existe probablement pas à l'écran : cherche une autre voie ou note-le comme friction ;",
     "- avance toujours vers le but ; si un élément ne réagit pas comme prévu, note-le (action note) puis tente autre chose ;",
     "- « observation » doit être concrète (ce que tu vois, pas des généralités) ;",
     "- quand le but est accompli ou que tu es bloqué, action « done » avec un résumé.",
@@ -205,6 +206,11 @@ async function applyAction(page, act, notes, targets) {
           const loc = page.locator(target.sel).first();
           await bringUp(loc);
           await loc.click({ timeout: 6000 });
+        } else if (target === null && targets && targets.length) {
+          /* Cible absente de la liste du tour : très probablement un libellé
+             inventé (contamination du but, leçon run 12). Échec rapide —
+             inutile d'attendre 6 s pour un élément qui n'existe pas. */
+          return `click « ${a} » a ÉCHOUÉ (absent de la liste des éléments visibles — relis la liste, ou note la friction)`;
         } else {
           const loc = page.getByText(a, { exact: false }).first();
           await bringUp(loc);
