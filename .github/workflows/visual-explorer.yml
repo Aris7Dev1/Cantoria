@@ -1,0 +1,57 @@
+name: Visual explorer
+
+# Explorateur IA (issue #76) : un agent aux commandes du navigateur découvre
+# l'app comme un premier utilisateur et poste son RAPPORT D'EXPÉRIENCE en
+# commentaire de PR. Consultatif : ne fait jamais échouer une PR.
+#
+# Déclenchement : dispatch manuel d'abord (coût maîtrisé par le superviseur) ;
+# le passage en automatique sur les PR UI sera une décision post-observation.
+#
+# ⚠️ Zone superviseur.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Numéro de la PR à commenter (vide = pas de commentaire, rapport en log)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  explore:
+    name: Explorateur IA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright-core install chromium-headless-shell
+
+      - name: Exploration IA
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/visual/explorer.js > rapport-exploration.md || true
+          cat rapport-exploration.md
+          if [ -s rapport-exploration.md ] && [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file rapport-exploration.md || true
+          fi
