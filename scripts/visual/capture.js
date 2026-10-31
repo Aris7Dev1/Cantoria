@@ -110,4 +110,6 @@ async function captureAll({ engine, repoRoot, outDir, themes, scenarios, thresho
   return results;
 }
 
-module.exports = { captureAll, launch, resetState };
+/* loadPlaywright exporté : l'explorateur (issue #76) réutilise le même
+   chargement de playwright-core — une seule façon d'obtenir le module. */
+module.exports = { captureAll, launch, resetState, loadPlaywright };

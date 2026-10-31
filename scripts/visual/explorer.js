@@ -16,7 +16,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const { loadPlaywright } = require("./capture");
+const { loadPlaywright } = require("./capture");   /* exportée depuis capture.js (fix run du 01/11) */
 
 const ROOT = path.join(__dirname, "..", "..");
 const BASE_URL = process.env.MISTRAL_BASE_URL || "";
@@ -26,8 +26,6 @@ const MAX_ACTIONS = parseInt(process.env.EXPLORER_MAX_ACTIONS || "40", 10);
 const MAX_CALLS = parseInt(process.env.EXPLORER_MAX_CALLS || "30", 10);
 const DEFAULT_GOALS_PATH = path.join(__dirname, "explorer-goals.json");
 const VIEWPORT = { width: parseInt(process.env.EXPLORER_WIDTH || "412", 10), height: parseInt(process.env.EXPLORER_HEIGHT || "915", 10) };
-
-const loadPlaywrightFn = () => require("./capture").loadPlaywright();
 
 function loadGoals() {
   /* Env lue au moment de l'appel (testable), pas au chargement du module. */
