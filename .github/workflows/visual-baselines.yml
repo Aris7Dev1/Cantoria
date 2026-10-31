@@ -77,6 +77,9 @@ jobs:
       # est écrêté à 860, la media query du bandeau replié (<=480px) ne
       # s'active jamais. Preuve : les player-portrait faisaient 860x915.
       # Chromium fournit un vrai viewport 412x915.
+      - name: Installer Chromium pour Playwright
+        run: npx playwright-core install chromium-headless-shell
+
       - name: Régénérer les baselines mobiles (Chromium, viewport réel)
         run: node scripts/visual/run.js --engine=chromium --scenarios=library-portrait,player-portrait --update-baseline
 
