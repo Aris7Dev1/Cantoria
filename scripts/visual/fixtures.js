@@ -45,6 +45,12 @@ function seedEntries(theme) {
     [SONGS_KEY]: JSON.stringify(SONGS),
     [SETTINGS_KEY]: JSON.stringify({
       spotlight: true, defaultFontScale: 1, defaultCountdown: 0, cardTextScale: 1,
+      // controlsPinned/controlsCompactMobile : répliquer les DÉFAUTS de
+      // l'app (issue #64) — sinon l'assign dans loadSettings écrase les
+      // valeurs par défaut par undefined et la baseline capture un état
+      // irréaliste (rangée secondaire dépliée sur mobile).
+      controlsPinned: true, controlsCompactMobile: true, chordsVisible: true,
+      chordDiagrams: "song", lyricsAlign: "center",
       cardFields: { key: true, capo: true, chords: true, speed: true },
     }),
     [THEME_KEY]: theme,

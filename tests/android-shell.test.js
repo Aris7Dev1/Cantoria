@@ -204,6 +204,7 @@ test("le versionCode Android est calculé par segments paddés (croissant)", () 
     "l'ancienne concaténation simple est retirée");
 });
 
+<<<<<<< HEAD
 /* CI visuelle (décision superviseur, vague 1 full-cloud) : le workflow
    de régénération des baselines existe et ne committe QUE sur dispatch. */
 test("le workflow visual-baselines existe et protège les références", () => {
@@ -215,4 +216,14 @@ test("le workflow visual-baselines existe et protège les références", () => {
     "garde if sur le commit");
   assert.ok(/Garde anti-suppression/.test(wf),
     "garde anti-suppression sur les PR (piège EPERM)");
+=======
+/* Régression de la baseline irréaliste (retour test #64) : les fixtures
+   visuelles doivent répliquer les défauts de l'app, sinon le réglage
+   seedé écrase controlsCompactMobile par undefined et la capture mobile
+   montre un état que l'app réelle n'a jamais. */
+test("les fixtures visuelles répliquent les réglages par défaut (bandeau replié)", () => {
+  const fixtures = fs.readFileSync(path.join(ROOT, "scripts/visual/fixtures.js"), "utf8");
+  assert.ok(/controlsCompactMobile: true/.test(fixtures),
+    "controlsCompactMobile seedé à true (défaut de l'app)");
+  assert.ok(/controlsPinned: true/.test(fixtures), "controlsPinned seedé à true");
 });
