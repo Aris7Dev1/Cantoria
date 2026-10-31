@@ -141,9 +141,13 @@ function parseAction(text) {
   const start = candidate.indexOf("{"), end = candidate.lastIndexOf("}");
   if (start === -1 || end <= start) return null;
   try {
-    const o = JSON.parse(candidate.slice(start, end + 1));
+    const o = JSON.parse(candidate.slice(start + 1 ? start : start, end + 1));
     if (!o.action || !ACTIONS.some((a) => a.id === o.action)) return null;
-    return { action: o.action, args: String(o.args || ""), observation: String(o.observation || "") };
+    /* Le modele enroule parfois ses args de guillemets decoratifs (« »,
+       " ") copiés du prompt (leçon run 10) : les retirer des deux côtés. */
+    const clean = (s) => String(s || "").trim()
+      .replace(/^[\u00ab\u00bb“”'"\s]+/, "").replace(/[\u00ab\u00bb“\u201d'"\s]+$/, "");
+    return { action: o.action, args: clean(o.args), observation: String(o.observation || "").trim() };
   } catch (e) { return null; }
 }
 
@@ -170,9 +174,11 @@ function resolveTarget(act, targets) {
   if (!targets || !targets.length) return null;
   const a = (act.args || "").trim().toLowerCase();
   if (!a) return null;
-  // correspondance exacte d'abord, puis préfixe (le modèle tronque parfois)
+  const norm = (s) => (s || "").toLowerCase().replace(/[\u00ab\u00bb“”'" ]/g, "");
+  // correspondance exacte d'abord, puis préfixe, puis sous-chaîne normalisée
   return targets.find((t) => (t.text || "").toLowerCase() === a)
       || targets.find((t) => a.startsWith((t.text || "").toLowerCase()))
+      || targets.find((t) => norm(a).includes(norm(t.text)) || norm(t.text).includes(norm(a)))
       || null;
 }
 

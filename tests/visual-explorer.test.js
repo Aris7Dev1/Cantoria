@@ -197,3 +197,16 @@ test("bringUp : toute cible est amenée à l'écran avant le clic", () => {
   assert.match(src, /const bringUp = async/, "helper bringUp présent");
   assert.ok((src.match(/bringUp\(/g) || []).length >= 4, "appliqué à tous les chemins de clic");
 });
+
+/* Leçon du run 10 : le modèle renvoyait parfois ses args AVEC les
+   guillemets décoratifs (« Ballade de minuit ») — resolveTarget échouait
+   et getByText cherchait une chaîne introuvable. */
+test("guillemets décoratifs nettoyés + résolution par sous-chaîne (run 10)", () => {
+  // parseAction retire « » " " autour des args
+  const act = e.parseAction('{"action":"click","args":"« Ballade de minuit »","observation":"ok"}');
+  assert.equal(act.args, "Ballade de minuit", "les guillemets sont retirés");
+  // resolveTarget par sous-chaîne normalisée (espaces/quotes ignorés)
+  const targets = [{ text: "Ballade de minuit", card: true }];
+  const t = e.resolveTarget({ args: "« Ballade de minuit »" }, targets);
+  assert.ok(t && t.card, "la carte est résolue même avec décorations");
+});
