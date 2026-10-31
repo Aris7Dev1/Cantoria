@@ -131,3 +131,21 @@ test("les cartes de chansons sont des cibles cliquables (leçon run 5)", () => {
   assert.match(src, /hasText: a/, "le clic sur une carte utilise son texte via .song-card");
   assert.match(src, /card: true/, "les cartes sont marquées dans la liste des cibles");
 });
+
+/* Leçons du run 6 : (a) les boutons icônes ont un aria-label, pas de texte —
+   "Basculer favori" était invisible pour getByText ; (b) une modale ouverte
+   couvre le reste de l'écran : l'agent cliquait #btn-settings-open DERRIÈRE
+   l'overlay ; (c) les swatches de thème (boutons couleur sans texte)
+   doivent être exposés par data-theme. */
+test("aria-label/title comme texte de cible + swatches par data-theme", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /aria-label/, "aria-label utilisé comme texte");
+  assert.match(src, /\.swatch\[data-theme=/, "swatches exposés par data-theme");
+});
+
+test("modale ouverte : les cibles se limitent à son contenu + avertissement", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /modal-overlay\.show/, "détection de modale ouverte");
+  assert.match(src, /Une fenêtre modale est ouverte/, "avertissement dans le prompt");
+  assert.match(src, /scope\.querySelectorAll/, "cibles limitées au scope de la modale");
+});
