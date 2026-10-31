@@ -58,7 +58,7 @@ async function visibleTargets(page) {
     for (const el of els) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
-      if (r.bottom < 0 || r.top > window.innerHeight) continue; // hors écran vertical
+      const offscreen = r.bottom < 0 || r.top > window.innerHeight;
       const text = (el.textContent || "").trim().slice(0, 40) || el.getAttribute("placeholder") || el.getAttribute("aria-label") || el.title || "";
       if (!text) continue;
       let sel = el.id ? "#" + el.id : undefined;
@@ -68,7 +68,7 @@ async function visibleTargets(page) {
       if (!sel && el.classList.contains("swatch") && el.dataset.theme) {
         sel = `.swatch[data-theme="${el.dataset.theme}"]`;
       }
-      out.push({ text, sel });
+      out.push({ text, sel, offscreen });
       if (out.length >= 25) break; // borné : le prompt reste compact
     }
     /* Cartes cliquables (leçon du run 5 : les chansons de la bibliothèque
@@ -96,7 +96,7 @@ const ACTIONS = [
   { id: "click", args: "sélecteur CSS ou texte visible du bouton/élément", desc: "Cliquer un élément" },
   { id: "fill", args: "sélecteur CSS du champ + texte à saisir", desc: "Remplir un champ de saisie" },
   { id: "press", args: "touche (ex. Enter, Escape, ArrowDown)", desc: "Appuyer une touche clavier" },
-  { id: "scroll", args: "delta_y (nombre, positif = vers le bas)", desc: "Faire défiler la page" },
+  { id: "scroll", args: "delta_y (nombre) OU le texte/sélecteur d'une cible à amener à l'écran (ex : #btn-save)", desc: "Faire défiler la page ou amener une cible à l'écran" },
   { id: "back", args: "aucun", desc: "Navigation retour" },
   { id: "note", args: "observation/friction à consigner (texte libre)", desc: "Noter quelque chose sans agir" },
   { id: "done", args: "résumé final en une phrase", desc: "Terminer l'exploration" },
@@ -104,7 +104,7 @@ const ACTIONS = [
 
 function buildTurnMessages({ goal, history, screenshot, step, targets, modal }) {
   const b64 = (buf) => "data:image/png;base64," + Buffer.from(buf).toString("base64");
-  const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}`).join("\n");
+  const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}${t.offscreen ? " (hors écran : fais défiler avec l'action scroll vers le bas)" : ""}`).join("\n");
   const modalInfo = modal ? `\n**Une fenêtre modale est ouverte** (« ${modal} ») : n'interagis QU'AVEC ses éléments (la liste ci-dessous), et referme-la (bouton Fermer/Retour) pour revenir à l'\u00e9cran principal.` : "";
   const text = [
     `But de l'utilisateur à accomplir : ${goal}`,
@@ -190,7 +190,20 @@ async function applyAction(page, act, notes, targets) {
       catch (e) { return `touche ${act.args} a ÉCHOUÉ`; }
     }
     case "scroll": {
-      const dy = parseInt(act.args, 10) || 300;
+      const a = act.args.trim();
+      if (a && isNaN(parseInt(a, 10))) {
+        /* Scroll vers une cible nommée (texte ou sélecteur) : l'amener
+           à l'écran (leçon run 7 : #btn-save sous le fold, l'agent
+           ne savait pas l'atteindre). */
+        try {
+          const loc = a.startsWith("#") || a.startsWith(".")
+            ? page.locator(a).first()
+            : page.getByText(a, { exact: false }).first();
+          await loc.scrollIntoViewIfNeeded({ timeout: 4000 });
+          return `défilement vers « ${a} »`;
+        } catch (e) { return `défilement vers « ${a} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
+      }
+      const dy = parseInt(a, 10) || 300;
       await page.mouse.wheel(0, dy);
       return `défilement ${dy}px`;
     }

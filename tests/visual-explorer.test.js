@@ -149,3 +149,13 @@ test("modale ouverte : les cibles se limitent à son contenu + avertissement", (
   assert.match(src, /Une fenêtre modale est ouverte/, "avertissement dans le prompt");
   assert.match(src, /scope\.querySelectorAll/, "cibles limitées au scope de la modale");
 });
+
+/* Leçon du run 7 : #btn-save est sous le fold du formulaire éditeur
+   (overflow-y: auto) — invisible dans le viewport portrait, l'agent
+   ne savait pas l'atteindre. */
+test("cibles hors écran exposées + scroll vers une cible nommée (run 7)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /offscreen/, "les cibles hors écran sont marquées, pas masquées");
+  assert.match(src, /hors écran : fais défiler/, "le prompt indique comment les atteindre");
+  assert.match(src, /scrollIntoViewIfNeeded/, "scroll vers une cible nommée");
+});
