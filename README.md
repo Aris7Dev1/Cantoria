@@ -14,6 +14,10 @@ accords et diagrammes — 100 % hors-ligne, vos données restent chez vous.
 
 </div>
 
+<p align="center">
+  <img src="assets/illustrations/banniere-campfire.jpg" alt="Cantoria au coin du feu : le guitariste joue, l'écran défile tout seul" width="720">
+</p>
+
 ---
 
 ## Pourquoi Cantoria ?
@@ -55,7 +59,18 @@ Les installateurs et l'APK sont sur la page
 
 ## Captures d'écran
 
-> Emplacement réservé : captures bibliothèque / lecteur / éditeur, desktop + Android.
+Thème **campfire**, desktop et Android :
+
+<div align="center">
+  <img src="visual-baseline/campfire/library.png" alt="Bibliothèque (desktop)" width="380">
+  <img src="visual-baseline/campfire/player.png" alt="Lecteur de scène (desktop)" width="380">
+  <br>
+  <img src="visual-baseline/campfire-mobile/library-portrait.png" alt="Bibliothèque (Android)" width="180">
+  <img src="visual-baseline/campfire-mobile/player-portrait.png" alt="Lecteur de scène (Android)" width="180">
+</div>
+
+Une présentation prête à projeter (deck HTML autonome) est disponible dans
+[`docs/presentation/`](./docs/presentation).
 
 ## Développement
 
