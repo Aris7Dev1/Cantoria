@@ -228,7 +228,14 @@ async function applyAction(page, act, notes, targets) {
         const target = resolveTarget({ args: "" }, targets) || null;
         val = sel; sel = (target && target.sel) || "#f-body";
       }
-      try { await page.fill(sel, val, { timeout: 6000 }); return `saisie dans « ${sel} »`; }
+      /* Leçon du run 11 : un sélecteur seul (sans || valeur) remplissait
+         le champ avec une chaîne VIDE — le placeholder restait visible et
+         le modèle croyait sa saisie perdue. Une saisie sans valeur est un
+         ERREUR explicite, pas un silence. */
+      if (!val) {
+        return `saisie « ${sel} » a ÉCHOUÉ (valeur manquante : convention « sélecteur || valeur »)`;
+      }
+      try { await page.fill(sel, val, { timeout: 6000 }); return `saisie « ${sel} » : « ${val.slice(0, 40)} »`; }
       catch (e) { return `saisie « ${sel} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
     case "press": {
