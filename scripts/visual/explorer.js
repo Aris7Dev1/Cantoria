@@ -45,14 +45,29 @@ function loadGoals() {
 async function visibleTargets(page) {
   return page.evaluate(() => {
     const out = [];
-    const els = document.querySelectorAll('button, [role="button"], input[type="text"], input[type="search"], textarea, a[href]');
+    /* Modale ouverte ? (leçon run 6 : l'agent cliquait #btn-settings-open
+       DERRIÈRE l'overlay de la modale des paramètres -> timeout garantie.
+       Quand une modale est show, seuls ses éléments sont cliquables.) */
+    let root = document;
+    for (const ov of document.querySelectorAll(".modal-overlay.show")) {
+      const panel = ov.querySelector(".modal-panel");
+      if (panel) { root = panel; break; }
+    }
+    const scope = root === document ? document : root;
+    const els = scope.querySelectorAll('button, [role="button"], input[type="text"], input[type="search"], textarea, a[href]');
     for (const el of els) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
       if (r.bottom < 0 || r.top > window.innerHeight) continue; // hors écran vertical
-      const text = (el.textContent || "").trim().slice(0, 40) || el.getAttribute("placeholder") || el.getAttribute("aria-label") || "";
+      const text = (el.textContent || "").trim().slice(0, 40) || el.getAttribute("placeholder") || el.getAttribute("aria-label") || el.title || "";
       if (!text) continue;
-      const sel = el.id ? "#" + el.id : undefined;
+      let sel = el.id ? "#" + el.id : undefined;
+      /* Swatches de thème : boutons couleur sans texte — exposer le
+         data-theme comme sélecteur (leçon run 6 : le but « changer de
+         thème » exige de viser .swatch[data-theme=...]). */
+      if (!sel && el.classList.contains("swatch") && el.dataset.theme) {
+        sel = `.swatch[data-theme="${el.dataset.theme}"]`;
+      }
       out.push({ text, sel });
       if (out.length >= 25) break; // borné : le prompt reste compact
     }
@@ -60,7 +75,7 @@ async function visibleTargets(page) {
        sont des .song-card, pas des boutons — le titre seul matche plusieurs
        éléments et le clic timeout). On les expose comme cibles de premier
        rang avec un sélecteur de classe robuste. */
-    const cards = document.querySelectorAll('.song-card');
+    const cards = scope.querySelectorAll('.song-card');
     for (const el of cards) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
@@ -87,15 +102,16 @@ const ACTIONS = [
   { id: "done", args: "résumé final en une phrase", desc: "Terminer l'exploration" },
 ];
 
-function buildTurnMessages({ goal, history, screenshot, step, targets }) {
+function buildTurnMessages({ goal, history, screenshot, step, targets, modal }) {
   const b64 = (buf) => "data:image/png;base64," + Buffer.from(buf).toString("base64");
   const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}`).join("\n");
+  const modalInfo = modal ? `\n**Une fenêtre modale est ouverte** (« ${modal} ») : n'interagis QU'AVEC ses éléments (la liste ci-dessous), et referme-la (bouton Fermer/Retour) pour revenir à l'\u00e9cran principal.` : "";
   const text = [
     `But de l'utilisateur à accomplir : ${goal}`,
     "",
     `Étape ${step}. Voici la capture d'écran de l'état actuel de l'application.`,
     targets && targets.length ? `Éléments interactifs visibles à l'écran :
-${targetList}` : "",
+${targetList}${modalInfo}` : "",
     history.length ? "Historique de tes actions récentes (les plus récentes en dernier) :" : "C'est le début de l'exploration.",
     ...history.slice(-12).map((h) => `- ${h}`),
     "",
@@ -237,11 +253,22 @@ async function main() {
     while (steps < MAX_ACTIONS && calls < MAX_CALLS) {
       const screenshot = await page.screenshot({ type: "png" });
       let targets = [];
-      try { targets = await visibleTargets(page); } catch (e) { /* pas bloquant */ }
+      let modal = "";
+      try {
+        targets = await visibleTargets(page);
+        modal = await page.evaluate(() => {
+          for (const ov of document.querySelectorAll(".modal-overlay.show")) {
+            const t = (ov.querySelector(".modal-panel h2, .modal-panel .modal-title") || {}).textContent;
+            if (t) return t.trim().slice(0, 40);
+            return "paramètres";
+          }
+          return "";
+        });
+      } catch (e) { /* pas bloquant */ }
       calls++;
       let act = null;
       try {
-        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1, targets }) });
+        const out = await callChat({ messages: buildTurnMessages({ goal, history, screenshot, step: steps + 1, targets, modal }) });
         act = parseAction(out.text);
       } catch (e) { history.push(`erreur modèle : ${e.message}`); break; }
       if (!act) { history.push("réponse modèle invalide"); steps++; continue; }
