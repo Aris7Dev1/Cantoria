@@ -28,6 +28,10 @@ automatique à vitesse réglable, transposition en deux taps, écran maintenu
 allumé pendant la chanson. Et quand le morceau commence, plus rien à
 toucher — l'app défile toute seule.
 
+<p align="center">
+  <img src="assets/illustrations/banniere-scene.jpg" alt="Sur scène : Cantoria défile les paroles pendant que vous jouez" width="720">
+</p>
+
 ## Fonctionnalités
 
 - 📚 **Bibliothèque locale** : chansons au format ChordPro, favoris, recherche,
