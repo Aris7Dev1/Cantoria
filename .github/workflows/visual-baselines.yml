@@ -71,7 +71,10 @@ jobs:
       - name: Régénérer les baselines (contrôle)
         # xvfb-run : Electron exige un serveur X, absent des runners headless
         # (le script npm local l'enrobe déjà — ici pareil).
-        run: xvfb-run -a node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0} --update-baseline', github.event.inputs.scenarios) || '' }}
+        # --update-baseline TOUJOURS en dispatch : c'est le but du run.
+        # Bug précédent : inputs.scenarios vide (chaîne '') rendait la
+        # condition fausse -> run de contrôle seul, aucun commit.
+        run: xvfb-run -a node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios != '' && format('--scenarios={0}', github.event.inputs.scenarios) || '' }} --update-baseline
         env:
           VISUAL_ELECTRON: node_modules/electron/dist/electron
 
