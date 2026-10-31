@@ -450,6 +450,13 @@
   .help-list li{display:flex;align-items:center;justify-content:space-between;gap:14px;}
   .help-action{font-size:14.5px;color:var(--ink-mid);}
   .help-keys{display:flex;gap:4px;flex-shrink:0;}
+  /* Écran tactile (détecté par hover:none) : les indications clavier
+     (Ctrl+S, kbd des raccourcis) n'ont pas de sens sans clavier physique —
+     on les masque (issue release : nettoyage mobile). Desktop inchangé. */
+  html.touch-device .kbd{display:none;}
+  html.touch-device .kbd-only{display:none;}
+  html.touch-device .section-tools-label.shortcut-hint{display:none;}
+
   .kbd{
     font-family:inherit;font-size:12.5px;color:var(--ink-bright);
     background:var(--bg-panel-2);border:1px solid var(--border);border-bottom-width:2px;
@@ -595,7 +602,7 @@
           <button type="button" class="btn small ghost" id="editor-undo" aria-label="Annuler (Ctrl+Z)" title="Annuler (Ctrl+Z)">⟲ Annuler</button>
           <button type="button" class="btn small ghost" id="editor-redo" aria-label="Rétablir (Ctrl+Shift+Z)" title="Rétablir (Ctrl+Shift+Z)">⟳ Rétablir</button>
           <span class="section-tools-sep"></span>
-          <span class="section-tools-label">Ctrl+S pour enregistrer</span>
+          <span class="section-tools-label shortcut-hint">Ctrl+S pour enregistrer</span>
         </div>
         <textarea id="f-body" placeholder="[G]Voici les paroles [C]avec les accords entre crochets"></textarea>
       </div>
@@ -2758,12 +2765,21 @@
       items: []
     }
   ];
+  /* Écran tactile : les raccourcis clavier ne s'appliquent pas — la modale
+     d'aide n'affiche que les notes d'usage (les kbd sont masqués par CSS ;
+     ici on saute aussi les listes d'items de raccourcis pour ne pas montrer
+     de listes vides). */
+  var isTouchDevice = false;
+  try{ isTouchDevice = window.matchMedia && window.matchMedia("(hover: none)").matches; }
+  catch(e){ isTouchDevice = false; }
+  if(isTouchDevice) document.documentElement.classList.add("touch-device");
+
   function renderHelp(){
     var html = "";
     SHORTCUTS.forEach(function(section){
       html += '<div class="help-section-title">' + section.title + "</div>";
       if(section.note) html += '<div class="help-note">' + section.note + "</div>";
-      if(section.items.length){
+      if(!isTouchDevice && section.items.length){
         html += '<ul class="help-list">';
         section.items.forEach(function(item){
           html += '<li><span class="help-action">' + item.action + '</span><span class="help-keys">';
