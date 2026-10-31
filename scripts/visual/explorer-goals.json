@@ -1,0 +1,8 @@
+{
+  "_note": "Buts d'exploration de l'explorateur IA — VALIDÉS PAR LE SUPERVISEUR (issue #76). Un but est choisi au hasard par run (ou EXPLORER_GOAL en env). Décrivez des parcours d'utilisateur réels.",
+  "goals": [
+    "Tu es un guitariste qui découvre l'application pour la première fois : crée une chanson avec des accords (format ChordPro, par exemple [Am] et [G]), lance le défilement automatique, transpose la chanson. Note tout ce qui te semble confus ou cassé.",
+    "Tu prépares une répétition : cherche une chanson existante dans la bibliothèque, marque-la en favori, change de thème d'affichage, règle la taille des paroles pour lire à un mètre. Note les frictions.",
+    "Tu es en concert ce soir : ouvre une chanson, règle le décompte avant lecture, lance le défilement, navigue entre les sections pendant que ça joue. Note tout ce qui ralentit un guitariste les mains occupées."
+  ]
+}
