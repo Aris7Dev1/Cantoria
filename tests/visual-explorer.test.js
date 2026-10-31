@@ -121,3 +121,13 @@ test("les dialogs natifs sont acceptés et consignés (leçon run 3)", () => {
   assert.match(src, /d\.accept\(\)/, "acceptés automatiquement (l'utilisateur confirme)");
   assert.match(src, /\[dialog:/, "consignés dans l'historique");
 });
+
+/* Leçon du run 5 : les chansons de la bibliothèque sont des .song-card,
+   pas des boutons — le clic sur le titre seul timeoutait. Les cartes
+   doivent apparaître dans les cibles et se cliquer via leur classe. */
+test("les cartes de chansons sont des cibles cliquables (leçon run 5)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /\.song-card/, "les cartes sont extraites");
+  assert.match(src, /hasText: a/, "le clic sur une carte utilise son texte via .song-card");
+  assert.match(src, /card: true/, "les cartes sont marquées dans la liste des cibles");
+});
