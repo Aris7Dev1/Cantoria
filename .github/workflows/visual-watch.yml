@@ -1,0 +1,105 @@
+name: Visual watch
+
+# Chien de garde visuel : détection AUTOMATIQUE des problèmes d'interface.
+# Chaque lundi sur main (et à la demande) :
+#   1. boucle visuelle déterministe (captures Chromium + contrôles + comparaison
+#      aux baselines du dépôt) — zéro appel IA, brouillons prêts à relire ;
+#   2. explorateur IA : un but de parcours au hasard (explorer-goals.json),
+#      plafonds habituels (40 actions / 30 appels, mistral-small) ;
+#   3. fileur (scripts/visual/file-issues.js) : brouillons + rapport deviennent
+#      des issues GitHub label `explorer-proposition` — JAMAIS `agent-ok` :
+#      l'approbation reste un geste humain du superviseur.
+#
+# Suite de la note de visual-explorer.yml (« le passage en automatique sera une
+# décision post-observation ») : observé via les dispatchs manuels, appliqué ici
+# sur main — les PR gardent leurs workflows existants (juge, baselines).
+#
+# ⚠️ Zone superviseur.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # lundi 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: "But d'exploration (vide = but au hasard de explorer-goals.json)"
+        required: false
+        default: ""
+      run_explorer:
+        description: "Lancer l'explorateur IA (défaut : oui)"
+        type: boolean
+        default: true
+      max_issues:
+        description: "Plafond d'issues créées par run (défaut : 5)"
+        required: false
+        default: "5"
+      dry_run:
+        description: "Tout exécuter sans créer les issues"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: visual-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Chien de garde visuel
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright-core install chromium-headless-shell
+
+      # Déterministe : sans IA, sans coût — le cœur de la veille. Sort en 0
+      # même en cas de violations (elles deviennent des issues) ; un échec
+      # ici (crash de capture) doit au contraire être VISIBLE.
+      - name: Boucle visuelle déterministe
+        run: node scripts/visual/run.js --engine=chromium --out=visual-out
+
+      # Explorateur IA : un but par run, plafonds dans explorer.js. En échec
+      # il rend la main (exit 0 dans explorer.js) : le fileur traite un
+      # rapport absent ou vide sans rien créer de fantôme.
+      - name: Explorateur IA (but au hasard)
+        if: ${{ github.event_name == 'schedule' || inputs.run_explorer }}
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
+          MISTRAL_EXPLORER_MODEL: mistral-small-latest
+          EXPLORER_GOAL: ${{ inputs.goal }}
+        run: node scripts/visual/explorer.js > rapport-exploration.md || true
+
+      - name: Avertissement si clé absente
+        if: ${{ secrets.MISTRAL_API_KEY == '' }}
+        run: echo "::warning::MISTRAL_API_KEY absente des secrets — l'explorateur IA est ignoré ; la boucle déterministe tourne quand même."
+
+      - name: Créer le label explorateur-proposition (idempotent)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh label create explorer-proposition --color FBCA04 --description "Proposition automatique du chien de garde visuel — à relire avant approbation" || true
+
+      - name: Filer les issues (brouillons + exploration)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS="--drafts=visual-out/issues-drafts --explorer=rapport-exploration.md --label=explorer-proposition"
+          ARGS="$ARGS --max=${{ inputs.max_issues || '5' }}"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          node scripts/visual/file-issues.js $ARGS
