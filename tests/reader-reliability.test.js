@@ -100,11 +100,19 @@ test("la fin du défilement affiche un retour visuel", async () => {
     set(v) { this._st = v; },
   });
   doc.querySelector("#play-toggle").click();
-  /* 200 px à ~22 px/s : sous jsdom les frames arrivent vite, on boucle
-     jusqu'au toast avec un garde-fou de 5 s. */
-  const deadline = Date.now() + 5000;
+  /* Garde-fou adaptatif : sous charge (compose, CI chargée), les frames
+     jsdom arrivent lentement et un délai fixe de 5 s expirait avant la fin
+     (flake observé — le défilement progresse mais n'atteint pas le fond).
+     On boucle tant que le scroll PROGRESSE (période sans progression > 3 s
+     = échec réel), avec un plafond global large de 60 s. */
+  let lastPos = -1;
+  let lastProgress = Date.now();
+  const deadline = Date.now() + 60000;
   while (!doc.querySelector("#toast").classList.contains("show") && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 50));
+    const pos = stage.scrollTop;
+    if (pos !== lastPos) { lastPos = pos; lastProgress = Date.now(); }
+    else if (Date.now() - lastProgress > 3000) break; /* plus de progression : échec franc */
   }
   assert.ok(doc.querySelector("#toast").classList.contains("show"), "un toast s'affiche à la fin");
   assert.ok(doc.querySelector("#toast").textContent.includes("Fin"), "le toast annonce la fin de la chanson");
