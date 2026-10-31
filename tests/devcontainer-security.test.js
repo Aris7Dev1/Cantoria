@@ -82,9 +82,14 @@ test("le .env réel ne peut pas être commité", () => {
 
 test("la boucle visuelle n'embarque aucune clé et passe par la passerelle", () => {
   const dir = path.join(__dirname, "..", "scripts", "visual");
+  /* Exception CI (issue #75) : judge-ci.js est l'orchestrateur du workflow
+     visual-judge.yml — il tourne sur les runners GitHub avec secrets.MISTRAL_API_KEY.
+     AUCUN script du conteneur de dev ne doit contenir l'URL : la passerelle locale
+     (mistral-gateway) reste la seule voie en local. */
+  const ciOnly = new Set(["judge-ci.js"]);
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".js"))) {
     const src = fs.readFileSync(path.join(dir, f), "utf8");
-    assert.doesNotMatch(src, /api\.mistral\.ai/, `${f} : jamais d'appel direct à Mistral`);
+    if (!ciOnly.has(f)) assert.doesNotMatch(src, /api\.mistral\.ai/, `${f} : jamais d'appel direct à Mistral`);
     assert.doesNotMatch(src, /\b[A-Za-z0-9]{32}\b.*Bearer|Bearer\s+[A-Za-z0-9]{32}/, `${f} : pas de clé en dur`);
   }
   const run = fs.readFileSync(path.join(dir, "run.js"), "utf8");

@@ -226,3 +226,13 @@ test("les fixtures visuelles répliquent les réglages par défaut (bandeau repl
     "controlsCompactMobile seedé à true (défaut de l'app)");
   assert.ok(/controlsPinned: true/.test(fixtures), "controlsPinned seedé à true");
 });
+
+/* Issue #75 : le workflow du juge A/B existe, ne bloque jamais, et
+   consomme la clé depuis les secrets (jamais en clair). */
+test("le workflow visual-judge existe et poste un verdict consultatif", () => {
+  const wf = fs.readFileSync(path.join(ROOT, ".github/workflows/visual-judge.yml"), "utf8");
+  assert.ok(/paths:/.test(wf) && /cantoria\.html/.test(wf), "déclenché sur les PR UI uniquement");
+  assert.ok(/secrets\.MISTRAL_API_KEY/.test(wf), "clé via les secrets GitHub");
+  assert.ok(/pr comment/.test(wf), "verdict posté en commentaire de PR");
+  assert.ok(/\|\| true/.test(wf) || /consultatif/.test(wf), "le juge ne fait jamais échouer la PR");
+});

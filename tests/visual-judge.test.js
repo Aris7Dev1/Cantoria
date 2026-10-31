@@ -110,17 +110,35 @@ test("judgePair : 2 ordres × répétitions, plafond d'appels, erreurs tolérée
     const winner = firstImg === "BBBB" ? "1" : "2";
     return { text: verdictJson(winner), usage: { prompt_tokens: 100, completion_tokens: 20 } };
   };
+  /* Issue #75 : judgePair retourne { perPersona, global, usage } —
+     une passe par persona actif (défaut unique si non fournis). */
   const r = await j.judgePair({ imageA: Buffer.from("AAAA"), imageB: Buffer.from("BBBB"), repetitions: 2, call });
   assert.equal(calls, 4);
-  assert.equal(r.verdict, "B");
+  assert.equal(r.perPersona.length, 1, "un seul persona par défaut");
+  assert.equal(r.perPersona[0].verdict, "B");
+  assert.equal(r.global.B, 1);
   assert.equal(r.usage.prompt_tokens, 400);
 
   const budget = { remaining: 3 };
   const r2 = await j.judgePair({ imageA: Buffer.from("A"), imageB: Buffer.from("B"), repetitions: 2, call, budget });
   assert.equal(budget.remaining, 0);
-  assert.ok(r2.errors.some((e) => /plafond/.test(e)));
+  assert.ok(r2.perPersona[0].errors.some((e) => /plafond/.test(e)));
 
   const r3 = await j.judgePair({ imageA: Buffer.from("A"), imageB: Buffer.from("B"), repetitions: 1, call: async () => { throw new Error("boom"); } });
-  assert.equal(r3.verdict, "inconclusive");
-  assert.equal(r3.errors.length, 2);
+  assert.equal(r3.perPersona[0].verdict, "inconclusive");
+  assert.equal(r3.perPersona[0].errors.length, 2);
+
+  /* Personas multiples : chaque persona actif = une passe ; inactif = zéro appel. */
+  let callsMulti = 0;
+  const callMulti = async () => { callsMulti++; return { text: verdictJson("2"), usage: { prompt_tokens: 1, completion_tokens: 1 } }; };
+  const personas = [
+    { id: "actif-1", actif: true, description: "d1", lens: ["l1"] },
+    { id: "inactif", actif: false, description: "d2", lens: ["l2"] },
+    { id: "actif-2", actif: true, description: "d3", lens: ["l3"] },
+  ];
+  const r4 = await j.judgePair({ imageA: Buffer.from("A"), imageB: Buffer.from("B"), repetitions: 1, call: callMulti, personas });
+  assert.equal(callsMulti, 4, "2 personas actifs × 2 ordres = 4 appels (l'inactif ne coûte rien)");
+  assert.equal(r4.perPersona.length, 2);
+  assert.deepEqual(r4.perPersona.map((p) => p.persona), ["actif-1", "actif-2"]);
+  assert.equal(r4.global.tie, 2, "les deux personas préfèrent l'image 2 (position 1 = A : verdict B ici via winner=2 inversé)");
 });
