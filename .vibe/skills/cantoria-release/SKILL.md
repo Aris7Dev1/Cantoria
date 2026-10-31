@@ -5,7 +5,9 @@ description: "Charger cette skill pour préparer et publier une release Cantoria
 
 # Publier une release Cantoria
 
-Le workflow `.github/workflows/build.yml` se déclenche sur les tags `v*.*.*` (et manuellement via `workflow_dispatch`). **Sans tag, pas de release.**
+Le workflow `.github/workflows/build.yml` se déclenche sur les tags `v*.*.*`. **Sans tag, pas de release.** La procédure complète et ses pièges : `docs/procedure-release.md` — cette skill en est le résumé opératoire.
+
+**La release est multi-plateforme depuis la v1.4.0** : Windows, macOS, Linux **et l'APK Android** (`cantoria-<version>-android.apk`, joint à la même release GitHub).
 
 ## Procédure
 
@@ -15,7 +17,7 @@ Le workflow `.github/workflows/build.yml` se déclenche sur les tags `v*.*.*` (e
    git log --all --diff-filter=A --name-only --format='%h %s'
    ```
    Aucun fichier sensible (contenu sous copyright, secrets, données personnelles) ne doit y figurer. En cas de doute, purger **avant** de taguer (voir « Purger un fichier de l'historique »).
-3. **Bumper la version** dans `package.json` (décision du superviseur — zone protégée) : `1.2.1` → `1.3.0` (évolution) ou `2.0.0` (rupture).
+3. **Bumper la version** dans `package.json` (décision du superviseur — zone protégée) : source de vérité UNIQUE — desktop, Android (`versionName` + `versionCode` par segments : `1.4.0` → `10400`) et nom d'APK en dérivent. Régénérer le lock (`npm install --package-lock-only`).
 4. **Commiter** : `git commit -m "Cantoria X.Y.Z — <résumé>"`.
 5. **Taguer** (annoté — le pattern `v*.*.*` du workflow doit matcher) :
    ```bash
@@ -27,7 +29,12 @@ Le workflow `.github/workflows/build.yml` se déclenche sur les tags `v*.*.*` (e
    git push <remote> vX.Y.Z
    ```
    Le push du tag déclenche la CI : check + tests, builds Windows/macOS/Linux, publication de la release GitHub (artifacts + notes auto-générées).
-7. **Suivre** : onglet Actions du dépôt, puis onglet Releases.
+7. **Suivre** : onglet Actions du dépôt (15–20 min), puis onglet Releases. Les 4 artefacts doivent être présents (`.exe`, `.dmg`, `.AppImage`/`.deb`, `.apk`).
+
+**Pièges connus** (détails dans `docs/procedure-release.md`) :
+- **Quota d'artefacts GitHub** (plan free) : si un run échoue sur `Artifact storage quota has been hit`, purger les artefacts et attendre le recalcul (6–12 h).
+- **Tag existant non publié** (run précédent échoué avant publication) : déplacer le tag sur `main` avec un push forcé du tag — acceptable UNIQUEMENT si aucune release n'a été publiée avec ce tag.
+- **Post-release** : installer l'APK sur un émulateur avec une version antérieure — l'UpdateChecker doit proposer la mise à jour et les chansons doivent survivre.
 
 ## Purger un fichier de l'historique (fichier sensible commité par erreur)
 

@@ -23,6 +23,7 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 - Tout comportement modifié ou corrigé est couvert par un test. Un test affaibli pour passer est un échec, pas une réussite.
 - Pour un comportement d'interface, le test charge `cantoria.html` dans jsdom (comme `tests/library-recovery.test.js`) et couvre le flux réel (événements, `FileReader`, toast affiché).
 - Pour une PR qui touche à l'apparence : un rapport de mesures est présent dans `visual-out/mesures/` et le verdict de `npm run visual` (contrôles déterministes) ne remonte pas d'erreur bloquante.
+- **Couches visuelles CI** (cycle Android #54-#78) : sur une PR UI, le **verdict du juge A/B par personas** arrive en commentaire (consultatif — le relire, pas le subir) ; si l'explorateur IA a été lancé, son rapport d'expérience aussi. La **garde anti-suppression** doit être verte : une PR qui supprime des baselines sans justification explicite échoue, et c'est voulu.
 
 ## 4. Principes produit (VISION.md)
 
@@ -34,7 +35,7 @@ Le merge sur `main` est la seule validation humaine du système agentique : cett
 
 - **Content-Security-Policy** : chaque ouverture (`img-src`, `font-src`…) est justifiée par un usage réel ; pas d'`eval`/`new Function`/`import()` dynamique (`script-src 'unsafe-inline'` ne les couvre pas) ; les `blob:` URLs (`URL.createObjectURL`, ex. export) ne sont pas restreints par `default-src` mais sont à vérifier manuellement.
 - **Import** : la règle d'or — aucune chanson existante supprimée ni modifiée, les doublons ignorés (jamais fusionnés ni écrasés) ; le toast reflète le résultat.
-- **Validation manuelle** : quand l'UI change (rendu, toast, CSP), le rapport de mesures de l'agent (`visual-out/mesures/`) et le verdict de `npm run visual` remplacent l'inspection à l'œil ; le superviseur lance l'app hors conteneur uniquement pour la CSP (jsdom ne l'applique pas) et la boîte de dialogue native.
+- **Validation manuelle** : quand l'UI change (rendu, toast, CSP), le rapport de mesures de l'agent (`visual-out/mesures/`) et le verdict de `npm run visual` remplacent l'inspection à l'œil ; le superviseur lance l'app hors conteneur uniquement pour la CSP (jsdom ne l'applique pas) et la boîte de dialogue native. **Côté Android : l'émulateur reste le seul juge du vécu réel** (import/export SAF, mise à jour, rotation) — la CI prouve le code, pas le ressenti.
 
 ## 6. Verdict
 

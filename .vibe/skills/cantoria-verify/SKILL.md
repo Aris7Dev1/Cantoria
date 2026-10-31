@@ -9,7 +9,9 @@ description: "Charger cette skill pour vérifier un changement sur Cantoria avan
 
 1. `npm run check` — vérification de syntaxe (`main.js`, `preload.js`, scripts). Doit passer.
 2. `npm test` — tests unitaires et de non-régression (`node:test` + jsdom). Doit passer.
-3. Si le changement touche l'apparence (CSS, tailles, couleurs, thèmes) : `npm run visual` (Electron sous Xvfb, sans écran), puis lire `visual-out/report.md`. Le rapport de mesures de l'agent est dans `visual-out/mesures/` ; le superviseur relit le verdict après le merge.
+3. Si le changement touche l'apparence (CSS, tailles, couleurs, thèmes) : `npm run visual` en **contrôle** (sans `--update-baseline`), puis lire `visual-out/report.md` et décrire l'écart dans la PR.
+4. **Les baselines ne se régénèrent QUE par le workflow GitHub `Visual baselines`** (Actions → Run workflow) : jamais `--update-baseline` en local, jamais `git add visual-baseline` après un run échoué (leçon EPERM : des suppressions de références ont été committées par accident).
+5. Si le changement touche `android/` ou le pont : la CI `android` (JUnit + APK) est la preuve côté natif — les tests Kotlin ne tournent pas via `npm test`.
 
 ## Règles
 
@@ -29,5 +31,6 @@ description: "Charger cette skill pour vérifier un changement sur Cantoria avan
 ## Interprétation des résultats
 
 - `npm test` : relève pass / fail / skip. Tout échec est bloquant.
-- Les skips des tests `visual-*.test.js` (pas de Chromium) sont connus et non bloquants : les captures réelles passent par `npm run visual` (moteur Electron sous Xvfb).
+- Les skips des tests `visual-*.test.js` (pas de Chromium) sont connus et non bloquants : les captures réelles passent par `npm run visual` (Electron sous Xvfb, desktop) ou la CI (Chromium, mobile — Electron est écrêté à `minWidth: 860`).
+- Sur une PR UI, le **juge A/B par personas** tourne en CI et poste son verdict en commentaire : consultatif, à relire avant le merge (skill `cantoria-visual-loop`).
 - `npm run visual` produit un rapport avec erreurs et avertissements : un écart par rapport à `visual-baseline/` n'est pas forcément bloquant, mais il doit être décrit dans la PR.

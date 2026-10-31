@@ -72,3 +72,8 @@ info-bulles. Ne jamais dupliquer une liste en dur à deux endroits.
   un état caché.
 - `npm run check` puis `npm test` complets doivent passer (skill
   `cantoria-verify`).
+
+
+## Responsive mobile (leçons #55/#64)
+
+Toute nouvelle commande d'interface doit respecter : cibles tactiles **44 px** en portrait (40 px minimum sur desktop, seuil 32 px de la bibliothèque non régressif), media query portrait `max-width: 480px` (+ ratio 3/4 sous 860 px) pour les adaptations, bandeau du lecteur replié par défaut (`controlsCompactMobile`, réglage persisté). Tester via `tests/responsive-portrait.test.js` et `compact-controls.test.js` comme modèles.
