@@ -181,3 +181,19 @@ test("resolveTarget : l'args du modèle retrouve la cible réelle (carte, swatch
   // inconnu : null (retombera sur getByText)
   assert.equal(e.resolveTarget({ args: "n'importe quoi" }, targets), null);
 });
+
+/* Leçons du run 9 : (a) locator('.song-card', {hasText}) n'existe pas en
+   Playwright — filter({hasText}) est la bonne API ; (b) fill doit tolérer
+   un args sans la convention || ; (c) toute cible doit être amenée à
+   l'écran avant le clic (bringUp). */
+test("API Playwright correcte : filter() pour les cartes (bug run 9)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /\.song-card'\)\.filter\(\{ hasText: a \}\)/, "filter() et pas la surcharge inexistante");
+  assert.ok(!/locator\('\.song-card', \{ hasText/.test(src), "l'ancienne écriture invalide est retirée");
+});
+
+test("bringUp : toute cible est amenée à l'écran avant le clic", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /const bringUp = async/, "helper bringUp présent");
+  assert.ok((src.match(/bringUp\(/g) || []).length >= 4, "appliqué à tous les chemins de clic");
+});

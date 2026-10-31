@@ -181,24 +181,47 @@ async function applyAction(page, act, notes, targets) {
     case "click": {
       const a = act.args.trim();
       const target = resolveTarget(act, targets);
+      /* Amener la cible à l'écran avant de cliquer (run 9 : swatch hors
+         écran timeoutait). scrollIntoViewIfNeeded est sans effet si visible. */
+      const bringUp = async (locator) => { try { await locator.scrollIntoViewIfNeeded({ timeout: 3000 }); } catch (e) {} };
       try {
         if (/^[a-zA-Z.#][\w#.\- >.:]*$/.test(a) && a.length < 80) {
-          await page.click(a, { timeout: 6000 });
+          const loc = page.locator(a).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
         } else if (target && target.card) {
           /* Carte de chanson : cliquer la carte contenant ce titre exact —
              le .song-card est l'élément cliquable, pas le titre. */
-          await page.locator('.song-card', { hasText: a }).first().click({ timeout: 6000 });
+          const cardLoc = page.locator('.song-card').filter({ hasText: a }).first();
+          await bringUp(cardLoc);
+          await cardLoc.click({ timeout: 6000 });
         } else if (target && target.sel) {
-          await page.click(target.sel, { timeout: 6000 });
+          const loc = page.locator(target.sel).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
         } else {
-          await page.getByText(a, { exact: false }).first().click({ timeout: 6000 });
+          const loc = page.getByText(a, { exact: false }).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
         }
         return `click « ${a} »`;
       } catch (e) { return `click « ${a} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
     case "fill": {
-      const m = act.args.split("||");
-      const sel = (m[0] || "").trim(), val = (m[1] || "").trim();
+      /* Convention : « sélecteur || valeur ». Tolérance (run 9) : si le
+         modèle ne met pas de || , un args commençant par #/. est un
+         sélecteur (valeur vide), sinon c'est une valeur pour le champ
+         actuellement en focus — on tente le sélecteur le plus probable. */
+      const raw = act.args.trim();
+      const parts = raw.split("||");
+      let sel = (parts[0] || "").trim();
+      let val = (parts.length > 1) ? parts.slice(1).join("||").trim() : "";
+      if (parts.length === 1 && sel && !/^[#.]/.test(sel)) {
+        /* args sans || et sans sélecteur : valeur seule — la mettre dans
+           le champ texte ciblé par resolveTarget (ou l'élément focusé). */
+        const target = resolveTarget({ args: "" }, targets) || null;
+        val = sel; sel = (target && target.sel) || "#f-body";
+      }
       try { await page.fill(sel, val, { timeout: 6000 }); return `saisie dans « ${sel} »`; }
       catch (e) { return `saisie « ${sel} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
