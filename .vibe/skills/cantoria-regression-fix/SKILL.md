@@ -47,6 +47,11 @@ description: "Charger cette skill pour corriger un bug de comportement signalé 
 
 - Branche `vibe/<sujet>-<jeton>` (jamais `main`), commit en français, un
   commit = un sujet.
+- **Une branche mergée est close** (leçons des merges #63/#68 : deux
+  correctifs poussés sur des branches déjà mergées n'ont jamais atteint
+  `main` et ont créé des bugs silencieux) : un correctif post-merge part
+  d'une NOUVELLE branche depuis `main`, après avoir vérifié
+  `git merge-base --is-ancestor <commit> origin/main`.
 - `npm run check` + `npm test` complets avant la PR (skill `cantoria-verify`).
 - Corps de la PR : reproduction → cause démontrée → correction → tests
   (voir PR #32 comme exemple).
