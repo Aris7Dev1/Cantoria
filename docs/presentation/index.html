@@ -447,12 +447,27 @@
   <!-- 8 - FIN -->
   <section class="slide center">
     <div class="wrap">
-      <svg class="rise" viewBox="0 0 120 120" width="86" height="86" aria-hidden="true">
-        <circle cx="60" cy="60" r="56" fill="none" stroke="#fbbf24" stroke-width="4" opacity=".55"/>
-        <circle cx="47" cy="74" r="10" fill="#fbbf24"/>
-        <rect x="55" y="34" width="4.5" height="42" rx="2" fill="#fbbf24"/>
-        <path d="M55 34 q16 5 18 20 q-9 -11 -18 -8 z" fill="#fbbf24"/>
-        <line x1="38" y1="52" x2="82" y2="52" stroke="#2dd4bf" stroke-width="4" stroke-linecap="round"/>
+      <svg class="rise" viewBox="0 0 1024 1024" width="110" height="110" aria-hidden="true">
+        <defs>
+          <linearGradient id="lgfin" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+        <circle cx="512" cy="530" r="260" fill="none" stroke="url(#lgfin)" stroke-width="108" stroke-linecap="round" stroke-dasharray="1306 328"/>
+        <circle cx="512" cy="530" r="88" fill="#fff7ed"/>
+        <g stroke="#5c3a1c" stroke-width="7">
+          <line x1="473" y1="569" x2="551" y2="491"/>
+          <line x1="487" y1="583" x2="565" y2="505"/>
+        </g>
+        <g transform="translate(690 392) rotate(-45)">
+          <rect x="-10" y="-29" width="170" height="58" rx="29" fill="#fff7ed"/>
+          <g stroke="#b45309" stroke-width="5">
+            <line x1="45" y1="-29" x2="45" y2="29"/>
+            <line x1="85" y1="-29" x2="85" y2="29"/>
+            <line x1="125" y1="-29" x2="125" y2="29"/>
+          </g>
+          <circle cx="65" cy="0" r="9" fill="#2dd4bf"/>
+        </g>
       </svg>
       <h1 class="rise d1" style="margin-top:26px">La musique s'affiche.<br /><em>Vous jouez.</em></h1>
       <p class="lead rise d2" style="margin-top:22px">Cantoria — le carnet de chants hors-ligne, multi-écrans, gratuit et libre.</p>
