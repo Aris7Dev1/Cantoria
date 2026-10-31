@@ -203,3 +203,16 @@ test("le versionCode Android est calculé par segments paddés (croissant)", () 
   assert.ok(!/replaceAll\('\[\^0-9\]', ''\)/.test(gradle),
     "l'ancienne concaténation simple est retirée");
 });
+
+/* CI visuelle (décision superviseur, vague 1 full-cloud) : le workflow
+   de régénération des baselines existe et ne committe QUE sur dispatch. */
+test("le workflow visual-baselines existe et protège les références", () => {
+  const wf = fs.readFileSync(path.join(ROOT, ".github/workflows/visual-baselines.yml"), "utf8");
+  assert.ok(/workflow_dispatch/.test(wf), "déclenchement manuel (jamais automatique)");
+  assert.ok(/Committer les baselines \(dispatch uniquement\)/.test(wf),
+    "le commit des baselines est réservé au dispatch explicite");
+  assert.ok(/if: github.event_name == 'workflow_dispatch'/.test(wf),
+    "garde if sur le commit");
+  assert.ok(/Garde anti-suppression/.test(wf),
+    "garde anti-suppression sur les PR (piège EPERM)");
+});

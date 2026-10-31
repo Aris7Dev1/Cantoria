@@ -1,0 +1,96 @@
+name: Visual baselines
+
+# Régénération des baselines visuelles en CI (décision superviseur) :
+# libère le poste local du problème de montage read-only et garantit des
+# références produites dans un environnement reproductible.
+#   - workflow_dispatch avec scenarios : régénérer + COMMITTER + pousser
+#     (usage : après un changement UI validé)
+#   - workflow_dispatch sans scenarios : contrôle seul, artefact rapport
+#   - pull_request : contrôle de non-régression sur les captures
+#     (jamais de commit automatique sur une PR)
+#
+# ⚠️ Zone superviseur : ce workflow ne s'exécute qu'à la demande —
+# les baselines ne sont jamais écrasées sans geste explicite.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: "Scénarios à régénérer (vide = tous) — ex: player-portrait,player-portrait"
+        required: false
+        default: ""
+  pull_request:
+    branches: [main]
+    paths:
+      - "cantoria.html"
+      - "scripts/visual/**"
+      - "visual-baseline/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  baselines:
+    name: Baselines visuelles
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Régénérer les baselines (contrôle)
+        run: node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0} --update-baseline', github.event.inputs.scenarios) || '' }}
+        env:
+          VISUAL_ELECTRON: node_modules/electron/dist/electron
+
+      # workflow_dispatch uniquement : committer les nouvelles références
+      - name: Committer les baselines (dispatch uniquement)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- visual-baseline; then
+            echo "Aucun changement de baseline."
+          else
+            git add visual-baseline
+            git commit -m "Baselines visuelles régénérées en CI (${{ github.event.inputs.scenarios || 'tous scénarios' }})"
+            git push
+          fi
+
+      # pull_request uniquement : vérifier qu'aucune baseline n'est SUPPRIMÉE
+      # (garde contre le piège EPERM : des D sur visual-baseline = échec)
+      - name: Garde anti-suppression (PR uniquement)
+        if: github.event_name == 'pull_request'
+        run: |
+          DELETED=$(git diff --name-status origin/main...HEAD -- visual-baseline | awk -F'\t' '$1=="D"' | wc -l)
+          if [ "$DELETED" -gt 0 ]; then
+            echo "::error::Cette PR supprime $DELETED baseline(s). Une suppression de référence visuelle doit être explicite et validée."
+            exit 1
+          fi
+          echo "Aucune baseline supprimée."
+
+      - name: Upload rapport (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-report
+          path: visual-out/
+          retention-days: 1
+          if-no-files-found: ignore
