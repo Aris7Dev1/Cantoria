@@ -149,3 +149,72 @@ test("modale ouverte : les cibles se limitent à son contenu + avertissement", (
   assert.match(src, /Une fenêtre modale est ouverte/, "avertissement dans le prompt");
   assert.match(src, /scope\.querySelectorAll/, "cibles limitées au scope de la modale");
 });
+
+/* Leçon du run 7 : #btn-save est sous le fold du formulaire éditeur
+   (overflow-y: auto) — invisible dans le viewport portrait, l'agent
+   ne savait pas l'atteindre. */
+test("cibles hors écran exposées + scroll vers une cible nommée (run 7)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /offscreen/, "les cibles hors écran sont marquées, pas masquées");
+  assert.match(src, /hors écran : fais défiler/, "le prompt indique comment les atteindre");
+  assert.match(src, /scrollIntoViewIfNeeded/, "scroll vers une cible nommée");
+});
+
+/* Leçon du run 8 : la branche act.target.card n'était jamais prise —
+   parseAction ne remplissait pas act.target. La cible est désormais
+   résolue côté orchestrateur contre la liste réelle du tour. */
+test("resolveTarget : l'args du modèle retrouve la cible réelle (carte, swatch)", () => {
+  const targets = [
+    { text: "＋ Nouvelle chanson", sel: "#btn-new" },
+    { text: "Ballade de minuit", card: true },
+    { text: "Thème Vibe", sel: '.swatch[data-theme="vibe"]' },
+  ];
+  // carte par titre exact
+  const card = e.resolveTarget({ args: "Ballade de minuit" }, targets);
+  assert.ok(card && card.card, "la carte est résolue");
+  // par préfixe (le modèle tronque parfois)
+  const pref = e.resolveTarget({ args: "Ballade de minuit (reprise)" }, targets);
+  assert.ok(pref && pref.card, "résolution par préfixe");
+  // bouton par texte
+  const btn = e.resolveTarget({ args: "＋ Nouvelle chanson" }, targets);
+  assert.equal(btn.sel, "#btn-new");
+  // inconnu : null (retombera sur getByText)
+  assert.equal(e.resolveTarget({ args: "n'importe quoi" }, targets), null);
+});
+
+/* Leçons du run 9 : (a) locator('.song-card', {hasText}) n'existe pas en
+   Playwright — filter({hasText}) est la bonne API ; (b) fill doit tolérer
+   un args sans la convention || ; (c) toute cible doit être amenée à
+   l'écran avant le clic (bringUp). */
+test("API Playwright correcte : filter() pour les cartes (bug run 9)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /\.song-card'\)\.filter\(\{ hasText: a \}\)/, "filter() et pas la surcharge inexistante");
+  assert.ok(!/locator\('\.song-card', \{ hasText/.test(src), "l'ancienne écriture invalide est retirée");
+});
+
+test("bringUp : toute cible est amenée à l'écran avant le clic", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /const bringUp = async/, "helper bringUp présent");
+  assert.ok((src.match(/bringUp\(/g) || []).length >= 4, "appliqué à tous les chemins de clic");
+});
+
+/* Leçon du run 10 : le modèle renvoyait parfois ses args AVEC les
+   guillemets décoratifs (« Ballade de minuit ») — resolveTarget échouait
+   et getByText cherchait une chaîne introuvable. */
+test("guillemets décoratifs nettoyés + résolution par sous-chaîne (run 10)", () => {
+  // parseAction retire « » " " autour des args
+  const act = e.parseAction('{"action":"click","args":"« Ballade de minuit »","observation":"ok"}');
+  assert.equal(act.args, "Ballade de minuit", "les guillemets sont retirés");
+  // resolveTarget par sous-chaîne normalisée (espaces/quotes ignorés)
+  const targets = [{ text: "Ballade de minuit", card: true }];
+  const t = e.resolveTarget({ args: "« Ballade de minuit »" }, targets);
+  assert.ok(t && t.card, "la carte est résolue même avec décorations");
+});
+
+/* Leçon du run 11 : fill avec un sélecteur seul remplissait le champ
+   avec "" — le placeholder restait, le modèle croyait sa saisie perdue. */
+test("fill sans valeur = erreur explicite, jamais un fill vide silencieux", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /valeur manquante : convention/, "erreur explicite si valeur absente");
+  assert.match(src, /if \(!val\)/, "garde sur la valeur vide");
+});

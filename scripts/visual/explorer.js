@@ -58,7 +58,7 @@ async function visibleTargets(page) {
     for (const el of els) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
-      if (r.bottom < 0 || r.top > window.innerHeight) continue; // hors écran vertical
+      const offscreen = r.bottom < 0 || r.top > window.innerHeight;
       const text = (el.textContent || "").trim().slice(0, 40) || el.getAttribute("placeholder") || el.getAttribute("aria-label") || el.title || "";
       if (!text) continue;
       let sel = el.id ? "#" + el.id : undefined;
@@ -68,7 +68,7 @@ async function visibleTargets(page) {
       if (!sel && el.classList.contains("swatch") && el.dataset.theme) {
         sel = `.swatch[data-theme="${el.dataset.theme}"]`;
       }
-      out.push({ text, sel });
+      out.push({ text, sel, offscreen });
       if (out.length >= 25) break; // borné : le prompt reste compact
     }
     /* Cartes cliquables (leçon du run 5 : les chansons de la bibliothèque
@@ -96,7 +96,7 @@ const ACTIONS = [
   { id: "click", args: "sélecteur CSS ou texte visible du bouton/élément", desc: "Cliquer un élément" },
   { id: "fill", args: "sélecteur CSS du champ + texte à saisir", desc: "Remplir un champ de saisie" },
   { id: "press", args: "touche (ex. Enter, Escape, ArrowDown)", desc: "Appuyer une touche clavier" },
-  { id: "scroll", args: "delta_y (nombre, positif = vers le bas)", desc: "Faire défiler la page" },
+  { id: "scroll", args: "delta_y (nombre) OU le texte/sélecteur d'une cible à amener à l'écran (ex : #btn-save)", desc: "Faire défiler la page ou amener une cible à l'écran" },
   { id: "back", args: "aucun", desc: "Navigation retour" },
   { id: "note", args: "observation/friction à consigner (texte libre)", desc: "Noter quelque chose sans agir" },
   { id: "done", args: "résumé final en une phrase", desc: "Terminer l'exploration" },
@@ -104,7 +104,7 @@ const ACTIONS = [
 
 function buildTurnMessages({ goal, history, screenshot, step, targets, modal }) {
   const b64 = (buf) => "data:image/png;base64," + Buffer.from(buf).toString("base64");
-  const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}`).join("\n");
+  const targetList = (targets || []).map((t) => `- cliquable : « ${t.text} »${t.sel ? ` (sélecteur ${t.sel})` : ""}${t.offscreen ? " (hors écran : fais défiler avec l'action scroll vers le bas)" : ""}`).join("\n");
   const modalInfo = modal ? `\n**Une fenêtre modale est ouverte** (« ${modal} ») : n'interagis QU'AVEC ses éléments (la liste ci-dessous), et referme-la (bouton Fermer/Retour) pour revenir à l'\u00e9cran principal.` : "";
   const text = [
     `But de l'utilisateur à accomplir : ${goal}`,
@@ -141,9 +141,13 @@ function parseAction(text) {
   const start = candidate.indexOf("{"), end = candidate.lastIndexOf("}");
   if (start === -1 || end <= start) return null;
   try {
-    const o = JSON.parse(candidate.slice(start, end + 1));
+    const o = JSON.parse(candidate.slice(start + 1 ? start : start, end + 1));
     if (!o.action || !ACTIONS.some((a) => a.id === o.action)) return null;
-    return { action: o.action, args: String(o.args || ""), observation: String(o.observation || "") };
+    /* Le modele enroule parfois ses args de guillemets decoratifs (« »,
+       " ") copiés du prompt (leçon run 10) : les retirer des deux côtés. */
+    const clean = (s) => String(s || "").trim()
+      .replace(/^[\u00ab\u00bb“”'"\s]+/, "").replace(/[\u00ab\u00bb“\u201d'"\s]+$/, "");
+    return { action: o.action, args: clean(o.args), observation: String(o.observation || "").trim() };
   } catch (e) { return null; }
 }
 
@@ -162,27 +166,76 @@ async function callChat({ messages, fetchImpl = fetch }) {
 }
 
 /* Exécute une action sur la page — primitives fermées, jamais de code arbitraire. */
+/* Résout la cible visée par une action : l'args du modèle contre la liste
+   des cibles réelles du tour (leçon run 8 : la branche act.target.card
+   n'était JAMAIS prise car parseAction ne remplissait pas act.target —
+   le clic carte retombait sur getByText et timeoutait). */
+function resolveTarget(act, targets) {
+  if (!targets || !targets.length) return null;
+  const a = (act.args || "").trim().toLowerCase();
+  if (!a) return null;
+  const norm = (s) => (s || "").toLowerCase().replace(/[\u00ab\u00bb“”'" ]/g, "");
+  // correspondance exacte d'abord, puis préfixe, puis sous-chaîne normalisée
+  return targets.find((t) => (t.text || "").toLowerCase() === a)
+      || targets.find((t) => a.startsWith((t.text || "").toLowerCase()))
+      || targets.find((t) => norm(a).includes(norm(t.text)) || norm(t.text).includes(norm(a)))
+      || null;
+}
+
 async function applyAction(page, act, notes, targets) {
   switch (act.action) {
     case "click": {
       const a = act.args.trim();
+      const target = resolveTarget(act, targets);
+      /* Amener la cible à l'écran avant de cliquer (run 9 : swatch hors
+         écran timeoutait). scrollIntoViewIfNeeded est sans effet si visible. */
+      const bringUp = async (locator) => { try { await locator.scrollIntoViewIfNeeded({ timeout: 3000 }); } catch (e) {} };
       try {
         if (/^[a-zA-Z.#][\w#.\- >.:]*$/.test(a) && a.length < 80) {
-          await page.click(a, { timeout: 6000 });
-        } else if (act.target && act.target.card) {
+          const loc = page.locator(a).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
+        } else if (target && target.card) {
           /* Carte de chanson : cliquer la carte contenant ce titre exact —
              le .song-card est l'élément cliquable, pas le titre. */
-          await page.locator('.song-card', { hasText: a }).first().click({ timeout: 6000 });
+          const cardLoc = page.locator('.song-card').filter({ hasText: a }).first();
+          await bringUp(cardLoc);
+          await cardLoc.click({ timeout: 6000 });
+        } else if (target && target.sel) {
+          const loc = page.locator(target.sel).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
         } else {
-          await page.getByText(a, { exact: false }).first().click({ timeout: 6000 });
+          const loc = page.getByText(a, { exact: false }).first();
+          await bringUp(loc);
+          await loc.click({ timeout: 6000 });
         }
         return `click « ${a} »`;
       } catch (e) { return `click « ${a} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
     case "fill": {
-      const m = act.args.split("||");
-      const sel = (m[0] || "").trim(), val = (m[1] || "").trim();
-      try { await page.fill(sel, val, { timeout: 6000 }); return `saisie dans « ${sel} »`; }
+      /* Convention : « sélecteur || valeur ». Tolérance (run 9) : si le
+         modèle ne met pas de || , un args commençant par #/. est un
+         sélecteur (valeur vide), sinon c'est une valeur pour le champ
+         actuellement en focus — on tente le sélecteur le plus probable. */
+      const raw = act.args.trim();
+      const parts = raw.split("||");
+      let sel = (parts[0] || "").trim();
+      let val = (parts.length > 1) ? parts.slice(1).join("||").trim() : "";
+      if (parts.length === 1 && sel && !/^[#.]/.test(sel)) {
+        /* args sans || et sans sélecteur : valeur seule — la mettre dans
+           le champ texte ciblé par resolveTarget (ou l'élément focusé). */
+        const target = resolveTarget({ args: "" }, targets) || null;
+        val = sel; sel = (target && target.sel) || "#f-body";
+      }
+      /* Leçon du run 11 : un sélecteur seul (sans || valeur) remplissait
+         le champ avec une chaîne VIDE — le placeholder restait visible et
+         le modèle croyait sa saisie perdue. Une saisie sans valeur est un
+         ERREUR explicite, pas un silence. */
+      if (!val) {
+        return `saisie « ${sel} » a ÉCHOUÉ (valeur manquante : convention « sélecteur || valeur »)`;
+      }
+      try { await page.fill(sel, val, { timeout: 6000 }); return `saisie « ${sel} » : « ${val.slice(0, 40)} »`; }
       catch (e) { return `saisie « ${sel} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
     case "press": {
@@ -190,7 +243,20 @@ async function applyAction(page, act, notes, targets) {
       catch (e) { return `touche ${act.args} a ÉCHOUÉ`; }
     }
     case "scroll": {
-      const dy = parseInt(act.args, 10) || 300;
+      const a = act.args.trim();
+      if (a && isNaN(parseInt(a, 10))) {
+        /* Scroll vers une cible nommée (texte ou sélecteur) : l'amener
+           à l'écran (leçon run 7 : #btn-save sous le fold, l'agent
+           ne savait pas l'atteindre). */
+        try {
+          const loc = a.startsWith("#") || a.startsWith(".")
+            ? page.locator(a).first()
+            : page.getByText(a, { exact: false }).first();
+          await loc.scrollIntoViewIfNeeded({ timeout: 4000 });
+          return `défilement vers « ${a} »`;
+        } catch (e) { return `défilement vers « ${a} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
+      }
+      const dy = parseInt(a, 10) || 300;
       await page.mouse.wheel(0, dy);
       return `défilement ${dy}px`;
     }
@@ -317,6 +383,6 @@ async function main() {
   process.stdout.write(lines.join("\n"));
 }
 
-module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, visibleTargets, ACTIONS };
+module.exports = { loadGoals, buildTurnMessages, parseAction, applyAction, visibleTargets, resolveTarget, ACTIONS };
 
 if (require.main === module) main().catch((e) => { console.error("Explorateur en échec :", e.message); process.exit(0); });
