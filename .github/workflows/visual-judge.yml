@@ -1,0 +1,73 @@
+name: Visual judge
+
+# Juge A/B par personas (issue #75) : sur chaque PR touchant l'interface,
+# capture les scénarios impactés, exécute le juge avec la clé Mistral
+# (secrets.MISTRAL_API_KEY) et poste le VERDICT EN COMMENTAIRE DE PR.
+# Le verdict informe, ne bloque jamais : le merge reste décision humaine.
+#
+# ⚠️ Zone superviseur : scripts/visual/ et ce workflow sont protégés.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "cantoria.html"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: judge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  judge:
+    name: Juge A/B (personas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # origine/baselines nécessaires aux comparaisons
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Installer Chromium pour Playwright
+        run: npx playwright-core install chromium-headless-shell
+
+      # Captures de la version courante de la PR (Chromium, le moteur qui
+      # sait capturer mobile ET desktop sans contrainte de fenêtre).
+      - name: Capturer la PR (courant)
+        run: node scripts/visual/run.js --engine=chromium --out=visual-out/pr
+
+      # Les baselines (référence) sont dans le dépôt : le juge compare
+      # visual-out/pr/current vs visual-baseline.
+      - name: Juge A/B par personas + commentaire de PR
+        if: env.MISTRAL_API_KEY != ''
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node scripts/visual/judge-ci.js > verdict.md || true
+          if [ -s verdict.md ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file verdict.md
+          else
+            echo "Aucun verdict produit (pas de comparaison possible ou erreur) — voir le log."
+          fi
+        # Le pas ne fait jamais échouer la PR : le verdict est consultatif.
+
+      - name: Avertissement si clé absente
+        if: env.MISTRAL_API_KEY == ''
+        run: echo "::warning::MISTRAL_API_KEY absente des secrets — le juge ne peut pas tourner. Ajoutez-la dans Settings → Secrets and variables → Actions."

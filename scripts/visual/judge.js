@@ -6,6 +6,30 @@
  */
 const fs = require("node:fs");
 
+/* Personas (issue #75) : la lens du juge est composée depuis
+   scripts/visual/personas.json — fichier VALIDÉ PAR LE SUPERVISEUR.
+   Un persona actif = un jeu d'appels ; inactif = zéro appel.
+   Défaut sûr si le fichier est absent : le persona historique. */
+function loadPersonas(personasPath) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(personasPath, "utf8"));
+    const list = (raw.personas || []).filter((p) => p.id && Array.isArray(p.lens) && p.lens.length);
+    if (list.length) return list;
+  } catch (e) { /* fichier absent ou illisible : défaut ci-dessous */ }
+  return [{ id: "scene-standard", actif: true, description: "défaut", lens: [
+    "Guitariste qui chante, debout ou assis à environ un mètre de l'écran, les deux mains sur la guitare, souvent sous une lumière faible.",
+  ]}];
+}
+
+function personaPrompt(persona) {
+  return [
+    "Tu évalues l'interface d'une application de paroles et d'accords à défilement automatique.",
+    "Utilisateur évalué (" + persona.id + ") : " + persona.description,
+    ...persona.lens,
+  ].join(" ");
+}
+
+/* Compat : le PERSONA historique reste exporté (tests existants). */
 const PERSONA = [
   "Tu évalues l'interface d'une application de bureau de paroles et d'accords à défilement automatique.",
   "Utilisateur : un guitariste qui chante, debout ou assis à environ un mètre de l'écran, les deux mains sur la guitare, souvent sous une lumière faible.",
@@ -15,7 +39,8 @@ const PERSONA = [
 
 const CRITERIA = ["readability_at_distance", "contrast", "clarity_of_controls", "visual_noise"];
 
-function buildMessages({ imageA, imageB, order, intent }) {
+function buildMessages({ imageA, imageB, order, intent, persona }) {
+  const systemPrompt = persona ? personaPrompt(persona) : PERSONA;
   const [first, second] = order === "BA" ? [imageB, imageA] : [imageA, imageB];
   const b64 = (buf) => "data:image/png;base64," + Buffer.from(buf).toString("base64");
   const text = [
@@ -28,7 +53,7 @@ function buildMessages({ imageA, imageB, order, intent }) {
     "« visual_noise » : « 1 » ou « 2 » désigne l'image la plus calme. Si les images sont identiques ou équivalentes pour cet usage, réponds « tie ». Au plus 6 observations.",
   ].filter(Boolean).join("\n");
   return [
-    { role: "system", content: PERSONA },
+    { role: "system", content: systemPrompt },
     { role: "user", content: [
       { type: "text", text },
       { type: "image_url", image_url: b64(first) },
@@ -153,29 +178,46 @@ async function callChat({ baseUrl, apiKey, model, messages, fetchImpl = fetch, t
  * Juge une paire. repetitions = nombre de fois par ordre (2 ordres => 2×repetitions appels).
  * Les appels sont séquentiels : on ne dépasse pas le plafond de requêtes de la passerelle.
  */
-async function judgePair({ imageA, imageB, intent, repetitions = 2, baseUrl, apiKey, model, fetchImpl, call = callChat, budget }) {
-  const runs = [];
-  const errors = [];
+async function judgePair({ imageA, imageB, intent, repetitions = 2, baseUrl, apiKey, model, fetchImpl, call = callChat, budget, personas, personasPath }) {
+  /* Issue #75 : une passe par persona ACTIF (les inactifs ne coûtent rien).
+     Sans personas fournis : comportement historique (PERSONA unique). */
+  const active = personas
+    ? personas.filter((p) => p.actif)
+    : loadPersonas(personasPath || "").filter((p) => p.actif);
+  const list = active.length ? active : [{ id: "scene-standard", actif: true, description: "défaut", lens: [] }];
   let usage = { prompt_tokens: 0, completion_tokens: 0 };
-  for (const order of ["AB", "BA"]) {
-    for (let i = 0; i < repetitions; i++) {
-      if (budget && budget.remaining <= 0) { errors.push("plafond d'appels atteint"); continue; }
-      if (budget) budget.remaining--;
-      try {
-        const out = await call({ baseUrl, apiKey, model, messages: buildMessages({ imageA, imageB, order, intent }), fetchImpl });
-        if (out.usage) { usage.prompt_tokens += out.usage.prompt_tokens || 0; usage.completion_tokens += out.usage.completion_tokens || 0; }
-        const verdict = parseVerdict(out.text);
-        if (!verdict) errors.push(`réponse invalide (${order}, essai ${i + 1})`);
-        runs.push({ order, verdict });
-      } catch (e) {
-        errors.push(`${order} essai ${i + 1} : ${e.message}`);
-        runs.push({ order, verdict: null });
+  const perPersona = [];
+  for (const persona of list) {
+    const runs = [];
+    const errors = [];
+    for (const order of ["AB", "BA"]) {
+      for (let i = 0; i < repetitions; i++) {
+        if (budget && budget.remaining <= 0) { errors.push("plafond d'appels atteint"); continue; }
+        if (budget) budget.remaining--;
+        try {
+          const out = await call({ baseUrl, apiKey, model, messages: buildMessages({ imageA, imageB, order, intent, persona }), fetchImpl });
+          if (out.usage) { usage.prompt_tokens += out.usage.prompt_tokens || 0; usage.completion_tokens += out.usage.completion_tokens || 0; }
+          const verdict = parseVerdict(out.text);
+          if (!verdict) errors.push(`réponse invalide (${order}, essai ${i + 1})`);
+          runs.push({ order, verdict });
+        } catch (e) {
+          errors.push(`${order} essai ${i + 1} : ${e.message}`);
+          runs.push({ order, verdict: null });
+        }
       }
     }
+    perPersona.push({ persona: persona.id, ...aggregate(runs), errors });
   }
-  return { ...aggregate(runs), errors, usage };
+  /* Verdict global : majorité des personas (information, jamais bloquant). */
+  const global = perPersona.reduce((acc, p) => {
+    if (p.verdict === "B") acc.B = (acc.B || 0) + 1;
+    else if (p.verdict === "A") acc.A = (acc.A || 0) + 1;
+    else acc.tie = (acc.tie || 0) + 1;
+    return acc;
+  }, {});
+  return { perPersona, global, usage };
 }
 
 function readPng(p) { return fs.readFileSync(p); }
 
-module.exports = { PERSONA, buildMessages, extractJson, parseVerdict, realImage, majority, aggregate, callChat, judgePair, readPng };
+module.exports = { PERSONA, buildMessages, extractJson, parseVerdict, realImage, majority, aggregate, callChat, judgePair, readPng, loadPersonas, personaPrompt };
