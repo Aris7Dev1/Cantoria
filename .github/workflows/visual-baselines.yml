@@ -68,17 +68,18 @@ jobs:
           fi
           test -x node_modules/electron/dist/electron
 
-      - name: Régénérer les baselines (contrôle)
-        # xvfb-run : Electron exige un serveur X, absent des runners headless
-        # (le script npm local l'enrobe déjà — ici pareil).
-        # --update-baseline TOUJOURS en dispatch : c'est le but du run.
-        # Bug précédent : inputs.scenarios vide (chaîne '') rendait la
-        # condition fausse -> run de contrôle seul, aucun commit.
+      - name: Régénérer les baselines desktop (Electron)
+        # Electron pour le desktop (moteur historique). xvfb-run : serveur X requis.
         run: xvfb-run -a node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios != '' && format('--scenarios={0}', github.event.inputs.scenarios) || '' }} --update-baseline
-        env:
-          VISUAL_ELECTRON: node_modules/electron/dist/electron
 
-      # workflow_dispatch uniquement : committer les nouvelles références
+      # CORRECTIF : les scénarios MOBILES (412x915) ne peuvent pas être
+      # capturés par Electron — main.js impose minWidth:860, setContentSize(412)
+      # est écrêté à 860, la media query du bandeau replié (<=480px) ne
+      # s'active jamais. Preuve : les player-portrait faisaient 860x915.
+      # Chromium fournit un vrai viewport 412x915.
+      - name: Régénérer les baselines mobiles (Chromium, viewport réel)
+        run: node scripts/visual/run.js --engine=chromium --scenarios=library-portrait,player-portrait --update-baseline
+
       - name: Committer les baselines (dispatch uniquement)
         if: github.event_name == 'workflow_dispatch'
         run: |
