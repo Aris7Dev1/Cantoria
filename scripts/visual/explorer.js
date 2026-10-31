@@ -137,9 +137,9 @@ async function applyAction(page, act, notes) {
       const a = act.args.trim();
       try {
         if (/^[a-zA-Z.#][\w#.\- >.:]*$/.test(a) && a.length < 80) {
-          await page.click(a, { timeout: 4000 });
+          await page.click(a, { timeout: 6000 });
         } else {
-          await page.getByText(a, { exact: false }).first().click({ timeout: 4000 });
+          await page.getByText(a, { exact: false }).first().click({ timeout: 6000 });
         }
         return `click « ${a} »`;
       } catch (e) { return `click « ${a} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
@@ -147,7 +147,7 @@ async function applyAction(page, act, notes) {
     case "fill": {
       const m = act.args.split("||");
       const sel = (m[0] || "").trim(), val = (m[1] || "").trim();
-      try { await page.fill(sel, val, { timeout: 4000 }); return `saisie dans « ${sel} »`; }
+      try { await page.fill(sel, val, { timeout: 6000 }); return `saisie dans « ${sel} »`; }
       catch (e) { return `saisie « ${sel} » a ÉCHOUÉ (${e.message.split("\n")[0]})`; }
     }
     case "press": {
@@ -183,6 +183,15 @@ async function main() {
   const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-gpu"] });
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
+  /* Dialogs natifs (uiConfirm / alert) : un testeur autonome doit répondre.
+     On accepte (l'utilisateur confirme) et on consigne — leçon du run 3 :
+     #btn-editor-back ouvre « Quitter sans enregistrer ? » et l'explorateur
+     timeoutait derrière un dialog jamais vu. */
+  const dialogLog = [];
+  page.on("dialog", async (d) => {
+    dialogLog.push(`${d.type()} : ${d.message().slice(0, 80)}`);
+    await d.accept().catch(() => {});
+  });
   /* Seed avant le premier chargement : l'explorateur découvre un carnet VIVANT
      (leçon du premier rapport : but « concert » impossible sur un carnet vide,
      l'explorateur bouclait sur « Ton carnet est vide »). On réutilise les
@@ -220,7 +229,11 @@ async function main() {
       steps++;
       const desc = await applyAction(page, act, notes);
       if (act.action === "done") { history.push(`terminé : ${act.args}`); break; }
-      const entry = `${desc}${act.observation ? ` — ${act.observation}` : ""}`;
+      let entry = `${desc}${act.observation ? ` — ${act.observation}` : ""}`;
+      if (dialogLog.length) {
+        entry += ` [dialog: ${dialogLog[dialogLog.length - 1]}]`;
+        dialogLog.length = 0;
+      }
       history.push(entry);
       if (/ÉCHOUÉ/.test(desc)) frictions.push(entry);
       /* Anti-boucle (leçon du premier rapport : 12 notes identiques d'affilée

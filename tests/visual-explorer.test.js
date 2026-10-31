@@ -112,3 +112,12 @@ test("visibleTargets : borne le nombre de cibles (prompt compact)", () => {
   const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
   assert.match(src, /out\.length >= 25/, "25 cibles maximum par tour");
 });
+
+/* Leçon du 3e rapport : #btn-editor-back ouvre une confirmation native
+   (uiConfirm) — l'agent timeoutait derrière un dialog jamais vu. */
+test("les dialogs natifs sont acceptés et consignés (leçon run 3)", () => {
+  const src = fs.readFileSync(path.join(ROOT, "scripts/visual/explorer.js"), "utf8");
+  assert.match(src, /page\.on\("dialog"/, "écoute des dialogs natifs");
+  assert.match(src, /d\.accept\(\)/, "acceptés automatiquement (l'utilisateur confirme)");
+  assert.match(src, /\[dialog:/, "consignés dans l'historique");
+});
