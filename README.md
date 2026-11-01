@@ -12,7 +12,7 @@
 Bibliothèque de chansons, lecteur à défilement automatique, transposition,
 accords et diagrammes — 100 % hors-ligne, vos données restent chez vous.
 
-[![Version](https://img.shields.io/badge/version-1.5.0-gold)](https://github.com/Aris7Dev1/Cantoria/releases)
+[![Version](https://img.shields.io/badge/version-1.6.0-gold)](https://github.com/Aris7Dev1/Cantoria/releases)
 [![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-teal)](https://github.com/Aris7Dev1/Cantoria/releases)
 [![Licence](https://img.shields.io/badge/licence-MIT-blue)](./LICENSE)
 [![Statut](https://img.shields.io/badge/statut-stable-brightgreen)]()
