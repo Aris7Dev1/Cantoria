@@ -172,6 +172,38 @@ test("la release attache l'APK nommé d'après la version de package.json", () =
   assert.ok(/assembleRelease/.test(build), "APK release (signé debug faute de keystore)");
 });
 
+/* Signature release de l'APK (keystore superviseur) : le keystore vient des
+   secrets CI ou d'un fichier local, JAMAIS du dépôt, et le repli debug reste
+   explicite. */
+test("le build release signe avec un keystore externe, jamais committé", () => {
+  const gradle = read("app/build.gradle");
+  assert.ok(/signingConfigs\s*\{\s*release\s*\{/.test(gradle), "signingConfig release déclaré");
+  assert.ok(/keystoreFile/.test(gradle) && /signingConfig signingConfigs\.release/.test(gradle),
+    "le release utilise le signingConfig release quand un keystore est trouvé");
+  assert.ok(/AVERTISSEMENT[\s\S]*signingConfig signingConfigs\.debug/.test(gradle),
+    "sans keystore, repli explicite sur la clé debug avec avertissement");
+  assert.ok(!/storePassword\s+["'][^"']+["']/.test(gradle),
+    "aucun mot de passe en clair dans le build.gradle (env/property uniquement)");
+  const gitignore = fs.readFileSync(path.join(ROOT, "android", ".gitignore"), "utf8");
+  assert.ok(/\*\.jks/.test(gitignore) && /\*\.keystore/.test(gitignore),
+    "*.jks et *.keystore gitignorés : aucun keystore dans le dépôt");
+});
+
+test("la CI restaure le keystore depuis les secrets avant assembleRelease", () => {
+  const build = fs.readFileSync(path.join(ROOT, ".github/workflows/build.yml"), "utf8");
+  assert.ok(/secrets\.ANDROID_KEYSTORE/.test(build), "secret ANDROID_KEYSTORE (base64) utilisé");
+  assert.ok(/base64 -d > app\/build\/keystore\/cantoria-release\.jks/.test(build),
+    "keystore restauré dans app/build (gitignoré), jamais à la racine du dépôt");
+  assert.ok(/ANDROID_KEYSTORE_PASSWORD: \$\{\{ secrets\.ANDROID_KEYSTORE_PASSWORD/.test(build) &&
+            /ANDROID_KEY_ALIAS: \$\{\{ secrets\.ANDROID_KEY_ALIAS/.test(build) &&
+            /ANDROID_KEY_PASSWORD: \$\{\{ secrets\.ANDROID_KEY_PASSWORD/.test(build),
+    "mots de passe/alias passés au job Gradle via env depuis les secrets");
+  const restoreIdx = build.indexOf("Restore release keystore");
+  const gradleIdx = build.indexOf("assembleRelease");
+  assert.ok(restoreIdx !== -1 && gradleIdx !== -1 && restoreIdx < gradleIdx,
+    "la restauration du keystore précède assembleRelease");
+});
+
 /* Régression du crash de compilation Kotlin en CI : un seul companion
    object par classe (le double héritait des empilements de branches). */
 test("MainActivity ne déclare qu'un seul companion object", () => {

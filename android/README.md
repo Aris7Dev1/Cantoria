@@ -63,11 +63,18 @@ sideload, pas de Play Store) — équivalent d'`electron-updater` desktop :
 
 - **Sur chaque PR** : le job `android` de la CI construit l'APK debug et
   exécute les tests Kotlin — un `android/` cassé bloque le merge.
-- **Sur chaque tag `v*.*.*`** : `build.yml` construit l'APK **release**
-  (signé debug à défaut de keystore — décision superviseur « pas pour
-  l'instant »), le nomme `cantoria-<version>-android.apk` (version lue
+- **Sur chaque tag `v*.*.*`** : `build.yml` construit l'APK **release**,
+  le nomme `cantoria-<version>-android.apk` (version lue
   dans `package.json`) et l'attache à la GitHub Release aux côtés des
-  installers desktop.
+  installateurs desktop.
+- **Signature release** : le keystore n'est jamais committé (`*.jks` gitignoré).
+  En CI, `build.yml` le restaure depuis le secret `ANDROID_KEYSTORE` (base64)
+  vers `app/build/keystore/cantoria-release.jks`, avec les secrets
+  `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`.
+  Sans ces secrets, le build release retombe sur la clé debug avec un
+  avertissement explicite (sideload de développement uniquement).
+  En local : poser `cantoria-release.jks` à la racine de `android/` ou définir
+  `CANTORIA_KEYSTORE_PATH`.
 - **Installation utilisateur (sideload)** : télécharger l'APK depuis la
   release → ouvrir → autoriser « sources inconnues » → installer par-dessus
   l'app existante (les chansons sont conservées : stockage privé + cache).

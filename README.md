@@ -37,6 +37,29 @@ toucher — l'app défile toute seule.
   <img src="assets/illustrations/banniere-scene.jpg" alt="Sur scène : Cantoria défile les paroles pendant que vous jouez" width="720">
 </p>
 
+## Pourquoi Cantoria plutôt qu'une autre app ?
+
+Cantoria s'adresse au **guitariste-chanteur** qui veut un carnet simple,
+privé et hors-ligne — pas un nouvel outil en ligne de plus. Sa différence
+est une ligne assumée, pas une liste de fonctionnalités :
+
+- **Zéro compte, zéro cloud, zéro télémétrie.** Vos chansons restent sur votre
+  machine : aucun compte, aucun suivi, aucune connexion réseau depuis l'app.
+- **Une seule dépendance runtime**, une interface en un seul fichier HTML sans
+  framework ni bundler — du code lisible, auditable, durable.
+- **Vos données sont exportables** (JSON complet, ou dossier de fichiers
+  ChordPro `.cho`), importables à nouveau : vous ne dépendez pas de l'app.
+- **Logiciel libre (MIT)** : vous pouvez lire, modifier et redistribuer le code.
+
+Ce que Cantoria **ne fait pas** — par choix, pas par manque : ni compte, ni
+backend, ni une seule connexion réseau depuis l'app. Pas de synchronisation
+cloud intégrée ni de partage en ligne de carnets : **la synchro multi-appareils
+est à vous** — vos exports (carnet `cantoria.json` ou dossier `.cho`) se placent
+dans n'importe quel dossier synchronisé (Syncthing, Drive, Dropbox…), et la
+documentation propose des [recettes clés en main](docs/synchro-multi-appareils.md).
+Cantoria vise uniquement le moment où vous jouez, les mains occupées, sans
+rien d'autre à gérer.
+
 ## Fonctionnalités
 
 - 📚 **Bibliothèque locale** : chansons au format ChordPro, favoris, recherche,
@@ -79,7 +102,8 @@ Thème **campfire**, desktop et Android :
 </div>
 
 Une présentation prête à projeter (deck HTML autonome) est disponible dans
-[`docs/presentation/`](./docs/presentation).
+[`docs/presentation/`](./docs/presentation) et en ligne sur
+[Cantoria Pages](https://aris7dev1.github.io/Cantoria/).
 
 ## Développement
 
