@@ -3,7 +3,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>Cantoria</title>
 <style>
   :root{
@@ -173,6 +173,31 @@
   .fav-btn.active{color:var(--gold);}
   .fav-btn.active svg{fill:var(--gold);}
   .badge{
+  #setlists-section{padding:6px 24px 100px;overflow-y:auto;}
+  .setlists-head{display:flex;align-items:center;justify-content:space-between;margin:10px 0 14px;}
+  .setlists-head h2{margin:0;font-size:20px;}
+  #setlist-list{display:flex;flex-direction:column;gap:10px;max-width:720px;}
+  .setlist-card{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;}
+  .setlist-card .sl-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .setlist-card .sl-meta{color:var(--ink-dim);font-size:13px;white-space:nowrap;}
+  .setlist-panel{max-width:680px;width:min(92vw,680px);}
+  .setlist-add-row{display:flex;gap:8px;margin:6px 0 12px;}
+  .setlist-add-row select{flex:1;}
+  #setlist-entries{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;margin:8px 0;}
+  .sl-entry{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-panel-2);border:1px solid var(--border);border-radius:10px;}
+  .sl-entry.dragging{opacity:.45;}
+  .sl-entry .sl-handle{cursor:grab;color:var(--ink-dim);user-select:none;padding:0 2px;}
+  .sl-entry .sl-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sl-entry .sl-songmissing{color:var(--danger);font-size:12px;}
+  .sl-entry select,.sl-entry input{background:var(--bg-panel);color:var(--ink-bright);border:1px solid var(--border);border-radius:8px;padding:4px 6px;font:inherit;font-size:13px;}
+  .sl-entry input.sl-key{width:52px;}
+  .sl-entry input.sl-capo{width:44px;}
+  .sl-entry select.sl-speed{width:74px;}
+  .sl-entry .sl-remove{flex:none;}
+  .setlist-foot{display:flex;gap:10px;align-items:center;}
+    flex:1;overflow-y:auto;padding:6px 20px 100px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;
+
     font-family:var(--font-chord);font-size:calc(14px * var(--card-scale, 1));font-weight:700;color:var(--gold);
     border:1px solid var(--gold-glow);border-radius:6px;padding:3px 8px;
   }
@@ -308,7 +333,9 @@
     display:flex;flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;
     transition:opacity .3s ease, transform .3s ease;
   }
-  #controls.auto-hidden{opacity:0;transform:translateY(8px);pointer-events:none;}
+  /* Auto-masqué : display:none (pas opacity:0) pour rendre l'espace au
+     lecteur — une bande invisible laissait une zone morte en bas d'écran. */
+  #controls.auto-hidden{display:none;}
   .ctrl-row{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap;}
   .ctrl-row .label{font-size:11px;color:var(--ink-mid);width:64px;flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
   .ctrl-group{
@@ -467,6 +494,9 @@
     display:flex;gap:10px;padding:10px 14px;overflow-x:auto;
     background:var(--bg-panel);border-bottom:1px solid var(--border);
   }
+  /* Vidée (réglage « Masqués », accords cachés), la rangée ne doit pas
+     laisser une bande morte sous le titre : même règle que #chords-used. */
+  #chord-diagrams:empty{display:none;}
   .chord-diagram{
     display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;
   }
@@ -533,42 +563,72 @@
         <div class="eyebrow">Cantoria</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="theme-picker" id="theme-picker">
-            <button class="swatch" data-theme="spotlight" data-i18n-aria="themeSpotlight" data-i18n-title="themeSpotlight" aria-label="Thème Sous les projecteurs" title="Sous les projecteurs" style="background:linear-gradient(135deg,#14161c 50%,#e2a25c 50%);"></button>
-            <button class="swatch" data-theme="guitar-case" data-i18n-aria="themeGuitarCase" data-i18n-title="themeGuitarCase" aria-label="Thème Étui de guitare" title="Étui de guitare" style="background:linear-gradient(135deg,#1b2420 50%,#c8964f 50%);"></button>
-            <button class="swatch active" data-theme="campfire" data-i18n-aria="themeCampfire" data-i18n-title="themeCampfire" aria-label="Thème Feu de camp" title="Feu de camp" style="background:linear-gradient(135deg,#17120f 50%,#e6712f 50%);"></button>
-            <button class="swatch" data-theme="vibe" data-i18n-aria="themeVibe" data-i18n-title="themeVibe" aria-label="Thème Vibe" title="Vibe" style="background:linear-gradient(135deg,#0d0d0f 50%,#ff8a3d 50%);"></button>
+            <button class="swatch" data-theme="spotlight" aria-label="Thème Sous les projecteurs" title="Sous les projecteurs" style="background:linear-gradient(135deg,#14161c 50%,#e2a25c 50%);"></button>
+            <button class="swatch" data-theme="guitar-case" aria-label="Thème Étui de guitare" title="Étui de guitare" style="background:linear-gradient(135deg,#1b2420 50%,#c8964f 50%);"></button>
+            <button class="swatch active" data-theme="campfire" aria-label="Thème Feu de camp" title="Feu de camp" style="background:linear-gradient(135deg,#17120f 50%,#e6712f 50%);"></button>
+            <button class="swatch" data-theme="vibe" aria-label="Thème Vibe" title="Vibe" style="background:linear-gradient(135deg,#0d0d0f 50%,#ff8a3d 50%);"></button>
           </div>
-          <button class="btn icon ghost" id="btn-help-open" data-i18n-aria="help" data-i18n-title="help" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
+          <button class="btn icon ghost" id="btn-help-open" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
           </button>
-          <button class="btn icon ghost" id="btn-settings-open" data-i18n-aria="settings" aria-label="Paramètres">
+          <button class="btn icon ghost" id="btn-settings-open" aria-label="Paramètres">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </button>
         </div>
       </div>
-      <h1 data-i18n="libraryTitle">Mes chansons</h1>
+      <h1>Mes chansons</h1>
     </header>
     <div class="lib-actions">
-      <button class="btn primary" id="btn-new" data-i18n="newSong">＋ Nouvelle chanson</button>
-      <button class="btn" id="btn-import" data-i18n="importFile">Importer un fichier</button>
-      <button class="btn" id="btn-export" data-i18n="exportAll">Exporter tout</button>
+      <button class="btn primary" id="btn-new">＋ Nouvelle chanson</button>
+      <button class="btn" id="btn-import">Importer un fichier</button>
+      <button class="btn" id="btn-export">Exporter tout</button>
+      <button class="btn" id="btn-setlists">Setlists</button>
       <input type="file" id="import-input" accept="application/json,.json,text/plain,.txt,.chordpro,.cho,.crd,.pro">
     </div>
     <div class="lib-filters">
-      <input type="text" id="search-input" data-i18n-ph="searchPh" placeholder="Rechercher un titre ou un artiste…">
+      <input type="text" id="search-input" placeholder="Rechercher un titre ou un artiste…">
       <select id="sort-select">
-        <option value="title" selected="selected" data-i18n="sortTitle">Titre A→Z</option>
-        <option value="artist" data-i18n="sortArtist">Artiste A→Z</option>
-        <option value="recent" data-i18n="sortRecent">Dernière ouverte</option>
-        <option value="added" data-i18n="sortAdded">Ajout récent</option>
+        <option value="title" selected="selected">Titre A→Z</option>
+        <option value="artist">Artiste A→Z</option>
+        <option value="recent">Dernière ouverte</option>
+        <option value="added">Ajout récent</option>
       </select>
       <button class="btn fav-filter" id="fav-filter-toggle" aria-pressed="false">
         <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg>
-        <span data-i18n="favorites">Favoris</span>
+        Favoris
       </button>
     </div>
     <div id="song-grid"><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Amsterdam</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Jacques Brel</div><div class="meta"><span class="badge">Ton. E</span><span class="badge">7 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Cendrillon</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Téléphone</div><div class="meta"><span class="badge">Ton. A</span><span class="badge">9 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Emmenez-moi</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Charles Azenavour</div><div class="meta"><span class="badge">Ton. A</span><span class="badge">10 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Hotel California</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Eagles</div><div class="meta"><span class="badge">Ton. B</span><span class="badge">8 accords</span><span class="badge">×1,25</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">J'ai laissé</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Christophe Maé</div><div class="meta"><span class="badge">Ton. F</span><span class="badge">4 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Je te promets</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Johnny Halliday</div><div class="meta"><span class="badge">Ton. C</span><span class="badge">16 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">La Bohème</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Charles Aznavour</div><div class="meta"><span class="badge">Ton. D</span><span class="badge">10 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">La corrida</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Francis Cabrel</div><div class="meta"><span class="badge">Ton. B</span><span class="badge">8 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Le sud</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Nino Ferrer</div><div class="meta"><span class="badge">Ton. C</span><span class="badge">17 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">The Star-spangled Banner</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Marvin Gaye</div><div class="meta"><span class="badge">Ton. F</span><span class="badge">14 accords</span><span class="badge">×1</span></div></div></div>
+    <div id="setlists-section" style="display:none;">
+      <div class="setlists-head">
+        <h2>Mes setlists</h2>
+        <button class="btn small primary" id="btn-setlist-new">+ Nouvelle setlist</button>
+      </div>
+      <div id="setlist-list"></div>
+    </div>
   </section>
+
+  <!-- ===== SETLIST EDITOR ===== -->
+  <div id="setlist-overlay" class="modal-overlay">
+    <div class="modal-panel setlist-panel">
+      <div class="modal-head">
+        <div class="eyebrow" id="setlist-overlay-title">Setlist</div>
+        <button class="btn icon ghost" id="btn-setlist-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div class="field"><label for="setlist-name">Nom de la setlist</label><input type="text" id="setlist-name" placeholder="ex. Concert du samedi"></div>
+      <div class="setlist-add-row">
+        <select id="setlist-song-select"></select>
+        <button class="btn small" id="btn-setlist-add">Ajouter</button>
+      </div>
+      <div id="setlist-entries"></div>
+      <div class="setlist-foot">
+        <button class="btn primary" id="btn-setlist-save">Enregistrer</button>
+        <button class="btn danger ghost" id="btn-setlist-delete" style="display:none;">Supprimer</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== EDITOR ===== -->
   <section id="editor-view" class="view">
@@ -576,35 +636,35 @@
       <button class="btn icon ghost" id="btn-editor-back" aria-label="Retour">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
       </button>
-      <div class="eyebrow" id="editor-heading" data-i18n="editorNew">Nouvelle chanson</div>
+      <div class="eyebrow" id="editor-heading">Nouvelle chanson</div>
       <div class="spacer"></div>
     </div>
     <form id="song-form">
       <div class="row-fields">
-        <div class="field"><label data-i18n="fieldTitle">Titre</label><input type="text" id="f-title" data-i18n-ph="fieldTitlePh" placeholder="Titre de la chanson"></div>
-        <div class="field"><label data-i18n="fieldArtist">Artiste</label><input type="text" id="f-artist" data-i18n-ph="fieldArtistPh" placeholder="Interprète ou auteur"></div>
+        <div class="field"><label>Titre</label><input type="text" id="f-title" placeholder="Titre de la chanson"></div>
+        <div class="field"><label>Artiste</label><input type="text" id="f-artist" placeholder="Interprète ou auteur"></div>
       </div>
       <div class="row-fields">
-        <div class="field"><label data-i18n="fieldKey">Tonalité</label><input type="text" id="f-key" data-i18n-ph="fieldKeyPh" placeholder="ex. G"></div>
-        <div class="field"><label data-i18n="fieldCapo">Capo</label><input type="text" id="f-capo" data-i18n-ph="fieldCapoPh" placeholder="ex. 2"></div>
+        <div class="field"><label>Tonalité</label><input type="text" id="f-key" placeholder="ex. G"></div>
+        <div class="field"><label>Capo</label><input type="text" id="f-capo" placeholder="ex. 2"></div>
       </div>
       <div class="field">
-        <label data-i18n="fieldBody">Paroles &amp; accords (format ChordPro)</label>
+        <label>Paroles &amp; accords (format ChordPro)</label>
         <div class="section-tools">
           <span class="section-tools-label">Marquer la sélection :</span>
-          <button type="button" class="btn small" id="mark-verse" data-i18n="markVerse">Couplet</button>
-          <button type="button" class="btn small" id="mark-chorus" data-i18n="markChorus">Refrain</button>
-          <button type="button" class="btn small" id="mark-bridge" data-i18n="markBridge">Pont</button>
+          <button type="button" class="btn small" id="mark-verse">Couplet</button>
+          <button type="button" class="btn small" id="mark-chorus">Refrain</button>
+          <button type="button" class="btn small" id="mark-bridge">Pont</button>
           <span class="section-tools-sep"></span>
-          <button type="button" class="btn small ghost" id="structure-labels" title="Convertit les libellés texte existants (Refrain, [Refrain :]…) en directives ChordPro fermées à la strophe"><span data-i18n="structureLabels">Structurer les libellés</span></button>
+          <button type="button" class="btn small ghost" id="structure-labels" title="Convertit les libellés texte existants (Refrain, [Refrain :]…) en directives ChordPro fermées à la strophe">Structurer les libellés</button>
         </div>
         <div class="section-tools">
-          <button type="button" class="btn small ghost" id="editor-undo" aria-label="Annuler (Ctrl+Z)" title="Annuler (Ctrl+Z)"><span data-i18n="undo">⟲ Annuler</span></button>
-          <button type="button" class="btn small ghost" id="editor-redo" aria-label="Rétablir (Ctrl+Shift+Z)" title="Rétablir (Ctrl+Shift+Z)"><span data-i18n="redo">⟳ Rétablir</span></button>
+          <button type="button" class="btn small ghost" id="editor-undo" aria-label="Annuler (Ctrl+Z)" title="Annuler (Ctrl+Z)">⟲ Annuler</button>
+          <button type="button" class="btn small ghost" id="editor-redo" aria-label="Rétablir (Ctrl+Shift+Z)" title="Rétablir (Ctrl+Shift+Z)">⟳ Rétablir</button>
           <span class="section-tools-sep"></span>
-          <span class="section-tools-label shortcut-hint" data-i18n="saveHint">Ctrl+S pour enregistrer</span>
+          <span class="section-tools-label shortcut-hint">Ctrl+S pour enregistrer</span>
         </div>
-        <textarea id="f-body" data-i18n-ph="bodyPh" placeholder="[G]Voici les paroles [C]avec les accords entre crochets"></textarea>
+        <textarea id="f-body" placeholder="[G]Voici les paroles [C]avec les accords entre crochets"></textarea>
       </div>
       <div class="hint">
         Deux formats reconnus automatiquement, tu peux même les mélanger :<br>
@@ -616,8 +676,8 @@
         "Pont" sont reconnues comme repères.
       </div>
       <div class="form-actions">
-        <button type="submit" class="btn primary" id="btn-save" data-i18n="save">Enregistrer</button>
-        <button type="button" class="btn danger ghost" id="btn-delete" style="display:none;" data-i18n="delete">Supprimer</button>
+        <button type="submit" class="btn primary" id="btn-save">Enregistrer</button>
+        <button type="button" class="btn danger ghost" id="btn-delete" style="display:none;">Supprimer</button>
       </div>
     </form>
   </section>
@@ -625,23 +685,23 @@
   <!-- ===== PLAYER ===== -->
   <section id="player-view" class="view">
     <div class="topbar">
-      <button class="btn icon ghost" id="btn-player-back" data-i18n-aria="playerBack" aria-label="Retour">
+      <button class="btn icon ghost" id="btn-player-back" aria-label="Retour">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
       </button>
       <div class="info">
         <div class="title" id="p-title">—</div>
         <div class="sub" id="p-sub">—</div>
       </div>
-      <button class="btn icon ghost" id="btn-chords-visibility" data-i18n-aria="chordsUnderTitle" data-i18n-title="chordsUnderTitle" aria-label="Cacher les accords sous le titre" aria-pressed="true" title="Afficher / cacher les accords sous le titre">
+      <button class="btn icon ghost" id="btn-chords-visibility" aria-label="Cacher les accords sous le titre" aria-pressed="true" title="Afficher / cacher les accords sous le titre">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <g class="eye-line"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></g>
           <g class="eye-off-line"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
         </svg>
       </button>
-      <button class="btn icon ghost fav-btn" id="btn-fav-current" data-i18n-aria="markFav" aria-label="Marquer comme favori">
+      <button class="btn icon ghost fav-btn" id="btn-fav-current" aria-label="Marquer comme favori">
         <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg>
       </button>
-      <button class="btn icon ghost" id="btn-edit-current" data-i18n-aria="editSong" aria-label="Modifier la chanson">
+      <button class="btn icon ghost" id="btn-edit-current" aria-label="Modifier la chanson">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
       </button>
     </div>
@@ -653,32 +713,32 @@
     </div>
     <div id="controls">
       <div class="ctrl-row">
-        <button id="play-toggle" data-i18n-title="playPause" title="Lecture / pause (Espace)">▶</button>
+        <button id="play-toggle" title="Lecture / pause (Espace)">▶</button>
         <div class="ctrl-group stepper" id="speed-stepper">
-          <span class="ctrl-group-label" data-i18n="speed">Vitesse</span>
-          <button id="speed-down" data-i18n-aria="speedDown" data-i18n-title="speedDown" aria-label="Vitesse inférieure" title="Vitesse − (Ctrl+←)">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" data-i18n-aria="speedUp" data-i18n-title="speedUp" aria-label="Vitesse supérieure" title="Vitesse + (Ctrl+→)">+</button>
+          <span class="ctrl-group-label">Vitesse</span>
+          <button id="speed-down" aria-label="Vitesse inférieure" title="Vitesse − (Ctrl+←)">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" aria-label="Vitesse supérieure" title="Vitesse + (Ctrl+→)">+</button>
         </div>
-        <button class="btn icon ghost" id="btn-toggle-secondary" data-i18n-aria="showSecondary" data-i18n-title="showSecondary" aria-label="Afficher les commandes secondaires" aria-expanded="false" title="Commandes secondaires (transposition, texte, section, décompte)">
+        <button class="btn icon ghost" id="btn-toggle-secondary" aria-label="Afficher les commandes secondaires" aria-expanded="false" title="Commandes secondaires (transposition, texte, section, décompte)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
       </div>
       <div class="ctrl-row ctrl-row-secondary" id="controls-secondary-row">
         <div class="ctrl-group stepper">
-          <span class="ctrl-group-label" data-i18n="transpose">Transpo</span>
-          <button id="tr-down" data-i18n-aria="transposeDown" data-i18n-title="transposeDown" aria-label="Transposition inférieure" title="Transposition − (Ctrl+Shift+↓)">−</button><span class="val" id="tr-val">0</span><button id="tr-up" data-i18n-aria="transposeUp" data-i18n-title="transposeUp" aria-label="Transposition supérieure" title="Transposition + (Ctrl+Shift+↑)">+</button>
+          <span class="ctrl-group-label">Transpo</span>
+          <button id="tr-down" aria-label="Transposition inférieure" title="Transposition − (Ctrl+Shift+↓)">−</button><span class="val" id="tr-val">0</span><button id="tr-up" aria-label="Transposition supérieure" title="Transposition + (Ctrl+Shift+↑)">+</button>
         </div>
         <div class="ctrl-group stepper">
-          <span class="ctrl-group-label" data-i18n="textSize">Texte</span>
-          <button id="fs-down" data-i18n-title="textDown" title="Taille des paroles − (Ctrl+↓)">A−</button><button id="fs-up" data-i18n-title="textUp" title="Taille des paroles + (Ctrl+↑)">A+</button>
+          <span class="ctrl-group-label">Texte</span>
+          <button id="fs-down" title="Taille des paroles − (Ctrl+↓)">A−</button><button id="fs-up" title="Taille des paroles + (Ctrl+↑)">A+</button>
         </div>
         <div class="ctrl-group">
-          <span class="ctrl-group-label" data-i18n="section">Section</span>
-          <button id="section-prev" data-i18n-aria="sectionPrev" data-i18n-title="sectionPrev" aria-label="Section précédente" title="Section précédente (Ctrl+Shift+←)">◀</button><button id="section-next" data-i18n-aria="sectionNext" data-i18n-title="sectionNext" aria-label="Section suivante" title="Section suivante (Ctrl+Shift+→)">▶</button>
+          <span class="ctrl-group-label">Section</span>
+          <button id="section-prev" aria-label="Section précédente" title="Section précédente (Ctrl+Shift+←)">◀</button><button id="section-next" aria-label="Section suivante" title="Section suivante (Ctrl+Shift+→)">▶</button>
         </div>
         <div class="ctrl-group">
-          <span class="ctrl-group-label" data-i18n="countdown">Décompte</span>
+          <span class="ctrl-group-label">Décompte</span>
           <div class="segmented" id="countdown-picker">
-            <button data-seconds="0" class="active" data-i18n="noCountdown">Aucun</button>
+            <button data-seconds="0" class="active">Aucun</button>
             <button data-seconds="5">5s</button>
             <button data-seconds="10">10s</button>
             <button data-seconds="15">15s</button>
@@ -687,10 +747,10 @@
       </div>
       <div class="ctrl-row ctrl-row-main">
         <div class="spacer"></div>
-        <button class="btn icon ghost" id="btn-help-open-player" data-i18n-aria="help" data-i18n-title="help" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
+        <button class="btn icon ghost" id="btn-help-open-player" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
         </button>
-        <button class="btn icon ghost" id="btn-pin-controls" data-i18n-aria="pinControls" aria-label="Désépingler le bandeau" aria-pressed="true">
+        <button class="btn icon ghost" id="btn-pin-controls" aria-label="Désépingler le bandeau" aria-pressed="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"></path></svg>
         </button>
       </div>
@@ -701,7 +761,7 @@
   <div id="settings-overlay" class="modal-overlay">
     <div class="modal-panel">
       <div class="modal-head">
-        <div class="eyebrow" data-i18n="settingsTitle">Paramètres</div>
+        <div class="eyebrow">Paramètres</div>
         <button class="btn icon ghost" id="btn-settings-close" aria-label="Fermer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
         </button>
@@ -713,6 +773,14 @@
           <div class="setting-desc">Estompe les lignes qui ne sont pas au centre pendant le défilement.</div>
         </div>
         <button class="switch active" id="setting-spotlight" aria-pressed="true"><span class="knob"></span></button>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-text">
+          <div class="setting-title">Confirmation avant chanson suivante</div>
+          <div class="setting-desc">En lecture de setlist, demande confirmation avant de passer à la chanson suivante.</div>
+        </div>
+        <button class="switch active" id="setting-setlist-confirm" aria-pressed="true"><span class="knob"></span></button>
       </div>
 
       <div class="setting-row">
@@ -731,7 +799,7 @@
           <div class="setting-desc">Proposé à l'ouverture de chaque chanson (modifiable ensuite dans le lecteur).</div>
         </div>
         <div class="segmented" id="def-countdown-picker">
-          <button data-seconds="0" class="active" data-i18n="noCountdown">Aucun</button>
+          <button data-seconds="0" class="active">Aucun</button>
           <button data-seconds="5">5s</button>
           <button data-seconds="10">10s</button>
           <button data-seconds="15">15s</button>
@@ -811,18 +879,15 @@
         <button class="btn" id="btn-manage-backups">Gérer…</button>
       </div>
 
-      <div class="setting-row">
+      <div class="setting-row" id="songsdir-row">
         <div class="setting-text">
-          <div class="setting-title" data-i18n="language">Langue</div>
-          <div class="setting-desc" data-i18n="languageDesc">Langue de l'interface (les chansons restent dans leur langue d'origine).</div>
+          <div class="setting-title">Dossier de chansons (optionnel)</div>
+          <div class="setting-desc" id="songsdir-summary">Stockage actuel : profil de l'application (localStorage/fichier privé). Un dossier de fichiers ChordPro (.cho) permet de copier/synchroniser le carnet comme de simples fichiers.</div>
         </div>
-        <div class="segmented" id="lang-picker">
-          <button data-lang="fr" class="active" data-i18n="langFr">Français</button>
-          <button data-lang="en" data-i18n="langEn">English</button>
-        </div>
+        <button class="btn" id="btn-songsdir">Choisir…</button>
       </div>
 
-      <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;" data-i18n="resetSettings">Réinitialiser les paramètres</button>
+      <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;">Réinitialiser les paramètres</button>
       <div id="backups-subview" class="modal-subview">
       <div class="modal-head">
         <div style="display:flex;align-items:center;gap:10px;">
@@ -850,12 +915,12 @@
   <div id="confirm-overlay" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
     <div class="modal-panel">
       <div class="modal-head">
-        <div class="eyebrow" id="confirm-title" data-i18n="confirmTitle">Confirmation</div>
+        <div class="eyebrow" id="confirm-title">Confirmation</div>
       </div>
       <div id="confirm-message" class="confirm-message"></div>
       <div class="confirm-actions">
-        <button class="btn ghost" id="confirm-cancel" data-i18n="confirmCancel">Annuler</button>
-        <button class="btn primary" id="confirm-ok" data-i18n="confirmOk">Confirmer</button>
+        <button class="btn ghost" id="confirm-cancel">Annuler</button>
+        <button class="btn primary" id="confirm-ok">Confirmer</button>
       </div>
     </div>
   </div>
@@ -900,9 +965,12 @@
 
   /* ---------------- State ---------------- */
   var songs = [];
+  var setlists = [];
   var currentId = null;
   var editingId = null;
   var transposeSteps = 0;
+  var currentCapo = "";
+  var setlistPlayback = null; // {setlistId, index} pendant une lecture enchaînée
   var fontScale = 1;
   var chordsVisible = true;
   var zoomFactor = 1;
@@ -913,210 +981,6 @@
   /* ---------------- Utilities ---------------- */
   function uid(){ return "s-" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function $(sel){ return document.querySelector(sel); }
-
-  /* ---------------- i18n minimal (issue #96, branche A) ----------------
-     FR par défaut, EN en option (paramètre « Langue »). Seules les chaînes
-     de l'interface sont externalisées : le contenu du carnet de l'utilisateur
-     (titres, artistes, paroles) n'est JAMAIS touché. La bascule se fait sans
-     recharger les données (rendu in place). */
-  var I18N = {
-    fr: {
-      appName: "Cantoria",
-      libraryTitle: "Mes chansons",
-      newSong: "+ Nouvelle chanson",
-      importFile: "Importer un fichier",
-      exportAll: "Exporter tout",
-      searchPh: "Rechercher un titre ou un artiste…",
-      sortTitle: "Titre A→Z", sortArtist: "Artiste A→Z", sortRecent: "Dernière ouverte", sortAdded: "Ajout récent",
-      favorites: "Favoris",
-      emptyLibrary: "Ton carnet est vide", emptyLibraryHint: "Ajoute une chanson ou importe un fichier exporté précédemment.",
-      noResult: "Aucun résultat", noResultHint: "Essaie une autre recherche ou désactive le filtre favoris.",
-      toggleFav: "Basculer favori",
-      settings: "Paramètres", help: "Aide et raccourcis clavier",
-      themeSpotlight: "Sous les projecteurs", themeGuitarCase: "Étui de guitare", themeCampfire: "Feu de camp", themeVibe: "Vibe",
-      editorNew: "Nouvelle chanson", editorEdit: "Modifier la chanson",
-      fieldTitle: "Titre", fieldTitlePh: "Titre de la chanson",
-      fieldArtist: "Artiste", fieldArtistPh: "Interprète ou auteur",
-      fieldKey: "Tonalité", fieldKeyPh: "ex. G", fieldCapo: "Capo", fieldCapoPh: "ex. 2",
-      fieldBody: "Paroles & accords (format ChordPro)",
-      bodyPh: "[G]Voici les paroles [C]avec les accords entre crochets",
-      markVerse: "Couplet", markChorus: "Refrain", markBridge: "Pont",
-      structureLabels: "Structurer les libellés",
-      undo: "⟲ Annuler", redo: "⟳ Rétablir", saveHint: "Ctrl+S pour enregistrer",
-      save: "Enregistrer", delete: "Supprimer",
-      playerBack: "Retour",
-      chordsUnderTitle: "Afficher / cacher les accords sous le titre",
-      markFav: "Marquer comme favori", editSong: "Modifier la chanson",
-      playPause: "Lecture / pause (Espace)",
-      speed: "Vitesse", speedDown: "Vitesse inférieure", speedUp: "Vitesse supérieure",
-      transpose: "Transpo", transposeDown: "Transposition inférieure", transposeUp: "Transposition supérieure",
-      textSize: "Texte", textDown: "Taille des paroles −", textUp: "Taille des paroles +",
-      section: "Section", sectionPrev: "Section précédente", sectionNext: "Section suivante",
-      countdown: "Décompte", noCountdown: "Aucun",
-      showSecondary: "Afficher les commandes secondaires",
-      pinControls: "Désépingler le bandeau",
-      confirmTitle: "Confirmation", confirmOk: "Confirmer", confirmCancel: "Annuler",
-      helpTitle: "Aide et raccourcis clavier",
-      settingsTitle: "Paramètres",
-      spotlight: "Zone de surbrillance", spotlightDesc: "Estompe les lignes qui ne sont pas au centre pendant le défilement.",
-      defaultTextSize: "Taille du texte par défaut", defaultTextSizeDesc: "Taille appliquée à l'ouverture de chaque chanson.",
-      defaultCountdown: "Décompte par défaut", defaultCountdownDesc: "Décompte lancé avant le défilement de chaque chanson.",
-      diagrams: "Diagrammes d'accords", diagramsSong: "Sous le titre", diagramsBottom: "En bas", diagramsHidden: "Cachés",
-      lyricsAlign: "Alignement des paroles", alignCenter: "Au centre", alignLeft: "À gauche",
-      chordsVisible: "Accords sous le titre", chordsVisibleDesc: "Affiche les accords utilisés sous le titre de la chanson.",
-      cardFields: "Éléments affichés sur les cartes", cardFieldsDesc: "En plus du titre et de l'artiste, toujours visibles.",
-      cardTextSize: "Taille du texte des cartes", cardTextSizeDesc: "Taille des informations sur les cartes de la bibliothèque.",
-      backups: "Copies de secours", backupsDesc: "Versions conservées automatiquement (carnet, chansons modifiées).",
-      manage: "Gérer…", resetSettings: "Réinitialiser les paramètres",
-      language: "Langue", languageDesc: "Langue de l'interface (les chansons restent dans leur langue d'origine).",
-      langFr: "Français", langEn: "English",
-      backupsTitle: "Copies de secours", backupsBack: "Retour aux paramètres",
-      libraryBackups: "Carnet", editBackups: "Chansons modifiées",
-      noBackups: "Aucune copie de secours pour le moment.",
-      noEditBackups: "Aucune copie de secours d'édition pour le moment.",
-      exportNow: "Exporter maintenant",
-      toastSaved: "Chanson enregistrée", toastUpdated: "Chanson mise à jour", toastAdded: "Chanson ajoutée",
-      toastDeleted: "Chanson supprimée", confirmDeleteSong: "Supprimer cette chanson ?",
-      toastEndOfSong: "Fin de la chanson",
-      toastExported: "Carnet exporté", toastExportError: "Erreur pendant l'export",
-      toastImported: (n, d) => n + " chanson(s) importée(s), " + d + " doublon(s) ignoré(s)",
-      toastInvalidFile: "Fichier invalide", toastReadError: "Impossible de lire le fichier", toastImportError: "Erreur pendant l'import",
-      toastMigrated: "Carnet migré vers le stockage de l'application",
-      toastBackupRestored: (n) => "Copie de secours restaurée : " + n + " chanson(s)",
-      toastBackupInvalid: "Cette copie de secours n'est pas un carnet valide : restauration impossible",
-      toastBackupNoSong: "La chanson d'origine n'existe plus dans le carnet : restauration impossible",
-      toastBackupDownloaded: "Copie de secours téléchargée", toastDownloadError: "Erreur pendant le téchargement",
-      toastSettingsReset: "Paramètres réinitialisés",
-      songDeletedConfirm: "Supprimer cette chanson ?",
-      emptySongHint: "Cette chanson est vide — touche ✎ pour l'éditer.",
-      keyBadge: "Ton. ", capoBadge: "Capo ", chordsBadge: (n) => n + " accords",
-      noTitle: "Sans titre",
-      updateChecking: "Recherche de mise à jour…", updateAvailable: (v) => "Mise à jour disponible : " + v,
-      updateDownloaded: (v) => "Mise à jour " + v + " téléchargée — installée à la fermeture",
-      updateNotAvailable: "Application à jour", updateError: "Mise à jour indisponible",
-      updateInstallError: "Impossible d’installer la mise à jour",
-      checkUpdate: "Rechercher une mise à jour", installUpdate: "Installer la mise à jour",
-    },
-    en: {
-      appName: "Cantoria",
-      libraryTitle: "My songs",
-      newSong: "+ New song",
-      importFile: "Import a file",
-      exportAll: "Export all",
-      searchPh: "Search a title or artist…",
-      sortTitle: "Title A→Z", sortArtist: "Artist A→Z", sortRecent: "Last opened", sortAdded: "Recently added",
-      favorites: "Favorites",
-      emptyLibrary: "Your songbook is empty", emptyLibraryHint: "Add a song or import a previously exported file.",
-      noResult: "No results", noResultHint: "Try another search or turn off the favorites filter.",
-      toggleFav: "Toggle favorite",
-      settings: "Settings", help: "Help and keyboard shortcuts",
-      themeSpotlight: "Spotlight", themeGuitarCase: "Guitar case", themeCampfire: "Campfire", themeVibe: "Vibe",
-      editorNew: "New song", editorEdit: "Edit song",
-      fieldTitle: "Title", fieldTitlePh: "Song title",
-      fieldArtist: "Artist", fieldArtistPh: "Performer or author",
-      fieldKey: "Key", fieldKeyPh: "e.g. G", fieldCapo: "Capo", fieldCapoPh: "e.g. 2",
-      fieldBody: "Lyrics & chords (ChordPro format)",
-      bodyPh: "[G]Here are the lyrics [C]with chords in brackets",
-      markVerse: "Verse", markChorus: "Chorus", markBridge: "Bridge",
-      structureLabels: "Structure labels",
-      undo: "⟲ Undo", redo: "⟳ Redo", saveHint: "Ctrl+S to save",
-      save: "Save", delete: "Delete",
-      playerBack: "Back",
-      chordsUnderTitle: "Show / hide chords under the title",
-      markFav: "Mark as favorite", editSong: "Edit song",
-      playPause: "Play / pause (Space)",
-      speed: "Speed", speedDown: "Slower", speedUp: "Faster",
-      transpose: "Transpose", transposeDown: "Transpose down", transposeUp: "Transpose up",
-      textSize: "Text", textDown: "Smaller lyrics", textUp: "Bigger lyrics",
-      section: "Section", sectionPrev: "Previous section", sectionNext: "Next section",
-      countdown: "Countdown", noCountdown: "None",
-      showSecondary: "Show secondary controls",
-      pinControls: "Unpin the control bar",
-      confirmTitle: "Confirmation", confirmOk: "Confirm", confirmCancel: "Cancel",
-      helpTitle: "Help and keyboard shortcuts",
-      settingsTitle: "Settings",
-      spotlight: "Spotlight zone", spotlightDesc: "Dims lines that are not centered while scrolling.",
-      defaultTextSize: "Default text size", defaultTextSizeDesc: "Applied when opening each song.",
-      defaultCountdown: "Default countdown", defaultCountdownDesc: "Started before each song scrolls.",
-      diagrams: "Chord diagrams", diagramsSong: "Under the title", diagramsBottom: "At the bottom", diagramsHidden: "Hidden",
-      lyricsAlign: "Lyrics alignment", alignCenter: "Centered", alignLeft: "Left",
-      chordsVisible: "Chords under the title", chordsVisibleDesc: "Shows the chords used under the song title.",
-      cardFields: "Fields shown on cards", cardFieldsDesc: "In addition to title and artist, always visible.",
-      cardTextSize: "Card text size", cardTextSizeDesc: "Size of the information on library cards.",
-      backups: "Backups", backupsDesc: "Automatically kept versions (songbook, edited songs).",
-      manage: "Manage…", resetSettings: "Reset settings",
-      language: "Language", languageDesc: "Interface language (your songs keep their original language).",
-      langFr: "Français", langEn: "English",
-      backupsTitle: "Backups", backupsBack: "Back to settings",
-      libraryBackups: "Songbook", editBackups: "Edited songs",
-      noBackups: "No backup yet.",
-      noEditBackups: "No edit backup yet.",
-      exportNow: "Export now",
-      toastSaved: "Song saved", toastUpdated: "Song updated", toastAdded: "Song added",
-      toastDeleted: "Song deleted", confirmDeleteSong: "Delete this song?",
-      toastEndOfSong: "End of song",
-      toastExported: "Songbook exported", toastExportError: "Error during export",
-      toastImported: (n, d) => n + " song(s) imported, " + d + " duplicate(s) skipped",
-      toastInvalidFile: "Invalid file", toastReadError: "Cannot read file", toastImportError: "Error during import",
-      toastMigrated: "Songbook migrated to app storage",
-      toastBackupRestored: (n) => "Backup restored: " + n + " song(s)",
-      toastBackupInvalid: "This backup is not a valid songbook: restore impossible",
-      toastBackupNoSong: "The original song is no longer in the songbook: restore impossible",
-      toastBackupDownloaded: "Backup downloaded", toastDownloadError: "Error during download",
-      toastSettingsReset: "Settings reset",
-      songDeletedConfirm: "Delete this song?",
-      emptySongHint: "This song is empty — tap ✎ to edit it.",
-      keyBadge: "Key ", capoBadge: "Capo ", chordsBadge: (n) => n + " chords",
-      noTitle: "Untitled",
-      updateChecking: "Checking for updates…", updateAvailable: (v) => "Update available: " + v,
-      updateDownloaded: (v) => "Update " + v + " downloaded — installed on quit",
-      updateNotAvailable: "Up to date", updateError: "Update unavailable",
-      updateInstallError: "Cannot install the update",
-      checkUpdate: "Check for updates", installUpdate: "Install update",
-    }
-  };
-  var LANG_KEY = "cantoria-lang";
-  var lang = (function(){
-    try{
-      var v = localStorage.getItem(LANG_KEY);
-      return v === "en" ? "en" : "fr";
-    }catch(e){ return "fr"; }
-  })();
-  function T(key){
-    var pack = I18N[lang] || I18N.fr;
-    var v = pack[key];
-    return v === undefined ? (I18N.fr[key] !== undefined ? I18N.fr[key] : key) : v;
-  }
-  function setLang(l){
-    lang = l === "en" ? "en" : "fr";
-    try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
-    applyLang();
-  }
-  /* Applique la langue sur tous les éléments marqués data-i18n (texte) et
-     data-i18n-ph (placeholder), sans toucher aux données du carnet. */
-  function applyLang(){
-    document.querySelectorAll("[data-i18n]").forEach(function(el){
-      el.textContent = T(el.getAttribute("data-i18n"));
-    });
-    document.querySelectorAll("[data-i18n-ph]").forEach(function(el){
-      el.setAttribute("placeholder", T(el.getAttribute("data-i18n-ph")));
-    });
-    document.querySelectorAll("[data-i18n-aria]").forEach(function(el){
-      el.setAttribute("aria-label", T(el.getAttribute("data-i18n-aria")));
-    });
-    document.querySelectorAll("[data-i18n-title]").forEach(function(el){
-      /* Le title conserve le raccourci clavier entre parenthèses : on ne
-         remplace que la partie libellé, le raccourci (Ctrl+←…) reste. */
-      var key = el.getAttribute("data-i18n-title");
-      var cur = el.getAttribute("title") || "";
-      var m = /\(([^)]*)\)\s*$/.exec(cur);
-      var suffix = m ? " (" + m[1] + ")" : "";
-      var val = T(key);
-      el.setAttribute("title", (typeof val === "string" ? val : cur.replace(/\s*\([^)]*\)\s*$/, "")) + suffix);
-    });
-    document.documentElement.setAttribute("lang", lang);
-    renderLibrary();
-  }
   function esc(s){ return (s||"").replace(/[&<>]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
 
   /* ---------------- Local song persistence ----------------
@@ -1139,6 +1003,80 @@
       lastOpenedAt: Number.isFinite(raw.lastOpenedAt) ? raw.lastOpenedAt : null,
       speed: Number.isFinite(raw.speed) && raw.speed > 0 ? raw.speed : 1
     };
+  }
+
+  /* Setlists (issue #92) : listes ordonnées de chansons avec réglages propres
+     à chaque entrée (tonalité, capo, vitesse). Stockées sous leur propre clé
+     localStorage afin que le format du carnet (cantoria-songs-v1, tableau)
+     reste inchangé : les anciennes versions continuent de lire les chansons
+     et ignorent simplement les setlists. Les setlists suivent le carnet dans
+     l'export/import JSON. */
+  var SETLISTS_STORAGE_KEY = "cantoria-setlists-v1";
+
+  function normalizeSetlistEntry(raw){
+    raw = raw || {};
+    return {
+      songId: typeof raw.songId === "string" ? raw.songId : "",
+      key: typeof raw.key === "string" ? raw.key : "",
+      capo: (typeof raw.capo === "string" || typeof raw.capo === "number") ? String(raw.capo) : "",
+      speed: Number.isFinite(raw.speed) && raw.speed > 0 ? raw.speed : null
+    };
+  }
+
+  function normalizeSetlist(raw){
+    raw = raw || {};
+    return {
+      id: typeof raw.id === "string" && raw.id ? raw.id : uid(),
+      name: typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : "Setlist sans nom",
+      entries: Array.isArray(raw.entries) ? raw.entries.map(normalizeSetlistEntry).filter(function(e){ return e.songId; }) : [],
+      addedAt: Number.isFinite(raw.addedAt) ? raw.addedAt : Date.now()
+    };
+  }
+
+  function saveSetlists(){
+    try{
+      localStorage.setItem(SETLISTS_STORAGE_KEY, JSON.stringify(setlists));
+      return true;
+    }catch(e){
+      showStorageAlert("Impossible de sauvegarder les setlists localement. Exporte ton carnet maintenant pour ne rien perdre.");
+      return false;
+    }
+  }
+
+  function loadSetlists(){
+    var raw = null;
+    try{ raw = localStorage.getItem(SETLISTS_STORAGE_KEY); }catch(e){}
+    if(!raw) return;
+    try{
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) setlists = parsed.map(normalizeSetlist);
+    }catch(e){
+      /* Copie de secours dédiée sous son propre préfixe : JAMAIS sous le
+         préfixe du carnet (cantoria-songs-v1-corrupted-), sinon un contenu de
+         setlists illisible serait pris pour un carnet illisible et ferait croire
+         à une corruption du carnet. */
+      try{ localStorage.setItem(SETLISTS_STORAGE_KEY + "-corrupted-" + Date.now(), raw); }catch(e2){}
+    }
+  }
+
+  /* Nombre de demi-tons entre deux tonalités (notation anglaise), ramené
+     dans [-6, +6] : sert à régler la transposition d'une entrée de setlist
+     par rapport à la tonalité propre de la chanson. */
+  function keySteps(fromKey, toKey){
+    if(!fromKey || !toKey) return 0;
+    function idx(k){
+      var m = /^([A-G])(#|b|\u266d)?/.exec(String(k).trim());
+      if(!m) return null;
+      var note = m[1] + (m[2] === "\u266d" ? "b" : (m[2] || ""));
+      note = FLAT_MAP[note] || note;
+      return SHARPS.indexOf(note);
+    }
+    var a = idx(fromKey), b = idx(toKey);
+    if(a === null || b === null) return 0;
+    var d = (b - a) % 12;
+    if(d > 6) d -= 12;
+    if(d < -6) d += 12;
+    return d;
   }
 
   var storageAlertShown = false;
@@ -1170,11 +1108,26 @@
 
   function saveSongs(){
     var json = JSON.stringify(songs);
+    /* Les setlists ont leur propre clé localStorage (rétrocompatible) ; sur le
+       pont fichier (Android), le carnet complet {songs, setlists} est écrit
+       dans le fichier privé pour ne pas dépendre du quota localStorage. */
+    var fileJson = JSON.stringify({ songs: songs, setlists: setlists });
+    try{ localStorage.setItem(SETLISTS_STORAGE_KEY, JSON.stringify(setlists)); }catch(e){}
+    /* Dossier de chansons configuré (issue #93) : chaque sauvegarde met aussi
+       à jour le fichier .cho correspondant, en best effort (le stockage du
+       profil reste la référence, aucune perte si le dossier est indisponible). */
+    var dirBridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(dirBridge && dir){
+      songs.forEach(function(s){
+        dirBridge.writeSongFile(dir, songFileNameFor(s), songToChordPro(s)).catch(function(){});
+      });
+    }
     var bridge = storageBridge();
     if(bridge){
       try{
         var ok = false;
-        bridge.saveLibrary(json).then(function(result){
+        bridge.saveLibrary(fileJson).then(function(result){
           ok = !!(result && result.saved);
           if(!ok){
             showStorageAlert("Impossible de sauvegarder le carnet dans le stockage de l'application. Exporte ton carnet maintenant pour ne rien perdre.");
@@ -1302,9 +1255,25 @@
   function applyLibraryRaw(raw, source){
     if(!raw) return false;
     var parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) throw new Error("Format de carnet inattendu");
-    songs = parsed.map(normalizeSong);
-    return true;
+    if(Array.isArray(parsed)){
+      // Ancien format : simple tableau de chansons (rétrocompatible).
+      songs = parsed.map(normalizeSong);
+      return true;
+    }
+    if(parsed && typeof parsed === "object" && Array.isArray(parsed.songs)){
+      /* Export v2 (issue #92) : {songs, setlists}. Accepté UNIQUEMENT si le
+         fichier vient d'un export Cantoria (schemaVersion 2) — un objet
+         arbitraire avec un champ "songs" (ex. vieux carnet inattendu) reste
+         invalide et part en copie de secours, jamais écrasé silencieusement. */
+      if(parsed.schemaVersion !== 2) throw new Error("Format de carnet inattendu");
+      songs = parsed.songs.map(normalizeSong);
+      if(Array.isArray(parsed.setlists)) setlists = parsed.setlists.map(normalizeSetlist);
+      return true;
+    }
+    /* Un objet sans tableau "songs" (ex. ancien fichier inattendu) reste un
+       format invalide : il ne doit PAS être accepté comme carnet vide, sinon
+       le contenu illisible ne serait pas sauvegardé en copie de secours. */
+    throw new Error("Format de carnet inattendu");
   }
 
   function loadSongs(){
@@ -1314,7 +1283,7 @@
         var migrated = false;
         // 1. fichier privé prioritaire
         try{
-          if(applyLibraryRaw(fileRaw, "file")) { renderLibrary(); return; }
+          if(applyLibraryRaw(fileRaw, "file")) { loadSetlists(); renderLibrary(); renderSetlists(); return; }
         }catch(e){
           if(fileRaw) backupUnreadableLibrary(fileRaw);
         }
@@ -1324,22 +1293,26 @@
         try{
           if(applyLibraryRaw(raw, "local")){
             migrated = true;
+            loadSetlists();
             renderLibrary();
+            renderSetlists();
             try{ bridge.saveLibrary(raw); storageMode = "file"; }catch(e2){}
           }else{
             renderLibrary();
+            renderSetlists();
           }
         }catch(e){
           songs = [];
           if(raw) backupUnreadableLibrary(raw);
           renderLibrary();
+          renderSetlists();
         }
-        if(migrated) toast(T("toastMigrated"));
+        if(migrated) toast("Carnet migré vers le stockage de l'application");
       }).catch(function(){
         // pont défaillant au chargement : fallback localStorage complet
         try{
           var raw = localStorage.getItem(SONGS_STORAGE_KEY);
-          if(applyLibraryRaw(raw, "local")) renderLibrary();
+          if(applyLibraryRaw(raw, "local")){ loadSetlists(); renderLibrary(); renderSetlists(); }
         }catch(e){}
       });
       return;
@@ -1348,9 +1321,8 @@
     try{
       raw = localStorage.getItem(SONGS_STORAGE_KEY);
       if(!raw) return;
-      var parsed = JSON.parse(raw);
-      if(!Array.isArray(parsed)) throw new Error("Format de carnet inattendu");
-      songs = parsed.map(normalizeSong);
+      if(!applyLibraryRaw(raw, "local")) throw new Error("Format de carnet inattendu");
+      loadSetlists();
     }catch(e){
       songs = [];
       var saved = raw ? backupUnreadableLibrary(raw) : false;
@@ -1917,6 +1889,221 @@
       grid.appendChild(card);
     });
   }
+  /* ---------------- Setlists (issue #92) ---------------- */
+  var editingSetlistId = null;
+  var setlistsVisible = false;
+
+  function setlistById(id){ return setlists.find(function(x){ return x.id === id; }); }
+
+  function renderSetlists(){
+    var section = $("#setlists-section");
+    if(!setlistsVisible){ section.style.display = "none"; return; }
+    section.style.display = "";
+    $("#song-grid").style.display = "none";
+    $(".lib-filters").style.display = "none";
+    var list = $("#setlist-list");
+    list.innerHTML = "";
+    if(!setlists.length){
+      list.innerHTML = '<div class="empty-state"><div class="big">Aucune setlist</div>Crée une setlist pour enchaîner tes chansons en concert.</div>';
+      return;
+    }
+    setlists.forEach(function(sl){
+      var card = document.createElement("div");
+      card.className = "setlist-card";
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      var playable = sl.entries.filter(function(e){ return songs.some(function(x){ return x.id === e.songId; }); }).length;
+      card.innerHTML =
+        '<div class="sl-name">'+esc(sl.name)+'</div>'+
+        '<div class="sl-meta">'+playable+' chanson(s)</div>'+
+        '<button class="btn small primary sl-play" title="Lire la setlist en enchaîné">▶ Lire</button>'+
+        '<button class="btn small ghost sl-dup" title="Dupliquer">Dupliquer</button>'+
+        '<button class="btn small ghost sl-edit" title="Modifier">Modifier</button>'+
+        '<button class="btn small danger ghost sl-del" title="Supprimer">Supprimer</button>';
+      card.addEventListener("click", function(){ openSetlistEditor(sl.id); });
+      card.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openSetlistEditor(sl.id); } });
+      card.querySelector(".sl-play").addEventListener("click", function(e){ e.stopPropagation(); playSetlist(sl.id); });
+      card.querySelector(".sl-dup").addEventListener("click", function(e){ e.stopPropagation(); duplicateSetlist(sl.id); });
+      card.querySelector(".sl-edit").addEventListener("click", function(e){ e.stopPropagation(); openSetlistEditor(sl.id); });
+      card.querySelector(".sl-del").addEventListener("click", function(e){
+        e.stopPropagation();
+        uiConfirm("Supprimer la setlist « " + sl.name + " » ? Les chansons restent dans le carnet.").then(function(ok){
+          if(!ok) return;
+          setlists = setlists.filter(function(x){ return x.id !== sl.id; });
+          saveSetlists();
+          renderSetlists();
+          toast("Setlist supprimée");
+        });
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function toggleSetlistsView(){
+    setlistsVisible = !setlistsVisible;
+    if(!setlistsVisible){
+      $("#setlists-section").style.display = "none";
+      $("#song-grid").style.display = "";
+      $(".lib-filters").style.display = "";
+    }
+    renderSetlists();
+  }
+
+  function duplicateSetlist(id){
+    var src = setlistById(id);
+    if(!src) return;
+    var copy = normalizeSetlist({
+      id: uid(),
+      name: src.name + " (copie)",
+      entries: src.entries.map(function(e){ return { songId: e.songId, key: e.key, capo: e.capo, speed: e.speed }; }),
+      addedAt: Date.now()
+    });
+    setlists.push(copy);
+    saveSetlists();
+    renderSetlists();
+    toast("Setlist dupliquée");
+  }
+
+  function playSetlist(id){
+    var sl = setlistById(id);
+    if(!sl) return;
+    var first = sl.entries.find(function(e){ return songs.some(function(x){ return x.id === e.songId; }); });
+    if(!first){ toast("La setlist ne contient aucune chanson du carnet"); return; }
+    var index = sl.entries.indexOf(first);
+    setlistPlayback = { setlistId: sl.id, index: index };
+    openPlayer(first.songId, first);
+    toast("Setlist « " + sl.name + " » : 1/" + sl.entries.length);
+  }
+
+  /* ---- Éditeur de setlist ---- */
+  var draftEntries = [];
+
+  function fillSongSelect(){
+    var sel = $("#setlist-song-select");
+    sel.innerHTML = "";
+    var sorted = songs.slice().sort(function(a,b){ return (a.title||"").localeCompare(b.title||"", "fr"); });
+    sorted.forEach(function(s){
+      var opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.title + (s.artist ? " — " + s.artist : "");
+      sel.appendChild(opt);
+    });
+  }
+
+  function openSetlistEditor(id){
+    editingSetlistId = id || null;
+    var sl = id ? setlistById(id) : null;
+    draftEntries = sl ? sl.entries.map(function(e){ return { songId: e.songId, key: e.key, capo: e.capo, speed: e.speed }; }) : [];
+    $("#setlist-overlay-title").textContent = sl ? "Modifier la setlist" : "Nouvelle setlist";
+    $("#setlist-name").value = sl ? sl.name : "";
+    $("#btn-setlist-delete").style.display = sl ? "" : "none";
+    fillSongSelect();
+    renderDraftEntries();
+    $("#setlist-overlay").classList.add("show");
+  }
+
+  function renderDraftEntries(){
+    var container = $("#setlist-entries");
+    container.innerHTML = "";
+    if(!draftEntries.length){
+      container.innerHTML = '<div class="setting-desc">Aucune chanson. Ajoute-en une ci-dessus.</div>';
+      return;
+    }
+    draftEntries.forEach(function(entry, i){
+      var s = songs.find(function(x){ return x.id === entry.songId; });
+      var row = document.createElement("div");
+      row.className = "sl-entry";
+      row.setAttribute("draggable", "true");
+      row.dataset.index = String(i);
+      var title = s ? s.title + (s.artist ? " — " + s.artist : "") : "";
+      row.innerHTML =
+        '<span class="sl-handle" title="Glisser pour réordonner">≡</span>'+
+        '<span class="sl-title">'+(s ? esc(title) : '')+'</span>'+
+        (s ? '' : '<span class="sl-songmissing">chanson absente du carnet</span>')+
+        '<input class="sl-key" type="text" placeholder="Ton." value="'+esc(entry.key)+'" aria-label="Tonalité de cette entrée" title="Tonalité pour cette chanson dans la setlist">'+
+        '<input class="sl-capo" type="text" placeholder="Capo" value="'+esc(entry.capo)+'" aria-label="Capo de cette entrée" title="Capo pour cette chanson dans la setlist">'+
+        '<select class="sl-speed" aria-label="Vitesse de défilement de cette entrée" title="Vitesse de défilement pour cette chanson dans la setlist"></select>'+
+        '<button class="btn small ghost sl-remove" title="Retirer de la setlist" aria-label="Retirer de la setlist">×</button>';
+      var speedSel = row.querySelector(".sl-speed");
+      SPEED_STEPS.forEach(function(v){
+        var opt = document.createElement("option");
+        opt.value = String(v);
+        opt.textContent = "×" + String(v).replace(".", ",");
+        if(entry.speed === v) opt.selected = true;
+        speedSel.appendChild(opt);
+      });
+      if(entry.speed !== null && SPEED_STEPS.indexOf(entry.speed) === -1){
+        var opt = document.createElement("option");
+        opt.value = String(entry.speed);
+        opt.textContent = "×" + String(entry.speed).replace(".", ",");
+        opt.selected = true;
+        speedSel.appendChild(opt);
+      }
+      row.querySelector(".sl-key").addEventListener("change", function(e){ entry.key = e.target.value.trim(); });
+      row.querySelector(".sl-capo").addEventListener("change", function(e){ entry.capo = e.target.value.trim(); });
+      speedSel.addEventListener("change", function(e){ entry.speed = parseFloat(e.target.value) || null; });
+      row.querySelector(".sl-remove").addEventListener("click", function(){
+        draftEntries.splice(i, 1);
+        renderDraftEntries();
+      });
+      row.addEventListener("dragstart", function(e){
+        e.dataTransfer.setData("text/plain", String(i));
+        e.dataTransfer.effectAllowed = "move";
+        row.classList.add("dragging");
+      });
+      row.addEventListener("dragend", function(){ row.classList.remove("dragging"); });
+      row.addEventListener("dragover", function(e){ e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+      row.addEventListener("drop", function(e){
+        e.preventDefault();
+        var from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        if(!Number.isFinite(from) || from === i) return;
+        var moved = draftEntries.splice(from, 1)[0];
+        draftEntries.splice(i, 0, moved);
+        renderDraftEntries();
+      });
+      container.appendChild(row);
+    });
+  }
+
+  $("#btn-setlists").addEventListener("click", toggleSetlistsView);
+  $("#btn-setlist-new").addEventListener("click", function(){ openSetlistEditor(null); });
+  $("#btn-setlist-close").addEventListener("click", function(){ $("#setlist-overlay").classList.remove("show"); });
+  $("#btn-setlist-add").addEventListener("click", function(){
+    var songId = $("#setlist-song-select").value;
+    if(!songId) return;
+    var s = songs.find(function(x){ return x.id === songId; });
+    draftEntries.push({ songId: songId, key: (s && s.key) || "", capo: (s && s.capo) || "", speed: (s && s.speed) || 1 });
+    renderDraftEntries();
+  });
+  $("#btn-setlist-save").addEventListener("click", function(){
+    var name = $("#setlist-name").value.trim() || "Setlist sans nom";
+    if(editingSetlistId){
+      var sl = setlistById(editingSetlistId);
+      if(sl){
+        sl.name = name;
+        sl.entries = draftEntries.map(function(e){ return normalizeSetlistEntry(e); });
+      }
+    }else{
+      setlists.push(normalizeSetlist({ id: uid(), name: name, entries: draftEntries, addedAt: Date.now() }));
+    }
+    saveSetlists();
+    renderSetlists();
+    $("#setlist-overlay").classList.remove("show");
+    toast("Setlist enregistrée");
+  });
+  $("#btn-setlist-delete").addEventListener("click", function(){
+    if(!editingSetlistId) return;
+    var sl = setlistById(editingSetlistId);
+    uiConfirm("Supprimer la setlist « " + (sl ? sl.name : "") + " » ?").then(function(ok){
+      if(!ok) return;
+      setlists = setlists.filter(function(x){ return x.id !== editingSetlistId; });
+      saveSetlists();
+      renderSetlists();
+      $("#setlist-overlay").classList.remove("show");
+      toast("Setlist supprimée");
+    });
+  });
+
   $("#search-input").addEventListener("input", renderLibrary);
   $("#sort-select").addEventListener("change", renderLibrary);
   $("#fav-filter-toggle").addEventListener("click", function(){
@@ -2089,7 +2276,7 @@
       if(s) backupSongBeforeOverwrite(s);
       Object.assign(s, data);
       saveSongs();
-      toast(T("toastUpdated"));
+      toast("Chanson mise à jour");
       renderLibrary();
       openPlayer(editingId);
     } else {
@@ -2100,7 +2287,7 @@
       data.speed = 1;
       songs.push(data);
       saveSongs();
-      toast(T("toastAdded"));
+      toast("Chanson ajoutée");
       renderLibrary();
       showView("library");
     }
@@ -2108,10 +2295,12 @@
 
   $("#btn-delete").addEventListener("click", function(){
     if(!editingId) return;
-    uiConfirm(T("confirmDeleteSong")).then(function(ok){
+    var doomed = songs.find(function(x){ return x.id === editingId; });
+    uiConfirm("Supprimer cette chanson ?").then(function(ok){
       if(!ok) return;
       songs = songs.filter(function(x){ return x.id !== editingId; });
       saveSongs();
+      if(doomed) deleteSongFromDir(doomed);
       renderLibrary();
       showView("library");
     });
@@ -2207,18 +2396,52 @@
       zone.parentNode.insertBefore(zone, stage);
     }
   }
-  function openPlayer(id){
+  /* entry (optionnel, issue #92) : réglages propres à une entrée de setlist
+     {key, capo, speed}. La transposition est calculée depuis la tonalité propre
+     de la chanson ; la vitesse de l'entrée prime sur celle de la chanson. */
+  /* Lecture enchaînée (issue #92) : en fin de chanson pendant une lecture de
+     setlist, on passe à l'entrée suivante avec ses réglages propres. La
+     confirmation est réglable (paramètre « Confirmation avant chanson suivante »). */
+  function chainNextSetlistEntry(){
+    if(!setlistPlayback) return;
+    var sl = setlists.find(function(x){ return x.id === setlistPlayback.setlistId; });
+    if(!sl) { setlistPlayback = null; return; }
+    var nextIndex = setlistPlayback.index + 1;
+    if(nextIndex >= sl.entries.length){
+      setlistPlayback = null;
+      toast("Fin de la setlist « " + sl.name + " »");
+      return;
+    }
+    var entry = sl.entries[nextIndex];
+    var s = songs.find(function(x){ return x.id === entry.songId; });
+    if(!s){ setlistPlayback = null; toast("Chanson introuvable dans la setlist"); return; }
+    setlistPlayback.index = nextIndex;
+    var launch = function(){
+      openPlayer(s.id, entry);
+      toast("Setlist : " + (nextIndex + 1) + "/" + sl.entries.length + " — " + s.title);
+    };
+    if(appSettings.setlistConfirmNext){
+      uiConfirm("Chanson suivante de la setlist : « " + s.title + " » ?").then(function(ok){
+        if(ok) launch(); else { setlistPlayback = null; }
+      });
+    }else{
+      launch();
+    }
+  }
+
+  function openPlayer(id, entry){
     currentId = id;
-    transposeSteps = 0;
+    currentCapo = (entry && entry.capo) || "";
+    transposeSteps = entry && entry.key ? keySteps((songs.find(function(x){ return x.id === id; }) || {}).key, entry.key) : 0;
     fontScale = appSettings.defaultFontScale || 1;
     $("#stage-inner").style.setProperty("--reader-scale", fontScale);
-    $("#tr-val").textContent = "0";
+    $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps;
     var s = songs.find(function(x){ return x.id === id; });
     if(s){
       s.lastOpenedAt = Date.now();
       saveSongs();
     }
-    speedMultiplier = (s && s.speed) || 1;
+    speedMultiplier = (entry && Number.isFinite(entry.speed) && entry.speed > 0) ? entry.speed : ((s && s.speed) || 1);
     updateSpeedStepper();
     selectedCountdown = appSettings.defaultCountdown || 0;
     chordsVisible = appSettings.chordsVisible !== false;
@@ -2306,7 +2529,8 @@
     var subParts = [];
     if(s.artist) subParts.push(s.artist);
     if(keyDisplay) subParts.push("Ton. " + keyDisplay);
-    if(s.capo) subParts.push("Capo " + s.capo);
+    var capoDisplay = currentCapo || s.capo;
+    if(capoDisplay) subParts.push("Capo " + capoDisplay);
     $("#p-sub").textContent = subParts.join(" · ");
 
     var chordNames = extractChordNames(s.body).map(function(c){ return transposeChord(c, transposeSteps); });
@@ -2402,8 +2626,11 @@
   $("#tr-down").addEventListener("click", function(){ transposeSteps--; $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps; renderPlayer(); });
 
   /* Font size controls */
-  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
-  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
+  /* A+/A− changent la hauteur des lignes : la géométrie mesurée par le
+     spotlight est périmée — invalidation du cache, sinon la surbrillance
+     traîne derrière le nouveau layout. */
+  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
+  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
 
   /* Auto-scroll — synced to the browser's actual repaint cycle via requestAnimationFrame
      instead of a fixed-interval timer. setInterval doesn't align with when the browser
@@ -2431,7 +2658,8 @@
       applySpotlight();
       stopScroll();
       $("#play-toggle").textContent = "▶";
-      toast(T("toastEndOfSong"));
+      toast("Fin de la chanson");
+      chainNextSetlistEntry();
       return;
     }
     stage.scrollTop = scrollPos;
@@ -2655,18 +2883,21 @@
 
   /* Spotlight effect, also runs on manual scroll */
   var stageEl;
-  /* Offsets des lignes mesures une seule fois par rendu (dans le repere du
-     stage), puis recalcul de la proximite par simple arithmetique a chaque
-     frame : plus de getBoundingClientRect par ligne a 60 fps. */
+  /* Offsets des lignes mesurés une seule fois par rendu, dans le repère du
+     CONTENU : #stage-inner défile avec les lignes, donc la différence des deux
+     getBoundingClientRect est indépendante du scrollTop (l'ancienne version
+     rapportait au #stage, immobile : la mesure incluait déjà le défilement du
+     moment de la mesure). Puis recalcul de la proximité par simple arithmétique
+     à chaque frame : plus de getBoundingClientRect par ligne à 60 fps. */
   var spotlightLineOffsets = null;
   function invalidateSpotlightCache(){ spotlightLineOffsets = null; }
   function measureSpotlightLines(){
     var lines = $("#stage-inner").querySelectorAll(".line");
-    var stageTop = stageEl.getBoundingClientRect().top;
+    var innerTop = $("#stage-inner").getBoundingClientRect().top;
     var offsets = [];
     lines.forEach(function(line){
       var lr = line.getBoundingClientRect();
-      offsets.push({ el: line, height: lr.height, top: lr.top - stageTop });
+      offsets.push({ el: line, height: lr.height, top: lr.top - innerTop });
     });
     spotlightLineOffsets = offsets;
   }
@@ -2684,13 +2915,25 @@
     var stageH = stageEl.clientHeight;
     var center = stageH * 0.38;
     var threshold = stageH * 0.55;
+    /* Position viewport d'une ligne = position contenu − scrollTop courant.
+       L'ancien code AJOUTAIT le scrollTop : la ligne éclairée filait hors
+       écran dès les premiers pixels de défilement (« surbrillance figée au
+       début », rapport mobile — lecture manuelle comme automatique). */
+    var focusIdx = -1;
     for(var i = 0; i < offsets.length; i++){
       var entry = offsets[i];
-      var lc = entry.top + stageEl.scrollTop + entry.height / 2;
+      var lc = entry.top - stageEl.scrollTop + entry.height / 2;
       var dist = Math.abs(lc - center);
       var factor = Math.max(0.22, 1 - dist / threshold);
       entry.el.style.opacity = factor.toFixed(2);
-      entry.el.classList.toggle("focus-line", factor > 0.9);
+      /* Ligne de lecture : la dernière ligne passée au-dessus du repère —
+         toujours exactement une, stable (l'ancien seuil factor > 0.9 pouvait
+         n'éclairer aucune ligne quand la géométrie bougeait, ou deux d'un coup). */
+      if(lc < center) focusIdx = i;
+    }
+    if(focusIdx === -1) focusIdx = 0;
+    for(var j = 0; j < offsets.length; j++){
+      offsets[j].el.classList.toggle("focus-line", j === focusIdx);
     }
   }
   var spotlightRAF = null;
@@ -2699,14 +2942,206 @@
     if(spotlightRAF) return;
     spotlightRAF = requestAnimationFrame(function(){ applySpotlight(); spotlightRAF = null; });
   });
+  /* Rotation / redimensionnement : la géométrie mesurée (hauteur des lignes,
+     offsets) change — le cache repart de zéro au prochain passage. */
+  window.addEventListener("resize", invalidateSpotlightCache);
+  /* ---------------- Dossier de chansons (issue #93) ----------------
+     Stockage optionnel en fichiers ChordPro, un fichier par chanson, dans un
+     dossier choisi par l'utilisateur (desktop uniquement : via preload).
+     Coexistence avec le stockage actuel : la migration est douce et
+     réversible dans les deux sens, sans perte (même approche que #56).
+     La copie de secours automatique reste active dans tous les cas. */
+  var SONGS_DIR_KEY = "cantoria-songs-dir";
+
+  function songsDirBridge(){
+    var b = window.carnetDesktop;
+    return (b && typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
+      && typeof b.readSongFile === "function" && typeof b.writeSongFile === "function"
+      && typeof b.deleteSongFile === "function") ? b : null;
+  }
+
+  function getSongsDir(){
+    try{ return localStorage.getItem(SONGS_DIR_KEY) || ""; }catch(e){ return ""; }
+  }
+  function setSongsDir(dir){
+    try{
+      if(dir) localStorage.setItem(SONGS_DIR_KEY, dir);
+      else localStorage.removeItem(SONGS_DIR_KEY);
+    }catch(e){}
+    syncSongsDirUI();
+  }
+
+  function songFileNameFor(s){
+    var base = String(s.title || "chanson").replace(/[\\/\u0000-\u001f<>:"|?*]/g, "_").trim().slice(0, 120);
+    if(!base) base = "chanson";
+    return base + ".cho";
+  }
+
+  function songToChordPro(s){
+    var lines = [];
+    if(s.title) lines.push("{title: " + s.title + "}");
+    if(s.artist) lines.push("{artist: " + s.artist + "}");
+    if(s.key) lines.push("{key: " + s.key + "}");
+    if(s.capo) lines.push("{capo: " + s.capo + "}");
+    lines.push("");
+    lines.push(s.body || "");
+    return lines.join("\n");
+  }
+
+  /* Parse un fichier ChordPro en chanson (même règles que l'import texte :
+     le corps brut est conservé tel quel, les métadonnées title/artist/key/capo
+     reconnue en tête de fichier). */
+  function songFromChordProFile(content, fileName){
+    var body = String(content || "");
+    if(body.charCodeAt(0) === 0xFEFF) body = body.slice(1);
+    var title = "", artist = "", key = "", capo = "";
+    var rest = body;
+    var re = /^\{(title|artist|key|capo)\s*:\s*([^\}]*)\}\s*$/i;
+    var lines = body.split("\n");
+    var i = 0;
+    for(; i < lines.length; i++){
+      var m = re.exec(lines[i].trim());
+      if(!m) break;
+      var k = m[1].toLowerCase();
+      if(k === "title") title = m[2].trim();
+      else if(k === "artist") artist = m[2].trim();
+      else if(k === "key") key = m[2].trim();
+      else if(k === "capo") capo = m[2].trim();
+    }
+    if(i > 0){
+      rest = lines.slice(i).join("\n");
+      while(rest.charAt(0) === "\n") rest = rest.slice(1);
+    }
+    var baseName = (fileName || "chanson.cho").replace(/\.[^.]+$/, "");
+    return normalizeSong({
+      title: title || baseName || "Sans titre",
+      artist: artist, key: key, capo: capo,
+      body: rest, favori: false, addedAt: Date.now(), lastOpenedAt: null, speed: 1
+    });
+  }
+
+  function syncSongsDirUI(){
+    var dir = getSongsDir();
+    var summary = $("#songsdir-summary");
+    var btn = $("#btn-songsdir");
+    if(!summary || !btn) return;
+    if(dir){
+      summary.textContent = "Dossier actif : " + dir + " (les chansons y sont écrites en fichiers .cho ; le stockage du profil reste une copie).";
+      btn.textContent = "Changer…";
+    }else{
+      summary.textContent = "Stockage actuel : profil de l'application (localStorage/fichier privé). Un dossier de fichiers ChordPro (.cho) permet de copier/synchroniser le carnet comme de simples fichiers.";
+      btn.textContent = "Choisir…";
+    }
+    btn.disabled = !songsDirBridge();
+    if(!songsDirBridge()){
+      summary.textContent += " (disponible uniquement dans l'application desktop)";
+    }
+  }
+
+  /* Migre le carnet courant vers le dossier (fichiers .cho) sans supprimer la
+     source : réversible. Renvoie le nombre de fichiers écrits. */
+  function migrateLibraryToDir(){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false, reason: "no-dir" });
+    var written = 0, failed = 0;
+    var chain = Promise.resolve();
+    songs.forEach(function(s){
+      chain = chain.then(function(){
+        return bridge.writeSongFile(dir, songFileNameFor(s), songToChordPro(s)).then(function(){
+          written++;
+        }).catch(function(){ failed++; });
+      });
+    });
+    return chain.then(function(){ return { ok: true, written: written, failed: failed }; });
+  }
+
+  /* Lit le dossier et importe les fichiers absents du carnet (ajouts externes).
+     Ne supprime rien du carnet : les suppressions de fichiers sont appliquées
+     explicitement par deleteSongFromDir. */
+  function importDirAdditions(){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false, reason: "no-dir" });
+    return bridge.listSongsDir(dir).then(function(res){
+      var files = (res && res.files) || [];
+      var chain = Promise.resolve({ added: 0, skipped: 0 });
+      files.forEach(function(f){
+        chain = chain.then(function(acc){
+          return bridge.readSongFile(dir, f.name).then(function(r){
+            var s = songFromChordProFile(r.content, f.name);
+            if(songs.some(function(x){ return isDuplicate(s, x); })){ acc.skipped++; return acc; }
+            songs.push(s);
+            acc.added++;
+            return acc;
+          }).catch(function(){ acc.skipped++; });
+        });
+      });
+      return chain.then(function(acc){
+        if(acc.added > 0){ saveSongs(); renderLibrary(); }
+        return { ok: true, added: acc.added, skipped: acc.skipped };
+      });
+    });
+  }
+
+  function deleteSongFromDir(song){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false });
+    return bridge.deleteSongFile(dir, songFileNameFor(song)).then(function(){
+      return { ok: true };
+    }).catch(function(){ return { ok: false }; });
+  }
+
+  $("#btn-songsdir").addEventListener("click", function(){
+    var bridge = songsDirBridge();
+    if(!bridge){ toast("Dossier de chansons disponible uniquement dans l'application desktop"); return; }
+    var dir = getSongsDir();
+    var doPick = function(){
+      bridge.pickSongsDir().then(function(res){
+        if(!res || res.canceled) return;
+        setSongsDir(res.dirPath);
+        toast("Dossier de chansons enregistré : " + res.dirPath);
+        uiConfirm("Copier maintenant les " + songs.length + " chanson(s) du carnet dans ce dossier (fichiers .cho) ? Le stockage du profil reste inchangé.").then(function(ok){
+          if(!ok) return;
+          migrateLibraryToDir().then(function(r){
+            if(r.ok) toast(r.written + " fichier(s) écrit(s)" + (r.failed ? ", " + r.failed + " échec(s)" : ""));
+          });
+        });
+      }).catch(function(){ toast("Impossible de choisir le dossier"); });
+    };
+    if(dir){
+      uiConfirm("Dossier actuel : " + dir + "\n\nChoisir un autre dossier ? (les fichiers existants ne sont pas supprimés)").then(function(ok){
+        if(ok) doPick();
+      });
+    }else{
+      doPick();
+    }
+  });
+
+  /* Au lancement : si un dossier est configuré, on détecte les fichiers ajoutés
+     depuis l'extérieur et on les importe (jamais de suppression automatique). */
+  function detectDirChangesOnStartup(){
+    var dir = getSongsDir();
+    if(!dir || !songsDirBridge()) return;
+    importDirAdditions().then(function(r){
+      if(r && r.ok && r.added > 0) toast(r.added + " chanson(s) ajoutée(s) depuis le dossier");
+    });
+  }
+
 
   /* ---------------- Import / Export ---------------- */
-  function fallbackExport(){
-    var data = JSON.stringify({
-      schemaVersion: 1,
+  function libraryExportPayload(){
+    return {
+      schemaVersion: 2,
       exported: new Date().toISOString(),
-      songs: songs
-    }, null, 2);
+      songs: songs,
+      setlists: setlists
+    };
+  }
+
+  function fallbackExport(){
+    var data = JSON.stringify(libraryExportPayload(), null, 2);
     var blob = new Blob([data], { type: "application/json;charset=utf-8" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -2715,21 +3150,17 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 0);
-    toast(T("toastExported"));
+    toast("Carnet exporté");
   }
 
   function exportAllSongs(){
-    var data = JSON.stringify({
-      schemaVersion: 1,
-      exported: new Date().toISOString(),
-      songs: songs
-    }, null, 2);
+    var data = JSON.stringify(libraryExportPayload(), null, 2);
 
     if(window.carnetDesktop && typeof window.carnetDesktop.saveJson === "function"){
       window.carnetDesktop.saveJson(data).then(function(result){
-        if(result && result.saved) toast(T("toastExported"));
+        if(result && result.saved) toast("Carnet exporté");
       }).catch(function(){
-        toast(T("toastExportError"));
+        toast("Erreur pendant l'export");
       });
       return;
     }
@@ -2790,9 +3221,25 @@
           imported++;
         });
 
+        /* Setlists (issue #92) : importées seulement si le fichier en contient
+           (export schemaVersion 2) et sans jamais écraser une setlist existante
+           de même id. Les entrées pointant une chanson absente du carnet sont
+           ignorées à l'affichage, pas supprimées. */
+        var importedSetlists = 0, setlistDup = 0;
+        if(parsed && !Array.isArray(parsed) && Array.isArray(parsed.setlists)){
+          parsed.setlists.forEach(function(raw){
+            var sl = normalizeSetlist(raw);
+            if(setlists.some(function(x){ return x.id === sl.id; })){ setlistDup++; return; }
+            setlists.push(sl);
+            importedSetlists++;
+          });
+        }
+
         saveSongs();
         renderLibrary();
-        toast(imported + " chanson(s) importée(s), " + duplicates + " doublon(s) ignoré(s)");
+        renderSetlists();
+        toast(imported + " chanson(s) importée(s), " + duplicates + " doublon(s) ignoré(s)"
+          + (importedSetlists || setlistDup ? ", " + importedSetlists + " setlist(s), " + setlistDup + " doublon(s)" : ""));
         return;
       }
 
@@ -2806,7 +3253,7 @@
       renderLibrary();
       toast("1 chanson(s) importée(s), 0 doublon(s) ignoré(s)");
     }catch(err){
-      toast(T("toastInvalidFile"));
+      toast("Fichier invalide");
     }
   }
 
@@ -2817,7 +3264,7 @@
         if(!result || result.canceled) return;
         importContent(result.content, result.fileName);
       }catch(e){
-        toast(T("toastImportError"));
+        toast("Erreur pendant l'import");
       }
       return;
     }
@@ -2836,7 +3283,7 @@
       importContent(String(reader.result || ""), file.name);
       $("#import-input").value = "";
     };
-    reader.onerror = function(){ toast(T("toastReadError")); };
+    reader.onerror = function(){ toast("Impossible de lire le fichier"); };
     reader.readAsText(file);
   });
 
@@ -2846,7 +3293,8 @@
     spotlight: true, defaultFontScale: 1, defaultCountdown: 0,
     cardTextScale: 1, controlsPinned: true, chordsVisible: true, chordDiagrams: "song", lyricsAlign: "center",
     controlsCompactMobile: true,
-    cardFields: { key: true, capo: true, chords: true, speed: true }
+    cardFields: { key: true, capo: true, chords: true, speed: true },
+    setlistConfirmNext: true
   };
   (function loadSettings(){
     try{
@@ -2885,6 +3333,8 @@
   function syncSettingsUI(){
     $("#setting-spotlight").classList.toggle("active", appSettings.spotlight);
     $("#setting-spotlight").setAttribute("aria-pressed", appSettings.spotlight ? "true" : "false");
+    $("#setting-setlist-confirm").classList.toggle("active", appSettings.setlistConfirmNext !== false);
+    $("#setting-setlist-confirm").setAttribute("aria-pressed", appSettings.setlistConfirmNext !== false ? "true" : "false");
     $("#setting-chords-visible").classList.toggle("active", appSettings.chordsVisible !== false);
     $("#setting-chords-visible").setAttribute("aria-pressed", appSettings.chordsVisible !== false ? "true" : "false");
     document.querySelectorAll("#diagrams-picker button").forEach(function(b){
@@ -3027,6 +3477,11 @@
     }
   });
   $("#settings-overlay").addEventListener("click", function(e){ if(e.target === this) this.classList.remove("show"); });
+  $("#setting-setlist-confirm").addEventListener("click", function(){
+    appSettings.setlistConfirmNext = appSettings.setlistConfirmNext === false;
+    syncSettingsUI();
+    saveSettings();
+  });
   $("#setting-spotlight").addEventListener("click", function(){
     appSettings.spotlight = !appSettings.spotlight;
     syncSettingsUI();
@@ -3077,15 +3532,6 @@
       syncSettingsUI(); saveSettings();
     });
   });
-  document.querySelectorAll("#lang-picker button").forEach(function(b){
-    b.addEventListener("click", function(){
-      setLang(b.getAttribute("data-lang"));
-      document.querySelectorAll("#lang-picker button").forEach(function(x){
-        x.classList.toggle("active", x === b);
-      });
-      toast(lang === "en" ? "Interface language: English" : "Langue de l'interface : français");
-    });
-  });
   $("#btn-settings-reset").addEventListener("click", function(){
     uiConfirm("Réinitialiser les paramètres (thème, surbrillance, tailles, décompte, éléments affichés) ?\nTes chansons ne seront pas touchées.").then(function(ok){
       if(!ok) return;
@@ -3116,7 +3562,7 @@
     applyChordsVisibility();
     if($("#player-view").classList.contains("active")) renderPlayer();
     else renderChordDiagrams();
-    toast(T("toastSettingsReset"));
+    toast("Paramètres réinitialisés");
   }
 
   /* Theme picker */
@@ -3202,11 +3648,13 @@
 
   /* ---------------- Init ---------------- */
   loadSongs();
-  applyLang();
   renderLibrary();
+  syncSongsDirUI();
   syncPinButton();
   checkStorageUsage();
   writeDailyBackup();
+  /* Détection des ajouts dans le dossier de chansons (issue #93), asynchrone. */
+  setTimeout(detectDirChangesOnStartup, 300);
 })();
 </script>
 
