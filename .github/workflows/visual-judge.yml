@@ -29,12 +29,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0   # origine/baselines nécessaires aux comparaisons
 
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -68,6 +68,11 @@ jobs:
           fi
         # Le pas ne fait jamais échouer la PR : le verdict est consultatif.
 
+      # Correction : mapper le secret dans env pour que la condition voie
+      # la valeur réelle — sans mapping, env.MISTRAL_API_KEY est toujours
+      # vide et l'avertissement s'affichait même clé présente.
       - name: Avertissement si clé absente
         if: env.MISTRAL_API_KEY == ''
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: echo "::warning::MISTRAL_API_KEY absente des secrets — le juge ne peut pas tourner. Ajoutez-la dans Settings → Secrets and variables → Actions."
