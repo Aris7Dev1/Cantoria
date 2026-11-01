@@ -35,9 +35,8 @@ toucher — l'app défile toute seule.
 ## Pourquoi Cantoria plutôt qu'une autre app ?
 
 Cantoria s'adresse au **guitariste-chanteur** qui veut un carnet simple,
-privé et hors-ligne — pas un nouvel outil en ligne de plus. Le marché
-existe déjà (Campfire, OnSong, OpenSong, OpenChord…) ; la différence de
-Cantoria est une ligne assumée, pas une liste de fonctionnalités :
+privé et hors-ligne — pas un nouvel outil en ligne de plus. Sa différence
+est une ligne assumée, pas une liste de fonctionnalités :
 
 - **Zéro compte, zéro cloud, zéro télémétrie.** Vos chansons restent sur votre
   machine. Aucun suivi, aucune synchronisation tierce, aucun réseau côté
@@ -49,11 +48,10 @@ Cantoria est une ligne assumée, pas une liste de fonctionnalités :
 - **Logiciel libre (MIT)** : vous pouvez lire, modifier et redistribuer le code.
 
 Ce que Cantoria **ne cherche pas à faire** — par choix, pas par manque :
-accordeur ou métronome intégré, gestion multi-instruments, synchronisation
-Dropbox/Drive, partage en ligne de carnets. Si vous avez besoin de l'une de ces
-fonctions, une autre application fera probablement mieux : Cantoria vise
-uniquement le moment où vous jouez, les mains occupées, sans rien d'autre
-à gérer.
+synchronisation avec un service tiers (Dropbox, Drive…) ni partage en ligne
+de carnets. Si vous cherchez un carnet connecté, une autre application fera
+probablement mieux : Cantoria vise uniquement le moment où vous jouez, les
+mains occupées, sans rien d'autre à gérer.
 
 ## Fonctionnalités
 
