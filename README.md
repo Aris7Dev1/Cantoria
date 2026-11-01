@@ -32,6 +32,29 @@ toucher — l'app défile toute seule.
   <img src="assets/illustrations/banniere-scene.jpg" alt="Sur scène : Cantoria défile les paroles pendant que vous jouez" width="720">
 </p>
 
+## Pourquoi Cantoria plutôt qu'une autre app ?
+
+Cantoria s'adresse au **guitariste-chanteur** qui veut un carnet simple,
+privé et hors-ligne — pas un nouvel outil en ligne de plus. Le marché
+existe déjà (Campfire, OnSong, OpenSong, OpenChord…) ; la différence de
+Cantoria est une ligne assumée, pas une liste de fonctionnalités :
+
+- **Zéro compte, zéro cloud, zéro télémétrie.** Vos chansons restent sur votre
+  machine. Aucun suivi, aucune synchronisation tierce, aucun réseau côté
+  interface.
+- **Une seule dépendance runtime**, une interface en un seul fichier HTML sans
+  framework ni bundler — du code lisible, auditable, durable.
+- **Vos données sont exportables** (JSON complet, ou dossier de fichiers
+  ChordPro `.cho`), importables à nouveau : vous ne dépendez pas de l'app.
+- **Logiciel libre (MIT)** : vous pouvez lire, modifier et redistribuer le code.
+
+Ce que Cantoria **ne cherche pas à faire** — par choix, pas par manque :
+accordeur ou métronome intégré, gestion multi-instruments, synchronisation
+Dropbox/Drive, partage en ligne de carnets. Si vous avez besoin de l'une de ces
+fonctions, une autre application fera probablement mieux : Cantoria vise
+uniquement le moment où vous jouez, les mains occupées, sans rien d'autre
+à gérer.
+
 ## Fonctionnalités
 
 - 📚 **Bibliothèque locale** : chansons au format ChordPro, favoris, recherche,
