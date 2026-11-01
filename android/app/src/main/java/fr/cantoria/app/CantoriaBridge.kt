@@ -81,6 +81,10 @@ class CantoriaBridge(private val activity: Activity) {
 
     @Volatile var onUpdateAvailable: ((version: String, apkUrl: String) -> Unit)? = null
 
+    // Cast sûr vers MainActivity : le pont n'est installé que par elle
+    // (installBridge), jamais par une autre Activity.
+    private val mainActivity: MainActivity? get() = activity as? MainActivity
+
     @JavascriptInterface
     fun checkNow(): Boolean {
         val cb = onUpdateAvailable
@@ -89,6 +93,31 @@ class CantoriaBridge(private val activity: Activity) {
         // signaler qu'une demande manuelle est possible.
         return true
     }
+
+    // ---- Mises à jour : téléchargement et installation (issue #57) ----
+    // Le bandeau de cantoria.html propose « Redémarrer » une fois l'APK
+    // téléchargé ; le natif pilote réseau + installateur système. La WebView
+    // reste à zéro appel réseau (VISION n°2), elle ne fournit que la
+    // version/URL déjà remontées par le checker natif.
+
+    @JavascriptInterface
+    fun downloadUpdate(version: String, apkUrl: String): Boolean {
+        val main = mainActivity ?: return false
+        if (version.toByteArray(Charsets.UTF_8).size > 128) return false
+        if (apkUrl.toByteArray(Charsets.UTF_8).size > 2048) return false
+        main.runOnUiThread { main.downloadUpdate(version, apkUrl) }
+        return true
+    }
+
+    @JavascriptInterface
+    fun installUpdate(): Boolean {
+        val main = mainActivity ?: return false
+        main.runOnUiThread { main.installUpdate() }
+        return true
+    }
+
+    @JavascriptInterface
+    fun hasDownloadedUpdate(): Boolean = mainActivity?.hasPendingApk() ?: false
 
     // ---- Écran (équivalent powerSaveBlocker du desktop) ----
 

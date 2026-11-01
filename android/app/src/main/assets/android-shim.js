@@ -33,15 +33,50 @@
     });
   }
 
-  var listeners = { available: [] };
+  var listeners = { available: [], progress: [], downloaded: [], error: [] };
 
   // Le natif (MainActivity) diffuse un CustomEvent quand une mise à jour
   // GitHub Releases plus récente est trouvée — on traduit vers les
-  // callbacks carnetDesktop.onUpdateAvailable (contrat desktop).
+  // callbacks carnetDesktop.onUpdateAvailable (contrat desktop). Comme sur
+  // desktop (electron-updater, autoDownload), le téléchargement démarre
+  // immédiatement : le bandeau affiche « Téléchargement automatique en cours… »
+  // jusqu'aux événements de progression du natif.
   window.addEventListener("android-update-available", function (e) {
     var detail = (e && e.detail) || {};
+    var version = detail.version || "";
+    var apkUrl = detail.apkUrl || "";
+    if (version && apkUrl && typeof native.downloadUpdate === "function") {
+      try { native.downloadUpdate(version, apkUrl); } catch (err) {}
+    }
     listeners.available.forEach(function (cb) {
-      try { cb({ version: detail.version || "", apkUrl: detail.apkUrl || "" }); }
+      try { cb({ version: version, apkUrl: apkUrl }); }
+      catch (err) {}
+    });
+  });
+
+  // Progression du téléchargement APK piloté par le natif (ApkDownloader).
+  window.addEventListener("android-update-progress", function (e) {
+    var percent = Number((e && e.detail && e.detail.percent) || 0);
+    listeners.progress.forEach(function (cb) {
+      try { cb({ percent: percent }); }
+      catch (err) {}
+    });
+  });
+
+  // APK complet : le bandeau passe en « Redémarrer » (onUpdateDownloaded).
+  window.addEventListener("android-update-downloaded", function (e) {
+    var version = (e && e.detail && e.detail.version) || "";
+    listeners.downloaded.forEach(function (cb) {
+      try { cb({ version: version }); }
+      catch (err) {}
+    });
+  });
+
+  // Échec du téléchargement : le bandeau est masqué, l'interface affiche un toast.
+  window.addEventListener("android-update-error", function (e) {
+    var message = (e && e.detail && e.detail.message) || "";
+    listeners.error.forEach(function (cb) {
+      try { cb({ message: message }); }
       catch (err) {}
     });
   });
@@ -97,7 +132,15 @@
       }
       return Promise.resolve({ supported: false, reason: "already-checked-at-startup" });
     },
-    installUpdate: function () { return Promise.resolve({ installed: false, reason: "sideload-user-gesture" }); },
+    // Installation : le natif lance l'installateur système sur l'APK
+    // téléchargé (geste utilisateur final — jamais d'installation silencieuse).
+    installUpdate: function () {
+      return new Promise(function (resolve) {
+        var ok = false;
+        try { ok = !!native.installUpdate(); } catch (err) { ok = false; }
+        resolve(ok ? { installed: true } : { installed: false });
+      });
+    },
     onUpdateChecking: function () { return function () {}; },
     onUpdateAvailable: function (callback) {
       listeners.available.push(callback);
@@ -106,11 +149,32 @@
         if (i >= 0) listeners.available.splice(i, 1);
       };
     },
-    onUpdateProgress: function () { return function () {}; },
-    onUpdateDownloaded: function () { return function () {}; },
+    onUpdateProgress: function (callback) {
+      if (typeof callback !== "function") return function () {};
+      listeners.progress.push(callback);
+      return function () {
+        var i = listeners.progress.indexOf(callback);
+        if (i >= 0) listeners.progress.splice(i, 1);
+      };
+    },
+    onUpdateDownloaded: function (callback) {
+      if (typeof callback !== "function") return function () {};
+      listeners.downloaded.push(callback);
+      return function () {
+        var i = listeners.downloaded.indexOf(callback);
+        if (i >= 0) listeners.downloaded.splice(i, 1);
+      };
+    },
     onUpdateNotAvailable: function () { return function () {}; },
     onUpdateCancelled: function () { return function () {}; },
-    onUpdateError: function () { return function () {}; },
+    onUpdateError: function (callback) {
+      if (typeof callback !== "function") return function () {};
+      listeners.error.push(callback);
+      return function () {
+        var i = listeners.error.indexOf(callback);
+        if (i >= 0) listeners.error.splice(i, 1);
+      };
+    },
     /* Dossier de chansons (issue #93) : non disponible sur Android dans cette
        version (le stockage privé + SAF restent en place). Le contrat reste
        complet pour que cantoria.html se comporte à l'identique : les appels
