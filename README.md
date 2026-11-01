@@ -2,6 +2,11 @@
 
 # 🎸 Cantoria
 
+**The guitarist's songbook — built for the stage.**
+*Song library, auto-scrolling lyrics, transposition, chords and diagrams — 100% offline, your data stays with you.*
+
+> Interface disponible en français (par défaut) et en anglais / *Interface available in French (default) and English.*
+
 **Le carnet de chants du guitariste — pensé pour la scène.**
 
 Bibliothèque de chansons, lecteur à défilement automatique, transposition,
