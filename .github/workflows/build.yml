@@ -58,7 +58,7 @@ jobs:
       # présence des secrets (jamais écrits en clair). Sans secrets, le build
       # reste non signé (comportement actuel) avec un avertissement explicite.
       - name: Sign Windows installer (Authenticode)
-        if: runner.os == 'Windows' && secrets.WIN_CSC_LINK != ''
+        if: runner.os == 'Windows' && env.WIN_CSC_LINK != ''
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
@@ -67,11 +67,13 @@ jobs:
           npm run dist:win -- --cscLink "$WIN_CSC_LINK" --cscKeyPassword "$WIN_CSC_KEY_PASSWORD"
 
       - name: "Avertissement : build non signé (aucun secret de signature)"
-        if: runner.os == 'Windows' && secrets.WIN_CSC_LINK == ''
+        if: runner.os == 'Windows' && env.WIN_CSC_LINK == ''
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
         run: echo "::warning::Aucun secret WIN_CSC_LINK -> .exe non signé (SmartScreen avertira)."
 
       - name: Notarize macOS build (Apple)
-        if: runner.os == 'macOS' && secrets.APPLE_API_KEY != ''
+        if: runner.os == 'macOS' && env.APPLE_API_KEY != ''
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -84,7 +86,9 @@ jobs:
           npm run dist:mac -- --notarize
 
       - name: "Avertissement : build macOS non signé/non notarié"
-        if: runner.os == 'macOS' && secrets.APPLE_API_KEY == ''
+        if: runner.os == 'macOS' && env.APPLE_API_KEY == ''
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
         run: echo "::warning::Aucun secret APPLE_API_KEY -> .dmg non signé (Gatekeeper bloquera)."
 
       - name: Build installer
