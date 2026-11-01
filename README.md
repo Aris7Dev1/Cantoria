@@ -97,7 +97,8 @@ Thème **campfire**, desktop et Android :
 </div>
 
 Une présentation prête à projeter (deck HTML autonome) est disponible dans
-[`docs/presentation/`](./docs/presentation).
+[`docs/presentation/`](./docs/presentation) et en ligne sur
+[Cantoria Pages](https://aris7dev1.github.io/Cantoria/).
 
 ## Développement
 
