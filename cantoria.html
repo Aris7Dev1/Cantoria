@@ -1038,7 +1038,11 @@
       var parsed = JSON.parse(raw);
       if(Array.isArray(parsed)) setlists = parsed.map(normalizeSetlist);
     }catch(e){
-      backupUnreadableLibrary(raw);
+      /* Copie de secours dédiée sous son propre préfixe : JAMAIS sous le
+         préfixe du carnet (cantoria-songs-v1-corrupted-), sinon un contenu de
+         setlists illisible serait pris pour un carnet illisible et ferait croire
+         à une corruption du carnet. */
+      try{ localStorage.setItem(SETLISTS_STORAGE_KEY + "-corrupted-" + Date.now(), raw); }catch(e2){}
     }
   }
 
@@ -1234,6 +1238,11 @@
       return true;
     }
     if(parsed && typeof parsed === "object" && Array.isArray(parsed.songs)){
+      /* Export v2 (issue #92) : {songs, setlists}. Accepté UNIQUEMENT si le
+         fichier vient d'un export Cantoria (schemaVersion 2) — un objet
+         arbitraire avec un champ "songs" (ex. vieux carnet inattendu) reste
+         invalide et part en copie de secours, jamais écrasé silencieusement. */
+      if(parsed.schemaVersion !== 2) throw new Error("Format de carnet inattendu");
       songs = parsed.songs.map(normalizeSong);
       if(Array.isArray(parsed.setlists)) setlists = parsed.setlists.map(normalizeSetlist);
       return true;
