@@ -54,6 +54,43 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
+      # Volet A de l'issue #97 : signature des binaires, conditionnée à la
+      # présence des secrets (jamais écrits en clair). Sans secrets, le build
+      # reste non signé (comportement actuel) avec un avertissement explicite.
+      - name: Sign Windows installer (Authenticode)
+        if: runner.os == 'Windows' && env.WIN_CSC_LINK != ''
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          echo "Signature Authenticode via certificat fourni en secret (CSC_LINK)."
+          npm run dist:win -- --cscLink "$WIN_CSC_LINK" --cscKeyPassword "$WIN_CSC_KEY_PASSWORD"
+
+      - name: "Avertissement : build non signé (aucun secret de signature)"
+        if: runner.os == 'Windows' && env.WIN_CSC_LINK == ''
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+        run: echo "::warning::Aucun secret WIN_CSC_LINK -> .exe non signé (SmartScreen avertira)."
+
+      - name: Notarize macOS build (Apple)
+        if: runner.os == 'macOS' && env.APPLE_API_KEY != ''
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.MACOS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_PASSWORD }}
+        run: |
+          echo "Signature + notarisation macOS via clés API Apple fournies en secrets."
+          npm run dist:mac -- --notarize
+
+      - name: "Avertissement : build macOS non signé/non notarié"
+        if: runner.os == 'macOS' && env.APPLE_API_KEY == ''
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: echo "::warning::Aucun secret APPLE_API_KEY -> .dmg non signé (Gatekeeper bloquera)."
+
       - name: Build installer
         run: npm run ${{ matrix.script }}
 
