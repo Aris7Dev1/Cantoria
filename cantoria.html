@@ -308,7 +308,9 @@
     display:flex;flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;
     transition:opacity .3s ease, transform .3s ease;
   }
-  #controls.auto-hidden{opacity:0;transform:translateY(8px);pointer-events:none;}
+  /* Auto-masqué : display:none (pas opacity:0) pour rendre l'espace au
+     lecteur — une bande invisible laissait une zone morte en bas d'écran. */
+  #controls.auto-hidden{display:none;}
   .ctrl-row{display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap;}
   .ctrl-row .label{font-size:11px;color:var(--ink-mid);width:64px;flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
   .ctrl-group{
@@ -467,6 +469,9 @@
     display:flex;gap:10px;padding:10px 14px;overflow-x:auto;
     background:var(--bg-panel);border-bottom:1px solid var(--border);
   }
+  /* Vidée (réglage « Masqués », accords cachés), la rangée ne doit pas
+     laisser une bande morte sous le titre : même règle que #chords-used. */
+  #chord-diagrams:empty{display:none;}
   .chord-diagram{
     display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;
   }
