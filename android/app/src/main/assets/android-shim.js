@@ -110,6 +110,15 @@
     onUpdateDownloaded: function () { return function () {}; },
     onUpdateNotAvailable: function () { return function () {}; },
     onUpdateCancelled: function () { return function () {}; },
-    onUpdateError: function () { return function () {}; }
+    onUpdateError: function () { return function () {}; },
+    /* Dossier de chansons (issue #93) : non disponible sur Android dans cette
+       version (le stockage privé + SAF restent en place). Le contrat reste
+       complet pour que cantoria.html se comporte à l'identique : les appels
+       renvoient une promesse rejetée, jamais une erreur synchrone. */
+    pickSongsDir: function () { return Promise.reject(new Error("Dossier de chansons disponible uniquement sur desktop")); },
+    listSongsDir: function () { return Promise.reject(new Error("Dossier de chansons disponible uniquement sur desktop")); },
+    readSongFile: function () { return Promise.reject(new Error("Dossier de chansons disponible uniquement sur desktop")); },
+    writeSongFile: function () { return Promise.reject(new Error("Dossier de chansons disponible uniquement sur desktop")); },
+    deleteSongFile: function () { return Promise.reject(new Error("Dossier de chansons disponible uniquement sur desktop")); }
   });
 })();
