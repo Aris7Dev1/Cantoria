@@ -879,6 +879,14 @@
         <button class="btn" id="btn-manage-backups">Gérer…</button>
       </div>
 
+      <div class="setting-row" id="songsdir-row">
+        <div class="setting-text">
+          <div class="setting-title">Dossier de chansons (optionnel)</div>
+          <div class="setting-desc" id="songsdir-summary">Stockage actuel : profil de l'application (localStorage/fichier privé). Un dossier de fichiers ChordPro (.cho) permet de copier/synchroniser le carnet comme de simples fichiers.</div>
+        </div>
+        <button class="btn" id="btn-songsdir">Choisir…</button>
+      </div>
+
       <button class="btn danger ghost" id="btn-settings-reset" style="align-self:flex-start;">Réinitialiser les paramètres</button>
       <div id="backups-subview" class="modal-subview">
       <div class="modal-head">
@@ -1105,6 +1113,16 @@
        dans le fichier privé pour ne pas dépendre du quota localStorage. */
     var fileJson = JSON.stringify({ songs: songs, setlists: setlists });
     try{ localStorage.setItem(SETLISTS_STORAGE_KEY, JSON.stringify(setlists)); }catch(e){}
+    /* Dossier de chansons configuré (issue #93) : chaque sauvegarde met aussi
+       à jour le fichier .cho correspondant, en best effort (le stockage du
+       profil reste la référence, aucune perte si le dossier est indisponible). */
+    var dirBridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(dirBridge && dir){
+      songs.forEach(function(s){
+        dirBridge.writeSongFile(dir, songFileNameFor(s), songToChordPro(s)).catch(function(){});
+      });
+    }
     var bridge = storageBridge();
     if(bridge){
       try{
@@ -2277,10 +2295,12 @@
 
   $("#btn-delete").addEventListener("click", function(){
     if(!editingId) return;
+    var doomed = songs.find(function(x){ return x.id === editingId; });
     uiConfirm("Supprimer cette chanson ?").then(function(ok){
       if(!ok) return;
       songs = songs.filter(function(x){ return x.id !== editingId; });
       saveSongs();
+      if(doomed) deleteSongFromDir(doomed);
       renderLibrary();
       showView("library");
     });
@@ -2925,6 +2945,190 @@
   /* Rotation / redimensionnement : la géométrie mesurée (hauteur des lignes,
      offsets) change — le cache repart de zéro au prochain passage. */
   window.addEventListener("resize", invalidateSpotlightCache);
+  /* ---------------- Dossier de chansons (issue #93) ----------------
+     Stockage optionnel en fichiers ChordPro, un fichier par chanson, dans un
+     dossier choisi par l'utilisateur (desktop uniquement : via preload).
+     Coexistence avec le stockage actuel : la migration est douce et
+     réversible dans les deux sens, sans perte (même approche que #56).
+     La copie de secours automatique reste active dans tous les cas. */
+  var SONGS_DIR_KEY = "cantoria-songs-dir";
+
+  function songsDirBridge(){
+    var b = window.carnetDesktop;
+    return (b && typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
+      && typeof b.readSongFile === "function" && typeof b.writeSongFile === "function"
+      && typeof b.deleteSongFile === "function") ? b : null;
+  }
+
+  function getSongsDir(){
+    try{ return localStorage.getItem(SONGS_DIR_KEY) || ""; }catch(e){ return ""; }
+  }
+  function setSongsDir(dir){
+    try{
+      if(dir) localStorage.setItem(SONGS_DIR_KEY, dir);
+      else localStorage.removeItem(SONGS_DIR_KEY);
+    }catch(e){}
+    syncSongsDirUI();
+  }
+
+  function songFileNameFor(s){
+    var base = String(s.title || "chanson").replace(/[\\/\u0000-\u001f<>:"|?*]/g, "_").trim().slice(0, 120);
+    if(!base) base = "chanson";
+    return base + ".cho";
+  }
+
+  function songToChordPro(s){
+    var lines = [];
+    if(s.title) lines.push("{title: " + s.title + "}");
+    if(s.artist) lines.push("{artist: " + s.artist + "}");
+    if(s.key) lines.push("{key: " + s.key + "}");
+    if(s.capo) lines.push("{capo: " + s.capo + "}");
+    lines.push("");
+    lines.push(s.body || "");
+    return lines.join("\n");
+  }
+
+  /* Parse un fichier ChordPro en chanson (même règles que l'import texte :
+     le corps brut est conservé tel quel, les métadonnées title/artist/key/capo
+     reconnue en tête de fichier). */
+  function songFromChordProFile(content, fileName){
+    var body = String(content || "");
+    if(body.charCodeAt(0) === 0xFEFF) body = body.slice(1);
+    var title = "", artist = "", key = "", capo = "";
+    var rest = body;
+    var re = /^\{(title|artist|key|capo)\s*:\s*([^\}]*)\}\s*$/i;
+    var lines = body.split("\n");
+    var i = 0;
+    for(; i < lines.length; i++){
+      var m = re.exec(lines[i].trim());
+      if(!m) break;
+      var k = m[1].toLowerCase();
+      if(k === "title") title = m[2].trim();
+      else if(k === "artist") artist = m[2].trim();
+      else if(k === "key") key = m[2].trim();
+      else if(k === "capo") capo = m[2].trim();
+    }
+    if(i > 0){
+      rest = lines.slice(i).join("\n");
+      while(rest.charAt(0) === "\n") rest = rest.slice(1);
+    }
+    var baseName = (fileName || "chanson.cho").replace(/\.[^.]+$/, "");
+    return normalizeSong({
+      title: title || baseName || "Sans titre",
+      artist: artist, key: key, capo: capo,
+      body: rest, favori: false, addedAt: Date.now(), lastOpenedAt: null, speed: 1
+    });
+  }
+
+  function syncSongsDirUI(){
+    var dir = getSongsDir();
+    var summary = $("#songsdir-summary");
+    var btn = $("#btn-songsdir");
+    if(!summary || !btn) return;
+    if(dir){
+      summary.textContent = "Dossier actif : " + dir + " (les chansons y sont écrites en fichiers .cho ; le stockage du profil reste une copie).";
+      btn.textContent = "Changer…";
+    }else{
+      summary.textContent = "Stockage actuel : profil de l'application (localStorage/fichier privé). Un dossier de fichiers ChordPro (.cho) permet de copier/synchroniser le carnet comme de simples fichiers.";
+      btn.textContent = "Choisir…";
+    }
+    btn.disabled = !songsDirBridge();
+    if(!songsDirBridge()){
+      summary.textContent += " (disponible uniquement dans l'application desktop)";
+    }
+  }
+
+  /* Migre le carnet courant vers le dossier (fichiers .cho) sans supprimer la
+     source : réversible. Renvoie le nombre de fichiers écrits. */
+  function migrateLibraryToDir(){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false, reason: "no-dir" });
+    var written = 0, failed = 0;
+    var chain = Promise.resolve();
+    songs.forEach(function(s){
+      chain = chain.then(function(){
+        return bridge.writeSongFile(dir, songFileNameFor(s), songToChordPro(s)).then(function(){
+          written++;
+        }).catch(function(){ failed++; });
+      });
+    });
+    return chain.then(function(){ return { ok: true, written: written, failed: failed }; });
+  }
+
+  /* Lit le dossier et importe les fichiers absents du carnet (ajouts externes).
+     Ne supprime rien du carnet : les suppressions de fichiers sont appliquées
+     explicitement par deleteSongFromDir. */
+  function importDirAdditions(){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false, reason: "no-dir" });
+    return bridge.listSongsDir(dir).then(function(res){
+      var files = (res && res.files) || [];
+      var chain = Promise.resolve({ added: 0, skipped: 0 });
+      files.forEach(function(f){
+        chain = chain.then(function(acc){
+          return bridge.readSongFile(dir, f.name).then(function(r){
+            var s = songFromChordProFile(r.content, f.name);
+            if(songs.some(function(x){ return isDuplicate(s, x); })){ acc.skipped++; return acc; }
+            songs.push(s);
+            acc.added++;
+            return acc;
+          }).catch(function(){ acc.skipped++; });
+        });
+      });
+      return chain.then(function(acc){
+        if(acc.added > 0){ saveSongs(); renderLibrary(); }
+        return { ok: true, added: acc.added, skipped: acc.skipped };
+      });
+    });
+  }
+
+  function deleteSongFromDir(song){
+    var bridge = songsDirBridge();
+    var dir = getSongsDir();
+    if(!bridge || !dir) return Promise.resolve({ ok: false });
+    return bridge.deleteSongFile(dir, songFileNameFor(song)).then(function(){
+      return { ok: true };
+    }).catch(function(){ return { ok: false }; });
+  }
+
+  $("#btn-songsdir").addEventListener("click", function(){
+    var bridge = songsDirBridge();
+    if(!bridge){ toast("Dossier de chansons disponible uniquement dans l'application desktop"); return; }
+    var dir = getSongsDir();
+    var doPick = function(){
+      bridge.pickSongsDir().then(function(res){
+        if(!res || res.canceled) return;
+        setSongsDir(res.dirPath);
+        toast("Dossier de chansons enregistré : " + res.dirPath);
+        uiConfirm("Copier maintenant les " + songs.length + " chanson(s) du carnet dans ce dossier (fichiers .cho) ? Le stockage du profil reste inchangé.").then(function(ok){
+          if(!ok) return;
+          migrateLibraryToDir().then(function(r){
+            if(r.ok) toast(r.written + " fichier(s) écrit(s)" + (r.failed ? ", " + r.failed + " échec(s)" : ""));
+          });
+        });
+      }).catch(function(){ toast("Impossible de choisir le dossier"); });
+    };
+    if(dir){
+      uiConfirm("Dossier actuel : " + dir + "\n\nChoisir un autre dossier ? (les fichiers existants ne sont pas supprimés)").then(function(ok){
+        if(ok) doPick();
+      });
+    }else{
+      doPick();
+    }
+  });
+
+  /* Au lancement : si un dossier est configuré, on détecte les fichiers ajoutés
+     depuis l'extérieur et on les importe (jamais de suppression automatique). */
+  function detectDirChangesOnStartup(){
+    var dir = getSongsDir();
+    if(!dir || !songsDirBridge()) return;
+    importDirAdditions().then(function(r){
+      if(r && r.ok && r.added > 0) toast(r.added + " chanson(s) ajoutée(s) depuis le dossier");
+    });
+  }
+
 
   /* ---------------- Import / Export ---------------- */
   function libraryExportPayload(){
@@ -3445,9 +3649,12 @@
   /* ---------------- Init ---------------- */
   loadSongs();
   renderLibrary();
+  syncSongsDirUI();
   syncPinButton();
   checkStorageUsage();
   writeDailyBackup();
+  /* Détection des ajouts dans le dossier de chansons (issue #93), asynchrone. */
+  setTimeout(detectDirChangesOnStartup, 300);
 })();
 </script>
 
