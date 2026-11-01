@@ -24,7 +24,7 @@ const MAX_CALLS = parseInt(process.env.JUDGE_MAX_CALLS || "10", 10);
    Le test devcontainer-security vérifie cette séparation. */
 const BASE_URL = process.env.MISTRAL_BASE_URL || "";
 const API_KEY = process.env.MISTRAL_API_KEY || "";
-const MODEL = process.env.MISTRAL_JUDGE_MODEL || "mistral-large-4";
+const MODEL = process.env.MISTRAL_JUDGE_MODEL || "mistral-large-4-0";
 
 function main() {
   if (!API_KEY || !BASE_URL) {

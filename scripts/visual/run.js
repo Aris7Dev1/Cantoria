@@ -17,7 +17,7 @@ function parseArgs(argv, env = process.env) {
   const o = {
     engine: "electron", themes: THEMES.slice(), scenarios: null, out: "visual-out", baseline: "visual-baseline",
     judge: false, intent: "", repetitions: 2, maxJudgeCalls: 24, strict: false, updateBaseline: false,
-    judgeModel: env.VISUAL_JUDGE_MODEL || "mistral-large-4",
+    judgeModel: env.VISUAL_JUDGE_MODEL || "mistral-large-4-0",
     gatewayUrl: env.GATEWAY_URL || "http://mistral-gateway:8080",
   };
   for (const a of argv) {

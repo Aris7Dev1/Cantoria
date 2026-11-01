@@ -67,7 +67,7 @@ async function setup(overrides = {}) {
   };
 }
 
-const CHAT = (model = "mistral-large-4") => JSON.stringify({ model, messages: [{ role: "user", content: "salut" }] });
+const CHAT = (model = "mistral-large-4-0") => JSON.stringify({ model, messages: [{ role: "user", content: "salut" }] });
 const JSON_HEADERS = { "content-type": "application/json" };
 
 test("remplace la clé du client par la vraie clé et ne relaie ni cookie ni x-api-key", async () => {
@@ -82,7 +82,7 @@ test("remplace la clé du client par la vraie clé et ne relaie ni cookie ni x-a
     assert.equal(got.headers.authorization, `Bearer ${REAL_KEY}`);
     assert.equal(got.headers["x-api-key"], undefined);
     assert.equal(got.headers.cookie, undefined);
-    assert.equal(JSON.parse(got.body).model, "mistral-large-4");
+    assert.equal(JSON.parse(got.body).model, "mistral-large-4-0");
   } finally { await g.stop(); }
 });
 

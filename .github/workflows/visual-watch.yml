@@ -5,7 +5,7 @@ name: Visual watch
 #   1. boucle visuelle déterministe (captures Chromium + contrôles + comparaison
 #      aux baselines du dépôt) — zéro appel IA, brouillons prêts à relire ;
 #   2. explorateur IA : un but de parcours au hasard (explorer-goals.json),
-#      plafonds habituels (40 actions / 30 appels, mistral-large-4) ;
+#      plafonds habituels (40 actions / 30 appels, mistral-large-4-0) ;
 #   3. fileur (scripts/visual/file-issues.js) : brouillons + rapport deviennent
 #      des issues GitHub label `explorer-proposition` — JAMAIS `agent-ok` :
 #      l'approbation reste un geste humain du superviseur.
@@ -82,7 +82,7 @@ jobs:
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
-          MISTRAL_EXPLORER_MODEL: mistral-large-4
+          MISTRAL_EXPLORER_MODEL: mistral-large-4-0
           EXPLORER_GOAL: ${{ inputs.goal }}
         run: node scripts/visual/explorer.js > rapport-exploration.md || true
 

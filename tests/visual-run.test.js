@@ -34,7 +34,7 @@ test("parseArgs : valeurs par défaut sûres et options validées", () => {
   assert.equal(o.engine, "electron");
   assert.equal(o.judge, false, "le juge (payant) est désactivé par défaut");
   assert.equal(o.gatewayUrl, "http://mistral-gateway:8080");
-  assert.equal(o.judgeModel, "mistral-large-4");
+  assert.equal(o.judgeModel, "mistral-large-4-0");
   assert.deepEqual(run.parseArgs(["--themes=campfire", "--judge", "--repetitions=9"], {}).themes, ["campfire"]);
   assert.equal(run.parseArgs(["--repetitions=9"], {}).repetitions, 5);
   assert.throws(() => run.parseArgs(["--engine=firefox"], {}), /engine/);

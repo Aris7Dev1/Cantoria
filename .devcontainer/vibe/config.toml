@@ -52,7 +52,7 @@ backend = "mistral"
 # (le champ n'est alors plus envoyé et c'est le réglage par défaut du serveur qui s'applique).
 # ---------------------------------------------------------------------------------------
 [[models]]
-name = "mistral-large-4"
+name = "mistral-large-4-0"
 provider = "mistral"
 alias = "large-4"
 temperature = 0.2
@@ -65,7 +65,7 @@ max_context_length = 262144
 
 # Même modèle avec raisonnement : à choisir avec /model pour les tâches difficiles.
 [[models]]
-name = "mistral-large-4"
+name = "mistral-large-4-0"
 provider = "mistral"
 alias = "large-4-think"
 temperature = 0.2
