@@ -2192,8 +2192,11 @@
   $("#tr-down").addEventListener("click", function(){ transposeSteps--; $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps; renderPlayer(); });
 
   /* Font size controls */
-  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
-  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); });
+  /* A+/A− changent la hauteur des lignes : la géométrie mesurée par le
+     spotlight est périmée — invalidation du cache, sinon la surbrillance
+     traîne derrière le nouveau layout. */
+  $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
+  $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
 
   /* Auto-scroll — synced to the browser's actual repaint cycle via requestAnimationFrame
      instead of a fixed-interval timer. setInterval doesn't align with when the browser
@@ -2445,18 +2448,21 @@
 
   /* Spotlight effect, also runs on manual scroll */
   var stageEl;
-  /* Offsets des lignes mesures une seule fois par rendu (dans le repere du
-     stage), puis recalcul de la proximite par simple arithmetique a chaque
-     frame : plus de getBoundingClientRect par ligne a 60 fps. */
+  /* Offsets des lignes mesurés une seule fois par rendu, dans le repère du
+     CONTENU : #stage-inner défile avec les lignes, donc la différence des deux
+     getBoundingClientRect est indépendante du scrollTop (l'ancienne version
+     rapportait au #stage, immobile : la mesure incluait déjà le défilement du
+     moment de la mesure). Puis recalcul de la proximité par simple arithmétique
+     à chaque frame : plus de getBoundingClientRect par ligne à 60 fps. */
   var spotlightLineOffsets = null;
   function invalidateSpotlightCache(){ spotlightLineOffsets = null; }
   function measureSpotlightLines(){
     var lines = $("#stage-inner").querySelectorAll(".line");
-    var stageTop = stageEl.getBoundingClientRect().top;
+    var innerTop = $("#stage-inner").getBoundingClientRect().top;
     var offsets = [];
     lines.forEach(function(line){
       var lr = line.getBoundingClientRect();
-      offsets.push({ el: line, height: lr.height, top: lr.top - stageTop });
+      offsets.push({ el: line, height: lr.height, top: lr.top - innerTop });
     });
     spotlightLineOffsets = offsets;
   }
@@ -2474,13 +2480,25 @@
     var stageH = stageEl.clientHeight;
     var center = stageH * 0.38;
     var threshold = stageH * 0.55;
+    /* Position viewport d'une ligne = position contenu − scrollTop courant.
+       L'ancien code AJOUTAIT le scrollTop : la ligne éclairée filait hors
+       écran dès les premiers pixels de défilement (« surbrillance figée au
+       début », rapport mobile — lecture manuelle comme automatique). */
+    var focusIdx = -1;
     for(var i = 0; i < offsets.length; i++){
       var entry = offsets[i];
-      var lc = entry.top + stageEl.scrollTop + entry.height / 2;
+      var lc = entry.top - stageEl.scrollTop + entry.height / 2;
       var dist = Math.abs(lc - center);
       var factor = Math.max(0.22, 1 - dist / threshold);
       entry.el.style.opacity = factor.toFixed(2);
-      entry.el.classList.toggle("focus-line", factor > 0.9);
+      /* Ligne de lecture : la dernière ligne passée au-dessus du repère —
+         toujours exactement une, stable (l'ancien seuil factor > 0.9 pouvait
+         n'éclairer aucune ligne quand la géométrie bougeait, ou deux d'un coup). */
+      if(lc < center) focusIdx = i;
+    }
+    if(focusIdx === -1) focusIdx = 0;
+    for(var j = 0; j < offsets.length; j++){
+      offsets[j].el.classList.toggle("focus-line", j === focusIdx);
     }
   }
   var spotlightRAF = null;
@@ -2489,6 +2507,9 @@
     if(spotlightRAF) return;
     spotlightRAF = requestAnimationFrame(function(){ applySpotlight(); spotlightRAF = null; });
   });
+  /* Rotation / redimensionnement : la géométrie mesurée (hauteur des lignes,
+     offsets) change — le cache repart de zéro au prochain passage. */
+  window.addEventListener("resize", invalidateSpotlightCache);
 
   /* ---------------- Import / Export ---------------- */
   function fallbackExport(){
