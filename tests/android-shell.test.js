@@ -84,6 +84,8 @@ test("cantoria.html n'est pas dupliqué à la main : copié au build", () => {
   const gradle = read("app/build.gradle");
   assert.ok(/from rootProject\.file\('\.\.\/cantoria\.html'\)/.test(gradle),
     "le build copie cantoria.html depuis la racine (source de vérité unique)");
+  assert.ok(/preBuild\.dependsOn copyCantoriaHtml/.test(gradle),
+    "la copie est branchée sur preBuild (le pattern mergeAssetsProvider.doLast était non fiable : APK embarquant un HTML périmé)");
   /* On vérifie l'état VERSIONNÉ (git ls-files), pas la présence physique :
      un poste de dev qui a déjà lancé android:install possède la copie de build
      sur son disque — c'est normal, elle ne doit juste pas être commitée. */
