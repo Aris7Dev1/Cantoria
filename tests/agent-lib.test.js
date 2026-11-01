@@ -106,16 +106,29 @@ test("describeOutcome rend les causes d'arrêt lisibles", () => {
   assert.match(lib.describeOutcome({ outcome: null, exitCode: 9, errorMessage: "" }), /code de sortie 9/);
 });
 
-test("buildPrBody mentionne l'issue, les contrôles et les avertissements", () => {
+test("buildPrBody suit le gabarit de PR du dépôt et mentionne l'issue, les contrôles et les avertissements", () => {
   const body = lib.buildPrBody({
     issueNumber: 7, summary: "Résumé", files: ["main.js"], changedLines: 12,
     checks: { check: true, test: true }, warnings: ["Pas de test"], steps: 3, costUsd: 0.25,
   });
+  // Gabarit .github/pull_request_template.md : sections et ordre imposés
+  const ordre = [body.indexOf("## Résumé"), body.indexOf("## Checklist de relecture")];
+  assert.ok(ordre[0] >= 0 && ordre[1] > ordre[0], "Résumé avant Checklist de relecture");
   assert.match(body, /Closes #7/);
+  assert.match(body, /- \[x\].*périmètre de l'issue #7/);
   assert.match(body, /Avertissements/);
   assert.match(body, /npm test` : OK/);
   assert.match(body, /3 appels au modèle/);
   assert.match(body, /0\.25 \$/);
+});
+
+test("buildPrBody signale les contrôles en échec", () => {
+  const body = lib.buildPrBody({
+    issueNumber: 8, summary: "Résumé", files: ["main.js"], changedLines: 5,
+    checks: { check: true, test: false }, warnings: [], steps: 1, costUsd: 0.1,
+  });
+  assert.match(body, /`npm test` : ÉCHEC/);
+  assert.match(body, /⚠️/);
 });
 
 test("visionIncomplete repère un VISION.md encore en gabarit", () => {
