@@ -26,7 +26,7 @@ Windows 10 ── Docker Desktop (WSL2)
    ```
    Le fichier est ignoré par Git.
 3. **Ouvrir dans VS Code** : `code .` depuis WSL puis **Dev Containers: Reopen in Container**. La première construction est longue (image, Electron, dépendances).
-4. À la fin, `post-create.sh` vérifie le masque du `.env`, installe la configuration de Vibe, lance `npm run check` et `npm test`, puis liste les modèles que ta clé peut utiliser. **Vérifie que `mistral-large-4` y figure.** Sinon, corrige le champ `name` de `[[models]]` dans `.devcontainer/vibe/config.toml`.
+4. À la fin, `post-create.sh` vérifie le masque du `.env`, installe la configuration de Vibe, lance `npm run check` et `npm test`, puis liste les modèles que ta clé peut utiliser. **Vérifie que `mistral-large-4-0` y figure.** Sinon, corrige le champ `name` de `[[models]]` dans `.devcontainer/vibe/config.toml`.
 5. Dans un terminal du conteneur : `vibe`. À la première ouverture, accepte la confiance du dossier. Si Vibe propose son assistant de configuration, garde la clé de l'environnement : la configuration est déjà fournie.
 6. **Pour faire travailler l'agent sur des issues GitHub** (authentification, label d'approbation, protection de `main`) : voir `docs/agent/README.md`.
 
@@ -34,8 +34,8 @@ Windows 10 ── Docker Desktop (WSL2)
 
 | Alias (dans `/model`) | Modèle | Raisonnement | Usage |
 |---|---|---|---|
-| `large-4` | `mistral-large-4` | `reasoning_effort: none` (rapide) | par défaut |
-| `large-4-think` | `mistral-large-4` | `reasoning_effort: high` (plus lent, plus de tokens) | tâches difficiles |
+| `large-4` | `mistral-large-4-0` | `reasoning_effort: none` (rapide) | par défaut |
+| `large-4-think` | `mistral-large-4-0` | `reasoning_effort: high` (plus lent, plus de tokens) | tâches difficiles |
 
 Vérifié avec Vibe 2.26.1 : Vibe envoie bien `model`, `reasoning_effort` et la clé factice, et calcule le coût avec les prix du fichier. **À confirmer de ton côté** : que l'API accepte `reasoning_effort` pour Large 4 (sinon une erreur 400 le mentionne ; voir le commentaire dans `config.toml`), les prix (ils viennent d'un article tiers) et la fenêtre de contexte (sources discordantes).
 

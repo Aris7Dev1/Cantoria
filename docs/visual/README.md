@@ -25,7 +25,7 @@ npm run visual -- --update-baseline          # adopte les captures courantes com
 npm run visual -- --judge --intent="agrandir les accords du lecteur"   # + juge A/B via la passerelle
 ```
 
-Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player` · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4` · `--strict` (code 1 s'il y a des erreurs).
+Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player` · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4-0` · `--strict` (code 1 s'il y a des erreurs).
 
 Sorties : `visual-out/current/<thème>/<scénario>.png`, `visual-out/diff/…` (pixels modifiés en rose), `report.md`, `report.json`, `issues-drafts/`.
 
@@ -81,7 +81,7 @@ tourne quand même.
 ## Limites à connaître
 
 - **Électron, Playwright et le juge n'ont pas été éprouvés dans ton conteneur Docker.** Ici : Electron 44.4.3 réel sous Xvfb piloté par `playwright-core` 1.56.0, 12 captures identiques d'une exécution à l'autre. Pas de démon Docker pour tester l'image `dev`.
-- **Le juge n'a jamais parlé au vrai Mistral** : testé avec un faux modèle uniquement. À vérifier chez toi : que `mistral-large-4` accepte les images (`image_url` en data URL), `response_format: json_object`, et la qualité de ses verdicts. Commence par `--repetitions=1` sur une seule paire ; surveille le coût dans ta console.
+- **Le juge n'a jamais parlé au vrai Mistral** : testé avec un faux modèle uniquement. À vérifier chez toi : que `mistral-large-4-0` accepte les images (`image_url` en data URL), `response_format: json_object`, et la qualité de ses verdicts. Commence par `--repetitions=1` sur une seule paire ; surveille le coût dans ta console.
 - **Les références dépendent des polices** de la machine : génère-les dans le conteneur, compare-les dans le conteneur. Une référence créée sous Windows ne servira à rien ici.
 - **Scènes statiques** : pas de défilement en cours, pas de décompte, pas de bandeau de mise à jour. Ajouter un scénario = ajouter un objet dans `scenarios.js`.
 - **La boucle est fermée par le chien de garde** (`.github/workflows/visual-watch.yml`, voir ci-dessus) : les brouillons et rapports deviennent des issues `explorer-proposition` à relire, éditer et approuver (label `agent-ok`) par toi. Les garde-fous prévus (3 cycles maximum, arrêt sur régression, pas de cycle si les tests échouent) viendront quand tu auras vu quelques rapports réels.

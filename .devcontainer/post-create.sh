@@ -44,8 +44,8 @@ if [ "$ready" -eq 1 ]; then
   echo "Passerelle joignable. Modèles Mistral visibles avec ta clé :"
   if models=$(curl -fsS -m 15 "${GATEWAY_URL}/v1/models" 2>/dev/null); then
     echo "$models" | jq -r '.data[].id' | sort -u | sed 's/^/  - /'
-    if ! echo "$models" | jq -e '.data[] | select(.id == "mistral-large-4")' >/dev/null 2>&1; then
-      echo "ATTENTION : « mistral-large-4 » n'est pas dans cette liste."
+    if ! echo "$models" | jq -e '.data[] | select(.id == "mistral-large-4-0")' >/dev/null 2>&1; then
+      echo "ATTENTION : « mistral-large-4-0 » n'est pas dans cette liste."
       echo "  Corrige le champ name de [[models]] dans .devcontainer/vibe/config.toml, puis relance le conteneur."
     fi
   else
