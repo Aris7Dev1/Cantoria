@@ -106,17 +106,30 @@ test("describeOutcome rend les causes d'arrêt lisibles", () => {
   assert.match(lib.describeOutcome({ outcome: null, exitCode: 9, errorMessage: "" }), /code de sortie 9/);
 });
 
-test("buildPrBody mentionne l'issue, les contrôles et les avertissements", () => {
+test("buildPrBody suit le gabarit de PR du d\u00e9p\u00f4t et mentionne l'issue, les contr\u00f4les et les avertissements", () => {
   const body = lib.buildPrBody({
-    issueNumber: 7, summary: "Résumé", files: ["main.js"], changedLines: 12,
+    issueNumber: 7, summary: "R\u00e9sum\u00e9", files: ["main.js"], changedLines: 12,
     checks: { check: true, test: true }, warnings: ["Pas de test"], steps: 3, costUsd: 0.25,
   });
+  // Gabarit .github/pull_request_template.md : sections et ordre impos\u00e9s
+  const ordre = [body.indexOf("## R\u00e9sum\u00e9"), body.indexOf("## Checklist de relecture")];
+  assert.ok(ordre[0] >= 0 && ordre[1] > ordre[0], "R\u00e9sum\u00e9 avant Checklist de relecture");
   assert.match(body, /Closes #7/);
+  assert.match(body, /- \[x\].*p\u00e9rim\u00e8tre de l'issue #7/);
   assert.match(body, /Avertissements/);
   assert.match(body, /npm test` : OK/);
-  assert.match(body, /3 appels au modèle/);
+  assert.match(body, /3 appels au mod\u00e8le/);
   assert.match(body, /0\.25 \$/);
 });
+
+test("buildPrBody signale les contr\u00f4les en \u00e9chec", () => {
+  const body = lib.buildPrBody({
+    issueNumber: 8, summary: "R\u00e9sum\u00e9", files: ["main.js"], changedLines: 5,
+    checks: { check: true, test: false }, warnings: [], steps: 1, costUsd: 0.1,
+  });
+  assert.match(body, /`npm test` : \u00c9CHEC/);
+  assert.match(body, /\u26a0\ufe0f/);
+})
 
 test("visionIncomplete repère un VISION.md encore en gabarit", () => {
   assert.equal(lib.visionIncomplete("## Mission\n<!-- À COMPLÉTER : une phrase -->"), true);
