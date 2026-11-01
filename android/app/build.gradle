@@ -88,15 +88,17 @@ android {
         }
     }
 
-    // cantoria.html embarqué sans duplication manuelle : tâche de copie au build.
-    applicationVariants.all { variant ->
-        variant.mergeAssetsProvider.get().doLast {
-            copy {
-                from rootProject.file('../cantoria.html')
-                into file("${buildDir}/intermediates/assets/${variant.name}/mergeAssets")
-            }
-        }
+    // cantoria.html embarqué sans duplication manuelle : copie explicite vers
+    // src/main/assets AVANT le build (preBuild), comme scripts/android/install.js.
+    // L'ancien pattern mergeAssetsProvider.doLast était non fiable selon la
+    // version AGP (tâche « up-to-date » → l'APK embarquait un cantoria.html
+    // périmé) ; la copie dans les assets sources est mergée par le pipeline
+    // standard, qui la re-valide à chaque build.
+    def copyCantoriaHtml = tasks.register("copyCantoriaHtml", Copy) {
+        from rootProject.file('../cantoria.html')
+        into file('src/main/assets')
     }
+    preBuild.dependsOn copyCantoriaHtml
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

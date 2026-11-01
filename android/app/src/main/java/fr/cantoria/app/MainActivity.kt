@@ -119,6 +119,17 @@ class MainActivity : AppCompatActivity() {
 
     fun hasPendingApk(): Boolean = pendingApkFile?.exists() == true
 
+    /* Ouverture d'une URL dans le navigateur externe (canal sideload de la
+       mise à jour) : la WebView ne navigue JAMAIS hors de cantoria.html (§4.5).
+       L'URL a été validée par le pont (HTTPS + domaines GitHub uniquement). */
+    fun openInBrowser(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Aucun navigateur disponible", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun launchInstallIntent(apkFile: java.io.File) {
         val uri = androidx.core.content.FileProvider.getUriForFile(
             this, "${packageName}.fileprovider", apkFile)

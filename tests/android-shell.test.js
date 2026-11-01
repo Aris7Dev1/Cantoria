@@ -84,6 +84,8 @@ test("cantoria.html n'est pas dupliqué à la main : copié au build", () => {
   const gradle = read("app/build.gradle");
   assert.ok(/from rootProject\.file\('\.\.\/cantoria\.html'\)/.test(gradle),
     "le build copie cantoria.html depuis la racine (source de vérité unique)");
+  assert.ok(/preBuild\.dependsOn copyCantoriaHtml/.test(gradle),
+    "la copie est branchée sur preBuild (le pattern mergeAssetsProvider.doLast était non fiable : APK embarquant un HTML périmé)");
   /* On vérifie l'état VERSIONNÉ (git ls-files), pas la présence physique :
      un poste de dev qui a déjà lancé android:install possède la copie de build
      sur son disque — c'est normal, elle ne doit juste pas être commitée. */
@@ -158,18 +160,25 @@ test("le pont Kotlin expose le téléchargement et l'installation de la mise à 
   assert.ok(/2048/.test(bridge), "l'URL de téléchargement est bornée en taille");
 });
 
-test("le shim Android télécharge automatiquement puis relaie progression, APK prêt et échec", () => {
+test("le shim Android relaie la mise \u00e0 jour disponible sans t\u00e9l\u00e9chargement in-app (canal sideload)", () => {
   const shim = read("app/src/main/assets/android-shim.js");
-  assert.ok(/android-update-available[\s\S]*?downloadUpdate/.test(shim),
-    "la disponibilité d'une mise à jour déclenche le téléchargement natif (autoDownload desktop)");
-  assert.ok(/android-update-progress[\s\S]*?listeners\.progress/.test(shim),
-    "la progression natif -> onUpdateProgress");
-  assert.ok(/android-update-downloaded[\s\S]*?listeners\.downloaded/.test(shim),
-    "l'APK complet -> onUpdateDownloaded (bandeau « Redémarrer »)");
-  assert.ok(/android-update-error[\s\S]*?listeners\.error/.test(shim),
-    "l'échec -> onUpdateError (bandeau masqué + toast)");
-  assert.ok(/installUpdate[\s\S]*?native\.installUpdate/.test(shim),
-    "installUpdate du contrat appelle le natif (plus de stub)");
+  assert.ok(!/android-update-available[\s\S]{0,400}downloadUpdate\(/.test(shim),
+    "la disponibilit\u00e9 d'une mise \u00e0 jour ne d\u00e9clenche PLUS le t\u00e9l\u00e9chargement natif (d\u00e9cision post-1.6.0 : lien navigateur)");
+  assert.ok(/installUpdate[\s\S]{0,200}sideload-link/.test(shim),
+    "installUpdate du contrat reste pr\u00e9sent mais inactif (canal sideload)");
+  assert.ok(/openExternal[\s\S]{0,300}native\.openExternal/.test(shim),
+    "openExternal du contrat ouvre l'URL via le pont natif");
+});
+
+test("l'ouverture du lien de mise \u00e0 jour est restreinte aux domaines GitHub", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  assert.ok(/fun openExternal\(/.test(bridge), "le pont expose openExternal");
+  assert.ok(/isAllowedExternalUrl/.test(bridge) && /https:\/\/github\.com/.test(bridge),
+    "URL valid\u00e9 c\u00f4t\u00e9 natif : HTTPS + domaines GitHub uniquement");
+  assert.ok(/2048/.test(bridge), "taille d'URL born\u00e9e");
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/fun openInBrowser\(/.test(main) && /ACTION_VIEW/.test(main),
+    "le navigateur externe est lanc\u00e9 par intent, jamais la WebView");
 });
 
 test("l'installation passe par FileProvider avec les chemins restreints aux APK", () => {

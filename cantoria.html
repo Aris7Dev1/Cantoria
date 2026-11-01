@@ -3830,6 +3830,34 @@
       updateTitle.textContent = pendingVersion
         ? "Nouvelle version " + pendingVersion + " disponible"
         : "Nouvelle version disponible";
+
+      /* Canal sideload (Android) : pas de téléchargement automatique in-app
+         — Play Protect et les signatures divergentes rendaient l'installation
+         par-dessus peu fiable (boucle « Redémarrer » constatée en 1.6.0).
+         Le bandeau annonce la version et propose le téléchargement depuis
+         GitHub Releases ; l'utilisateur réinstalle ensuite lui-même. */
+      if(info && info.apkUrl && window.carnetDesktop.platform === "android"){
+        var url = String(info.apkUrl);
+        updateDetail.textContent = "Télécharge le nouvel APK depuis GitHub Releases, puis installe-le par-dessus.";
+        updateAction.disabled = false;
+        updateAction.textContent = "Télécharger l'APK";
+        updateAction.onclick = function(){
+          if(window.carnetDesktop.openExternal){
+            window.carnetDesktop.openExternal(url);
+          }else{
+            var a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+        };
+        showBanner();
+        return;
+      }
+
       updateDetail.textContent = "Téléchargement automatique en cours…";
       updateAction.disabled = true;
       updateAction.textContent = "Téléchargement…";
