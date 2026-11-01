@@ -97,8 +97,10 @@ jobs:
 
       # Keystore release restauré depuis les secrets (jamais commité, *.jks gitignoré).
       # Sans secrets définis, le build retombe sur la clé debug avec avertissement.
+      # Le contexte `secrets` n'est pas disponible dans un `if` de step : on mappe
+      # le secret dans `env` et on teste `env.X` (même motif que visual-judge.yml).
       - name: Restore release keystore from secrets
-        if: ${{ secrets.ANDROID_KEYSTORE != '' }}
+        if: env.ANDROID_KEYSTORE != ''
         working-directory: android
         env:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
