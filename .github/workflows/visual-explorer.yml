@@ -17,9 +17,9 @@ on:
         required: false
         default: ""
       model:
-        description: "Modèle vision (défaut : mistral-small-latest ; ex : mistral-medium-latest)"
+        description: "Modèle vision (défaut : mistral-large-4 ; ex : mistral-small-latest)"
         required: false
-        default: "mistral-small-latest"
+        default: "mistral-large-4"
 
 permissions:
   contents: read
@@ -51,7 +51,7 @@ jobs:
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
-          MISTRAL_EXPLORER_MODEL: ${{ github.event.inputs.model || 'mistral-small-latest' }}
+          MISTRAL_EXPLORER_MODEL: ${{ github.event.inputs.model || 'mistral-large-4' }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
