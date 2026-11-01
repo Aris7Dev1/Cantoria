@@ -45,13 +45,15 @@ test("le pont natif Kotlin couvre les méthodes critiques du shim", () => {
   });
 });
 
-test("le manifest Android ne déclare que la permission INTERNET justifiée", () => {
+test("le manifest Android ne déclare que les permissions justifiées", () => {
   const manifest = read("app/src/main/AndroidManifest.xml");
   const perms = [...manifest.matchAll(/<uses-permission android:name="([^"]+)"\s*\/>/g)].map((m) => m[1]);
-  assert.deepEqual(perms, ["android.permission.INTERNET"],
-    "seule INTERNET (UpdateChecker, issue #57) : le stockage privé + SAF n'exigent rien");
+  assert.deepEqual(perms, ["android.permission.INTERNET", "android.permission.REQUEST_INSTALL_PACKAGES"],
+    "INTERNET (UpdateChecker, issue #57) + REQUEST_INSTALL_PACKAGES (installation sideload de la mise à jour, validation superviseur) ; le stockage privé + SAF n'exigent rien");
   assert.ok(/exception r\u00e9seau de VISION/.test(manifest),
-    "la permission est justifiée par l'exception réseau de VISION");
+    "la permission INTERNET est justifiée par l'exception réseau de VISION");
+  assert.ok(/REQUEST_INSTALL_PACKAGES/.test(manifest) && /sideload/.test(manifest),
+    "la permission d'installation est justifiée (issue #57, volet installation)");
 });
 
 test("la sécurité WebView suit §4.5 du document Android", () => {
@@ -135,6 +137,52 @@ test("la permission INTERNET est déclarée et justifiée (exception réseau uni
   assert.ok(m, "permission INTERNET déclarée (UpdateChecker uniquement)");
   assert.ok(/EXCLUSIVEMENT au UpdateChecker/.test(manifest) || /exclusivement au UpdateChecker/.test(manifest),
     "justification documentée dans le manifest");
+});
+
+test("le téléchargement APK natif est borné et écrit atomiquement", () => {
+  const downloader = read("app/src/main/java/fr/cantoria/app/ApkDownloader.kt");
+  assert.ok(/class ApkDownloader/.test(downloader), "téléchargeur APK dédié");
+  assert.ok(/isAllowedUrl/.test(downloader) && /https:\/\/github\.com/.test(downloader),
+    "URL restreinte à GitHub Releases en HTTPS");
+  assert.ok(/MAX_APK_BYTES/.test(downloader), "taille de téléchargement bornée");
+  assert.ok(/\.tmp/.test(downloader) && /renameTo/.test(downloader),
+    "écriture atomique : l'APK final n'existe que complet (principe n°1 VISION)");
+});
+
+test("le pont Kotlin expose le téléchargement et l'installation de la mise à jour", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  ["downloadUpdate", "installUpdate"].forEach((name) => {
+    assert.ok(new RegExp(`@JavascriptInterface[\\s\\S]*?fun ${name}\\(`).test(bridge),
+      `le pont Kotlin doit exposer ${name}`);
+  });
+  assert.ok(/2048/.test(bridge), "l'URL de téléchargement est bornée en taille");
+});
+
+test("le shim Android télécharge automatiquement puis relaie progression, APK prêt et échec", () => {
+  const shim = read("app/src/main/assets/android-shim.js");
+  assert.ok(/android-update-available[\s\S]*?downloadUpdate/.test(shim),
+    "la disponibilité d'une mise à jour déclenche le téléchargement natif (autoDownload desktop)");
+  assert.ok(/android-update-progress[\s\S]*?listeners\.progress/.test(shim),
+    "la progression natif -> onUpdateProgress");
+  assert.ok(/android-update-downloaded[\s\S]*?listeners\.downloaded/.test(shim),
+    "l'APK complet -> onUpdateDownloaded (bandeau « Redémarrer »)");
+  assert.ok(/android-update-error[\s\S]*?listeners\.error/.test(shim),
+    "l'échec -> onUpdateError (bandeau masqué + toast)");
+  assert.ok(/installUpdate[\s\S]*?native\.installUpdate/.test(shim),
+    "installUpdate du contrat appelle le natif (plus de stub)");
+});
+
+test("l'installation passe par FileProvider avec les chemins restreints aux APK", () => {
+  const manifest = read("app/src/main/AndroidManifest.xml");
+  assert.ok(/androidx\.core\.content\.FileProvider/.test(manifest), "FileProvider déclaré");
+  assert.ok(/\$\{applicationId\}\.fileprovider/.test(manifest), "autorité par applicationId");
+  const paths = read("app/src/main/res/xml/file_paths.xml");
+  assert.ok(paths.includes('path="updates/"'), "seul filesDir/updates est partagé");
+  assert.ok(!/external/i.test(paths), "aucun chemin externe exposé");
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/package-archive/.test(main), "intent d'installation sur l'APK");
+  assert.ok(/ACTION_MANAGE_UNKNOWN_APP_SOURCES/.test(main) && /canRequestPackageInstalls/.test(main),
+    "la permission O+ est vérifiée et demandée via les réglages système");
 });
 
 test("la WebView reste à zéro appel réseau (pas de fetch dans le HTML ni le shim)", () => {

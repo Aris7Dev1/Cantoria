@@ -7,6 +7,8 @@ package fr.cantoria.app
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebChromeClient
@@ -22,11 +24,17 @@ class MainActivity : AppCompatActivity() {
         const val SHIM_URL = "file:///android_asset/android-shim.js"
         const val GITHUB_OWNER = "Aris7Dev1"
         const val GITHUB_REPO = "Cantoria"
+        const val APK_DOWNLOAD_DIR = "updates"
+        const val APK_FILE_NAME = "cantoria-update.apk"
     }
 
     private lateinit var webView: WebView
     private lateinit var bridge: CantoriaBridge
     private var updateChecker: UpdateChecker? = null
+    private var apkDownloader: ApkDownloader? = null
+    private var pendingApkFile: java.io.File? = null
+    private var pendingApkVersion: String = ""
+    private var installRequested = false
 
     // Échappement d'une valeur pour une chaîne littérale JavaScript :
     // backslash, apostrophe, guillemets et sauts de ligne neutralisés, afin
@@ -43,6 +51,86 @@ class MainActivity : AppCompatActivity() {
             webView.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('android-update-available'," +
                     "{detail:{version:'${jsString(version)}',apkUrl:'${jsString(apkUrl)}'}}));", null)
+        }
+    }
+
+    /* Progression du téléchargement de l'APK : même canal d'injection que la
+       disponibilité de mise à jour, traduit par le shim en onUpdateProgress
+       (contrat desktop electron-updater). */
+    private fun dispatchUpdateProgress(percent: Int) {
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('android-update-progress'," +
+                    "{detail:{percent:$percent}}));", null)
+        }
+    }
+
+    /* APK téléchargé : le bandeau de l'interface passe en « Redémarrer »
+       (onUpdateDownloaded, contrat desktop). */
+    private fun dispatchUpdateDownloaded(version: String) {
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('android-update-downloaded'," +
+                    "{detail:{version:'${jsString(version)}'}}));", null)
+        }
+    }
+
+    private fun dispatchUpdateError() {
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('android-update-error'," +
+                    "{detail:{message:'telechargement impossible'}}));", null)
+        }
+    }
+
+    /* Téléchargement de l'APK dans le stockage privé de l'app (issue #57,
+       volet installation) : l'utilisateur a validé dans le bandeau natif de
+       l'interface. Le natif est le seul à toucher le réseau (VISION n°2). */
+    fun downloadUpdate(version: String, apkUrl: String) {
+        if (apkDownloader == null) apkDownloader = ApkDownloader()
+        val dir = java.io.File(filesDir, APK_DOWNLOAD_DIR)
+        apkDownloader?.download(apkUrl, dir, APK_FILE_NAME, object : ApkDownloader.Listener {
+            override fun onProgress(percent: Int) { dispatchUpdateProgress(percent) }
+            override fun onDownloaded(apkFile: java.io.File) {
+                pendingApkFile = apkFile
+                pendingApkVersion = version
+                dispatchUpdateDownloaded(version)
+            }
+            override fun onError() { dispatchUpdateError() }
+        })
+    }
+
+    /* Installation : lance l'installateur système sur l'APK téléchargé via
+       FileProvider. Le geste final (confirmer l'installation, accepter les
+       « sources inconnues ») appartient à l'utilisateur — jamais d'installation
+       silencieuse (VISION). Sur Android O+, la permission
+       REQUEST_INSTALL_PACKAGES est requise et demandée ici. */
+    fun installUpdate() {
+        val apkFile = pendingApkFile ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !packageManager.canRequestPackageInstalls()) {
+            installRequested = true
+            startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:$packageName")))
+            return
+        }
+        launchInstallIntent(apkFile)
+    }
+
+    fun hasPendingApk(): Boolean = pendingApkFile?.exists() == true
+
+    private fun launchInstallIntent(apkFile: java.io.File) {
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this, "${packageName}.fileprovider", apkFile)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Installation impossible", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -185,6 +273,19 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (this::bridge.isInitialized && bridge.onActivityResult(requestCode, resultCode, data)) return
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    /* Retour des réglages « sources inconnues » : si l'utilisateur a accordé
+       la permission, reprendre l'installation là où elle s'était arrêtée. */
+    override fun onResume() {
+        super.onResume()
+        if (installRequested) {
+            installRequested = false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                packageManager.canRequestPackageInstalls()) {
+                pendingApkFile?.let { launchInstallIntent(it) }
+            }
+        }
     }
 
     override fun onDestroy() {
