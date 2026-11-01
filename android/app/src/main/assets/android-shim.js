@@ -37,19 +37,17 @@
 
   // Le natif (MainActivity) diffuse un CustomEvent quand une mise à jour
   // GitHub Releases plus récente est trouvée — on traduit vers les
-  // callbacks carnetDesktop.onUpdateAvailable (contrat desktop). Comme sur
-  // desktop (electron-updater, autoDownload), le téléchargement démarre
-  // immédiatement : le bandeau affiche « Téléchargement automatique en cours… »
-  // jusqu'aux événements de progression du natif.
+  // callbacks carnetDesktop.onUpdateAvailable (contrat desktop).
+  //
+  // Canal sideload (décision post-1.6.0) : PAS de téléchargement in-app.
+  // Play Protect et les signatures divergentes (keystore CI vs debug local)
+  // rendaient l'installation par-dessus peu fiable ; le bandeau annonce la
+  // version et l'interface propose un lien de téléchargement vers GitHub
+  // Releases (navigateur), l'utilisateur réinstalle ensuite lui-même.
   window.addEventListener("android-update-available", function (e) {
     var detail = (e && e.detail) || {};
-    var version = detail.version || "";
-    var apkUrl = detail.apkUrl || "";
-    if (version && apkUrl && typeof native.downloadUpdate === "function") {
-      try { native.downloadUpdate(version, apkUrl); } catch (err) {}
-    }
     listeners.available.forEach(function (cb) {
-      try { cb({ version: version, apkUrl: apkUrl }); }
+      try { cb({ version: detail.version || "", apkUrl: detail.apkUrl || "" }); }
       catch (err) {}
     });
   });
@@ -117,6 +115,18 @@
       }
       return Promise.resolve({ saved: native.writeDailyBackup(content) });
     },
+    // Ouverture du lien de téléchargement dans le navigateur externe
+    // (canal sideload) : validée côté natif (HTTPS + domaines GitHub).
+    openExternal: function (url) {
+      if (typeof url !== "string" || !url) {
+        return Promise.reject(new TypeError("L'URL doit être une chaîne non vide."));
+      }
+      return new Promise(function (resolve) {
+        var ok = false;
+        try { ok = !!native.openExternal(url); } catch (err) { ok = false; }
+        resolve(ok ? { opened: true } : { opened: false });
+      });
+    },
     setScrolling: function (scrolling) {
       if (typeof scrolling !== "boolean") {
         return Promise.reject(new TypeError("L'\u00e9tat de d\u00e9filement doit \u00eatre un bool\u00e9en."));
@@ -132,15 +142,10 @@
       }
       return Promise.resolve({ supported: false, reason: "already-checked-at-startup" });
     },
-    // Installation : le natif lance l'installateur système sur l'APK
-    // téléchargé (geste utilisateur final — jamais d'installation silencieuse).
-    installUpdate: function () {
-      return new Promise(function (resolve) {
-        var ok = false;
-        try { ok = !!native.installUpdate(); } catch (err) { ok = false; }
-        resolve(ok ? { installed: true } : { installed: false });
-      });
-    },
+    // Installation in-app retirée (canal sideload) : ce canal n'est plus
+    // utilisé par l'interface, le contrat carnetDesktop reste complet pour
+    // que cantoria.html fonctionne à l'identique sur les deux plateformes.
+    installUpdate: function () { return Promise.resolve({ installed: false, reason: "sideload-link" }); },
     onUpdateChecking: function () { return function () {}; },
     onUpdateAvailable: function (callback) {
       listeners.available.push(callback);

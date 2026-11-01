@@ -119,6 +119,28 @@ class CantoriaBridge(private val activity: Activity) {
     @JavascriptInterface
     fun hasDownloadedUpdate(): Boolean = mainActivity?.hasPendingApk() ?: false
 
+    // Canal sideload (décision post-1.6.0) : le bandeau de mise à jour propose
+    // le téléchargement de l'APK depuis GitHub Releases dans le NAVIGATEUR
+    // externe — jamais dans la WebView (§4.5 : aucune navigation externe).
+    // L'URL est restreinte côté natif, même si elle provient déjà de l'API
+    // GitHub remontée par le checker : le pont ne fait jamais confiance à la
+    // chaîne fournie par la page.
+
+    @JavascriptInterface
+    fun openExternal(url: String): Boolean {
+        if (url.toByteArray(Charsets.UTF_8).size > 2048) return false
+        val main = mainActivity ?: return false
+        if (!isAllowedExternalUrl(url)) return false
+        main.runOnUiThread { main.openInBrowser(url) }
+        return true
+    }
+
+    private fun isAllowedExternalUrl(url: String): Boolean {
+        return (url.startsWith("https://github.com/") ||
+            url.startsWith("https://objects.githubusercontent.com/") ||
+            url.startsWith("https://release-assets.githubusercontent.com/"))
+    }
+
     // ---- Écran (équivalent powerSaveBlocker du desktop) ----
 
     @JavascriptInterface
