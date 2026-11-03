@@ -1,22 +1,22 @@
 "use strict";
 /*
- * Tests statiques du workflow Watchdog visuel (.github/workflows/visual-watch.yml), 
- * sur le médele d'android-shell.test.js : lecture du YAML sans l'exécuter.
+ * Tests statiques du workflow Watchdog visuel (.github/workflows/visual-watch.yml),
+ * sur le modèle d'android-shell.test.js : lecture du YAML sans l'exécuter.
  * Périmètre : le rapport de run systématique (GITHUB_STEP_SUMMARY) et le
- * renommage « chien de garde » → ʨ Watchdog ʻ.
+ * renommage « chien de garde » → « Watchdog ».
  */
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const WF = fs.readFileSync(path.join(__dirname_, "..", ".github", "workflows", "visual-watch.yml"), "utf8");
+const WF = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "visual-watch.yml"), "utf8");
 
-test("le workflow s'affiche sous le nom « Visual watchdog ʿ", () => {
+test("le workflow s'affiche sous le nom « Visual watchdog »", () => {
   assert.match(WF, /^name: Visual watchdog$/m);
 });
 
-test("le terme franÃǡis « chien de garde » a disparu du workflow", () => {
+test("le terme français « chien de garde » a disparu du workflow", () => {
   assert.doesNotMatch(WF, /chien de garde/i);
 });
 

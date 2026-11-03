@@ -10,13 +10,13 @@ name: Visual watchdog
 #      des issues GitHub label `explorer-proposition` — JAMAIS `agent-ok` :
 #      l'approbation reste un geste humain du superviseur ;
 #   4. rapport de run systématique (GITHUB_STEP_SUMMARY) : brouillons, but tiré,
-#      étapes/appels, frictions ou « néant ·, résultat du fileur. Même sans
+#      étapes/appels, frictions ou « néant », résultat du fileur. Même sans
 #      rien à filer, le run laisse une trace lisible — sinon une exploration
 #      sans friction et un échec silencieux de l'explorateur sont
 #      indiscernables.
 #
-# Suite de la note de visual-explorer.yml (« le passage en automatique
-# décision post-observation ·) : observé via les dispatchs manuels, appliqué ici
+# Suite de la note de visual-explorer.yml (« le passage en automatique sera une
+# décision post-observation ») : observé via les dispatchs manuels, appliqué ici
 # sur main — les PR gardent leurs workflows existants (juge, baselines).
 #
 # ⚠️ Zone superviseur.
@@ -73,16 +73,15 @@ jobs:
       - name: Installer Chromium pour Playwright
         run: npx playwright-core install chromium-headless-shell
 
-      # Déterministe : sans IA, sans cÃմ— le
-      # ceer de la veille. Sort en 0
+      # Déterministe : sans IA, sans coût — le cœur de la veille. Sort en 0
       # même en cas de violations (elles deviennent des issues) ; un échec
       # ici (crash de capture) doit au contraire être VISIBLE.
       - name: Boucle visuelle déterministe
         run: node scripts/visual/run.js --engine=chromium --out=visual-out
 
       # Explorateur IA : un but par run, plafonds dans explorer.js. En échec
-       #il rend la main (exit 0 dans explorer.js) : le fileur traite un
-       # rapport absent ou vide sans rier de fantôme.
+      # il rend la main (exit 0 dans explorer.js) : le fileur traite un
+      # rapport absent ou vide sans rien créer de fantôme.
       - name: Explorateur IA (but au hasard)
         if: ${{ github.event_name == 'schedule' || inputs.run_explorer }}
         env:
@@ -93,7 +92,7 @@ jobs:
         run: node scripts/visual/explorer.js > rapport-exploration.md || true
 
       # Le contexte `secrets` n'est pas disponible dans un `if` : on mappe
-       #le secret dans `env` et on teste `env.X` (même motif que visual-judge.yml).
+      # le secret dans `env` et on teste `env.X` (même motif que visual-judge.yml).
       - name: Avertissement si clé absente
         if: env.MISTRAL_API_KEY == ''
         env:
@@ -114,7 +113,7 @@ jobs:
           set -o pipefail
           ARGS="--drafts=visual-out/issues-drafts --explorer=rapport-exploration.md --label=explorer-proposition"
           ARGS="$ARGS --max=${{ inputs.max_issues || '5' }}"
-          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS= $ARGS --dry-run"; fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           node scripts/visual/file-issues.js $ARGS | tee visual-out/fileur.log
 
       # Rapport de run : répond TOUJOURS (if: always()), même quand il n'y a
@@ -128,8 +127,8 @@ jobs:
           {
             echo "## Rapport Watchdog — $(date -u '+%Y-%m-%d %H:%M UTC')"
             echo ""
-           echo "### Boucle déterministe"
-            DROFTVS=$(ls visual-out/issues-drafts/*.md 2>/dev/null | wc -l)
+            echo "### Boucle déterministe"
+            DRAFTS=$(ls visual-out/issues-drafts/*.md 2>/dev/null | wc -l)
             echo "- Brouillons générés : $DRAFTS"
             echo ""
             echo "<details><summary>Rapport de la boucle (visual-out/report.md)</summary>"

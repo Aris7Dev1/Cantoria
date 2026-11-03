@@ -20,12 +20,12 @@ Dans le conteneur de développement :
 
 ```bash
 npm install                                  # installe playwright-core (devDependency)
-npm run visual                                # captures + contrôles + rapport (aucun appel au modèle)
-npm run visual -- --update-baseline            # adopte les captures courantes comme référence (après relecture !)
-npm run visual -- --judge --intent="agrandir les accords du lecteur"  # + juge A/B via la passerelle
+npm run visual                               # captures + contrôles + rapport (aucun appel au modèle)
+npm run visual -- --update-baseline          # adopte les captures courantes comme référence (après relecture !)
+npm run visual -- --judge --intent="agrandir les accords du lecteur"   # + juge A/B via la passerelle
 ```
 
-Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player`  · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4-0` · `--strict` (code 1 s'il y a des erreurs).
+Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player` · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4-0` · `--strict` (code 1 s'il y a des erreurs).
 
 Sorties : `visual-out/current/<thème>/<scénario>.png`, `visual-out/diff/…` (pixels modifiés en rose), `report.md`, `report.json`, `issues-drafts/`.
 
@@ -43,14 +43,14 @@ Le moteur `chromium` charge simplement le HTML (pas de processus principal ni de
 Les scénarios (`scenarios.js`) agissent par de vrais clics : bibliothèque, éditeur, lecteur (chanson « Le chemin du retour »), paramètres. Les données (`fixtures.js`) sont fixes : mêmes chansons, mêmes dates, profil vierge.
 
 ### Seuils : à valider
-`VISION.md` dit « texte grand, contraste fort · sans chiffres. Les valeurs de `scripts/visual/thresholds.json` sont **proposées** pour une lecture à environ 1 m sur une fenêtre de 1280×820 : paroles ≥ 20 px, accords ≥ 18 px, contraste ≥ 7:1 dans le lecteur ; reste de l'interface ≥ 12 px, 4,5:1, commandes ≥ 32 px. Avec ces seuils, l'interface actuelle **échoue** (accords de 14,7 px, paroles de 18,9 px, contraste des accords à 4–6:1) : c'est un constat, pas une décision. Tu ajustes le fichier ; l'agent n'a pas le droit d'y toucher (sinon il poursait © réussir · en baissant les seuils).
+`VISION.md` dit « texte grand, contraste fort » sans chiffres. Les valeurs de `scripts/visual/thresholds.json` sont **proposées** pour une lecture à environ 1 m sur une fenêtre de 1280×820 : paroles ≥ 20 px, accords ≥ 18 px, contraste ≥ 7:1 dans le lecteur ; reste de l'interface ≥ 12 px, 4,5:1, commandes ≥ 32 px. Avec ces seuils, l'interface actuelle **échoue** (accords de 14,7 px, paroles de 18,9 px, contraste des accords à 4–6:1) : c'est un constat, pas une décision. Tu ajustes le fichier ; l'agent n'a pas le droit d'y toucher (sinon il pourrait « réussir » en baissant les seuils).
 
 ## Le juge A/B
 
 - A = référence, B = version courante, présentées **dans les deux ordres**, `repetitions` fois chacun, température 0.
-- Le modèle répond en JSON strict (validé ; toute réponse hors format est écartée et compté).
-- Verdict **retenu seuement si les deux ordres désignent la même image**. Sinon : « non concluant », avec détection du biais de position (un juge qui répond toujours « image 1 »).
-- Le prompt ne dit jamais laquelle est l'ancienne. Persona : un guitariste à un mètre de l'Éwran, mains occupés.
+- Le modèle répond en JSON strict (validé ; toute réponse hors format est écartée et comptée).
+- Verdict **retenu seulement si les deux ordres désignent la même image**. Sinon : « non concluant », avec détection du biais de position (un juge qui répond toujours « image 1 »).
+- Le prompt ne dit jamais laquelle est l'ancienne. Persona : un guitariste à un mètre de l'écran, mains occupées.
 - Il n'est appelé que sur les captures dont plus de 2 % des pixels ont changé, dans la limite de `--max-judge-calls`. Il passe par la passerelle (`GATEWAY_URL`, clé factice) : la vraie clé Mistral ne quitte pas la passerelle.
 - Son avis est **consultatif** : il ne bloque rien. Un verdict « la référence est meilleure » génère un brouillon de régression, à vérifier sur la capture.
 
@@ -89,13 +89,10 @@ rapport complet) et reprend le log du fileur.
 ## Limites à connaître
 
 - **Électron, Playwright et le juge n'ont pas été éprouvés dans ton conteneur Docker.** Ici : Electron 44.4.3 réel sous Xvfb piloté par `playwright-core` 1.56.0, 12 captures identiques d'une exécution à l'autre. Pas de démon Docker pour tester l'image `dev`.
-- **Le juge n'a jamais parlé au vaiHZ\ݜ؛
-ʈȝ\ݰꈘ]٘ȝ[ș؝^[ٰꛙH[ڜ]Y[Y[݋ȰȝЪ\ڙڙ\Șڙ^ȝڈȜ]YHZ\ݜ؛[\ٙKMLXؙ\H\Ț[XYٜȊ[XYٗݜۘ[ș]HTӊKٜܛۜٗٛܛX]ȚܛۗۘڙXݘ]H]X[]0ꈙHٜȝٜٚXݜˈۛY[ؙH\ȘK\ٜ]][ۜόXݜȝ[وٝ[HZ\وȜݜݙZ[HH۰[܈HۛܛۙKH
-ʓ\ȜЪYЪ\ؙٛ\ș0ꜙ[ٙ[݈\ȜۚXٜʊșHHXXښ[وș𪛰ꜙK[\ș[܈Hۛݙ[ٝ\ˈۛ\\ً[\ș[܈Hۛݙ[ٝ\ˈ[وЪYЪ\ؙٛHܰꐪYH۝\ȕڛٛݜțوٜݚ\؈0舜ڙ[ȚXڋH
-ʔذꛙ\Ȝݘ]\]Y\ʊȎȜ\șH0Ꙛ[[Y[݈[Ș۝\܋\șH0ꘛۜK\șH؛ٙX]HHZ\و0舚۝\ˈZ۝]\ȝ[Ȝذꛘ\ڛȏHZ۝]\ȝ[țؚٝ[܈ؙ[؜ڛ܋ڜ؋H
-ʓH۝XۙH\݈ٜ۰Ꙉ\țH؝ڙيʈ
-ٚ]X˝ۜڙۛݜ˝ڜݘ[]؝ڋޛ[ۚ\ȘڋY\ܝ\ʈț\Șܛݚ[ۜș]؜ܝș]ڙ[ۙ[݈\Ț\ܝY\Ș^ܙ\˜ۜܚ][ۘ0舜ٛ\ً0Ꙛ]\ș]\۝]ٜȊXٛYٛ݋[ژ
-H\ȝڋȓ\ș؜ٙKY۝\ȜЪ]ݜȊȘޘۙ\țX^[][K\ܰꝈݜȜЪYܙ\ܚ[ۋ\șHޘۙHڈ\ȝ\ݜȰꘚݙ[݊Hڙ[ٜ݈ۛ]X[وH]\؜ȝ݈]Y[]Y\Ȝ؜ܝȜЪY[˂ˈ
-ʓH0ꙝ\X؝[ۈHڛ]\Ȝوؚ]\ȝ]وۜۘ[\𪊊Ȏȝ[و\ܝYHݝٜݙH]YHHٛۛ[Y\Ȝ]]0ꝜوًYڛ0Ꙉ]HݛȜݚ]؛݈8%ٙ؜ٙH\ȝ]ٜțܜșHژYًH\ȘۛݜЭ\țY\ݜ݈ٛو]IڛȜ؝݈ٛY\ݜٜˈ[Ȱꘜ؛Ȝ]]ٜܙXݙ\ȝݜț\ȜٝZ[ș]ٜݙ\țZY݈ۛٝ\Ȏȝ[ȜٝZ[ܘ[ؚHوٛ\Xو\ȝۈ1dڛH
-ʖۛو۝0꙰ꙊʈȘ؜ڜ˝ڜݘ[؈]ڜݘ[X؜ٛ[ً؈و]]݈ٛ\ȰꝜو[ٚYڰ꜈\ț	ؙ݈ٛ
-Hݛۙ\ȜٙݜيK
+- **Le juge n'a jamais parlé au vrai Mistral** : testé avec un faux modèle uniquement. À vérifier chez toi : que `mistral-large-4-0` accepte les images (`image_url` en data URL), `response_format: json_object`, et la qualité de ses verdicts. Commence par `--repetitions=1` sur une seule paire ; surveille le coût dans ta console.
+- **Les références dépendent des polices** de la machine : génère-les dans le conteneur, compare-les dans le conteneur. Une référence créée sous Windows ne servira à rien ici.
+- **Scènes statiques** : pas de défilement en cours, pas de décompte, pas de bandeau de mise à jour. Ajouter un scénario = ajouter un objet dans `scenarios.js`.
+- **La boucle est fermée par le Watchdog** (`.github/workflows/visual-watch.yml`, voir ci-dessus) : les brouillons et rapports deviennent des issues `explorer-proposition` à relire, éditer et approuver (label `agent-ok`) par toi. Les garde-fous prévus (3 cycles maximum, arrêt sur régression, pas de cycle si les tests échouent) viendront quand tu auras vu quelques rapports réels.
+- **La déduplication du fileur se fait par titre normalisé** : une issue ouverte que tu renommes peut être re-filée au run suivant — regarde les titres lors du triage.
+- Les contrôles mesurent ce qu'ils savent mesurer. Un écran peut respecter tous les seuils et rester laid ou confus ; un seuil franchi ne remplace pas ton œil.
+- **Zone protégée** : `scripts/visual/` et `visual-baseline/` ne peuvent pas être modifiés par l'agent (le runner refuse).
