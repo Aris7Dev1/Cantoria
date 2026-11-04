@@ -41,6 +41,8 @@ function song(overrides = {}) {
 /* Faux pont "dossier de chansons" adossé à un vrai répertoire temporaire. */
 function fakeDirBridge(dir) {
   return {
+    platform: "linux",
+    isElectron: true,
     pickSongsDir: () => Promise.resolve({ canceled: false, dirPath: dir }),
     listSongsDir: (d) => {
       const files = fs.readdirSync(d)
@@ -66,6 +68,27 @@ test("sans pont dossier, le bouton est désactivé et le stockage profil reste a
   assert.equal(btn.disabled, true, "pas de pont -> bouton désactivé (desktop uniquement)");
   assert.ok(window.document.querySelector("#songsdir-summary").textContent.includes("desktop"));
   assert.ok(Array.isArray(JSON.parse(window.localStorage.getItem(SONGS_KEY))), "carnet profil intact");
+});
+
+test("issue #133 : pont non-Electron (shim Android) -> bouton desactive, aucun appel au clic", async () => {
+  let picks = 0;
+  const androidShimLike = {
+    platform: "android",
+    isElectron: false,
+    pickSongsDir: () => { picks++; return Promise.reject(new Error("desktop uniquement")); },
+    listSongsDir: () => Promise.reject(new Error("desktop uniquement")),
+    readSongFile: () => Promise.reject(new Error("desktop uniquement")),
+    writeSongFile: () => Promise.reject(new Error("desktop uniquement")),
+    deleteSongFile: () => Promise.reject(new Error("desktop uniquement")),
+  };
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) }, androidShimLike);
+  await sleep(50);
+  const btn = window.document.querySelector("#btn-songsdir");
+  assert.equal(btn.disabled, true, "pont non-Electron -> bouton desactive (pas de clic qui echoue)");
+  assert.ok(window.document.querySelector("#songsdir-summary").textContent.includes("desktop"));
+  btn.click();
+  await sleep(50);
+  assert.equal(picks, 0, "aucun appel au pont au clic sur un bouton desactive");
 });
 
 test("migration vers le dossier : fichiers .cho écrits, carnet profil conservé (réversible)", async () => {
