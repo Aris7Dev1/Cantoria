@@ -373,3 +373,20 @@ test("issue #136 : la liste de résultats est plafonnée à 50", () => {
   search.dispatchEvent(new window.Event("input", { bubbles: true }));
   assert.equal(doc.querySelectorAll("#setlist-song-results .setlist-result").length, 50, "plafond de 50 résultats");
 });
+
+test("issue #136 : bouton retour dans la vue setlists + état actif du bouton Setlists", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
+  const doc = window.document;
+  const grid = doc.querySelector("#song-grid");
+  const section = doc.querySelector("#setlists-section");
+  const btnSetlists = doc.querySelector("#btn-setlists");
+  assert.equal(section.style.display, "none");
+  openSetlistsView(window);
+  assert.notEqual(section.style.display, "none", "vue setlists ouverte");
+  assert.equal(grid.style.display, "none", "grille masquée");
+  assert.ok(btnSetlists.classList.contains("active"), "bouton Setlists marqué actif");
+  doc.querySelector("#btn-setlists-back").click();
+  assert.equal(section.style.display, "none", "retour : section masquée");
+  assert.equal(grid.style.display, "", "retour : grille réaffichée");
+  assert.ok(!btnSetlists.classList.contains("active"), "état actif retiré");
+});
