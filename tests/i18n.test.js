@@ -80,3 +80,68 @@ test("le README contient un r\u00e9sum\u00e9 anglais", () => {
   assert.ok(/guitarist's songbook/i.test(readme), "accroche EN pr\u00e9sente");
   assert.ok(/fran\u00e7ais/i.test(readme) && /english/i.test(readme), "les deux langues mentionn\u00e9es");
 });
+
+/* Issue #132 : la traduction EN couvre toute l'interface (pas seulement les
+   premiers éléments de l'issue #96). */
+
+function evalI18N() {
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const m = html.match(/var I18N = (\{[\s\S]*?\n  \});/);
+  assert.ok(m, "bloc I18N trouvé");
+  // eslint-disable-next-line no-eval
+  return eval("(" + m[1] + ")");
+}
+
+test("issue #132 : chaque clé data-i18n* du HTML existe en fr ET en en", () => {
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const I18N = evalI18N();
+  const used = new Set([...html.matchAll(/data-i18n(?:-ph|-aria|-title|-html)?="([\w$]+)"/g)].map((x) => x[1]));
+  assert.ok(used.size > 80, "beaucoup d'éléments traduits");
+  for (const k of used) {
+    assert.ok(k in I18N.fr, `clé manquante en fr: ${k}`);
+    assert.ok(k in I18N.en, `clé manquante en en: ${k}`);
+  }
+});
+
+test("issue #132 : aucun toast/uiConfirm en littéral français dans le source", () => {
+  const html = fs.readFileSync(HTML_PATH, "utf8");
+  const re = /\b(?:toast|uiConfirm)\(\s*"((?:[^"\\]|\\.)*)"/g;
+  let m;
+  while ((m = re.exec(html))) {
+    assert.ok(
+      !/[àâäéèêëîïôöùûüçœæÀÂÄÉÈÊËÎÏÔÖÙÛÜÇŒÆ]/.test(m[1]),
+      `littéral FR restant: ${m[1].slice(0, 60)}`
+    );
+  }
+});
+
+test("issue #132 : EN bascule toute l'interface (paramètres, dossier .cho, aide, états vides)", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([]), [LANG_KEY]: "en" });
+  const doc = window.document;
+  assert.equal(doc.querySelector("#btn-setlists").textContent, "Setlists");
+  const titles = [...doc.querySelectorAll("#settings-overlay .setting-title")].map((e) => e.textContent);
+  assert.ok(titles.includes("Spotlight zone"), "paramètres traduits");
+  assert.ok(titles.includes("Songs folder (optional)"), "ligne dossier .cho traduite");
+  assert.equal(doc.querySelector("#btn-songsdir").textContent, "Choose…");
+  assert.ok(doc.querySelector("#songsdir-summary").textContent.includes("Current storage"), "résumé dossier traduit");
+  assert.ok(doc.querySelector("#song-grid .empty-state").textContent.includes("Your songbook is empty"), "état vide traduit");
+  doc.querySelector("#btn-help-open").click();
+  const secs = [...doc.querySelectorAll(".help-section-title")].map((e) => e.textContent);
+  assert.deepEqual(secs, ["Player", "Interface zoom", "Library", "Editor"], "aide traduite");
+  assert.ok(doc.querySelector("#help-content").textContent.includes("Play / pause scrolling"));
+});
+
+test("issue #132 : EN, les badges des cartes passent en anglais (Ton. -> Key, accords -> chords)", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]), [LANG_KEY]: "en" });
+  const badges = [...window.document.querySelectorAll("#song-grid .badge")].map((b) => b.textContent);
+  assert.ok(badges.some((b) => b.startsWith("Key ")), "badge Tonalité traduit");
+  assert.ok(badges.some((b) => /^\d+ chords$/.test(b)), "badge accords traduit");
+  assert.ok(!badges.some((b) => b.includes("Ton.") || b.includes("accords")), "plus de français");
+});
+
+test("issue #132 : EN, le hint de l'éditeur est traduit (data-i18n-html)", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]), [LANG_KEY]: "en" });
+  const hint = window.document.querySelector("#editor-view .hint");
+  assert.ok(hint.innerHTML.includes("Two formats are recognized"), "hint EN");
+  assert.ok(hint.innerHTML.includes("[G]like [C]this"), "exemple ChordPro conservé");
+});
