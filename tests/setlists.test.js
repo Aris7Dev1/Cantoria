@@ -54,6 +54,15 @@ function openNewSetlistEditor(window) {
   window.document.querySelector("#btn-setlist-new").click();
 }
 
+/* Issue #136 : ajout via la recherche filtrante (champ vidé = toutes les chansons). */
+function addSongById(window, songId) {
+  const doc = window.document;
+  const search = doc.querySelector("#setlist-song-search");
+  search.value = "";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  doc.querySelector('#setlist-song-results [data-song-id="' + songId + '"]').click();
+}
+
 function importFile(window, name, content) {
   const file = new window.File([content], name, { type: "application/json" });
   const input = window.document.querySelector("#import-input");
@@ -81,11 +90,8 @@ test("créer une setlist : nom, ajout de chansons, persistance sous sa propre cl
   const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
   openNewSetlistEditor(window);
   window.document.querySelector("#setlist-name").value = "Concert";
-  const select = window.document.querySelector("#setlist-song-select");
-  select.value = "s-2";
-  window.document.querySelector("#btn-setlist-add").click();
-  select.value = "s-1";
-  window.document.querySelector("#btn-setlist-add").click();
+  addSongById(window, "s-2");
+  addSongById(window, "s-1");
   window.document.querySelector("#btn-setlist-save").click();
 
   const setlists = storedSetlists(window);
@@ -103,9 +109,7 @@ test("les réglages propres à une entrée sont modifiables et persistés", () =
   const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
   openNewSetlistEditor(window);
   window.document.querySelector("#setlist-name").value = "Solo";
-  const select = window.document.querySelector("#setlist-song-select");
-  select.value = "s-1";
-  window.document.querySelector("#btn-setlist-add").click();
+  addSongById(window, "s-1");
   const row = window.document.querySelector(".sl-entry");
   const keyInput = row.querySelector(".sl-key");
   keyInput.value = "A";
@@ -128,11 +132,8 @@ test("réordonner par glisser-déposer (drop) change l'ordre persisté", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
   openNewSetlistEditor(window);
   window.document.querySelector("#setlist-name").value = "Ordre";
-  const select = window.document.querySelector("#setlist-song-select");
-  select.value = "s-1";
-  window.document.querySelector("#btn-setlist-add").click();
-  select.value = "s-2";
-  window.document.querySelector("#btn-setlist-add").click();
+  addSongById(window, "s-1");
+  addSongById(window, "s-2");
   window.document.querySelector("#btn-setlist-save").click();
 
   // réouvre l'éditeur et déplace la 2e entrée en 1re position via drop
@@ -172,9 +173,7 @@ test("dupliquer une setlist crée une copie avec un nouvel id", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
   openNewSetlistEditor(window);
   window.document.querySelector("#setlist-name").value = "Base";
-  const select = window.document.querySelector("#setlist-song-select");
-  select.value = "s-1";
-  window.document.querySelector("#btn-setlist-add").click();
+  addSongById(window, "s-1");
   window.document.querySelector("#btn-setlist-save").click();
 
   openSetlistsView(window);
@@ -312,4 +311,82 @@ test("avec confirmation activée, la modale bloque le chaînage tant qu'elle n'e
   window.document.querySelector("#confirm-ok").click();
   await sleep(30);
   assert.equal(window.document.querySelector("#p-title").textContent, "Beta", "chaînage après confirmation");
+});
+
+/* Issue #136 : recherche filtrante dans l'editeur de setlist (remplace le <select>). */
+
+test("issue #136 : la recherche filtre par titre/artiste, insensible a la casse et aux accents", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify([song(), song({ id: "s-2", title: "Bête", artist: "Éléonore", key: "D", body: "[D]x", speed: 1 })]) });
+  openNewSetlistEditor(window);
+  const doc = window.document;
+  const search = doc.querySelector("#setlist-song-search");
+  const results = () => [...doc.querySelectorAll("#setlist-song-results .setlist-result")].map((b) => b.getAttribute("data-song-id"));
+  search.value = "ALP";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.deepEqual(results(), ["s-1"], "casse ignoree");
+  search.value = "élé";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.deepEqual(results(), ["s-2"], "artiste matche avec accents");
+  search.value = "bete";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.deepEqual(results(), ["s-2"], "titre accentue matche sans accent");
+});
+
+test("issue #136 : aucun resultat affiche le message, Entrée/Ajouter n'ajoutent rien", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
+  openNewSetlistEditor(window);
+  const doc = window.document;
+  const search = doc.querySelector("#setlist-song-search");
+  search.value = "zzzz";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.ok(doc.querySelector("#setlist-song-results .setlist-no-match"), "message aucune correspondance");
+  doc.querySelector("#btn-setlist-add").click();
+  search.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  assert.equal(doc.querySelectorAll("#setlist-entries .sl-entry").length, 0, "rien n'est ajouté sans résultat");
+});
+
+test("issue #136 : Entrée et le bouton Ajouter ajoutent le premier résultat, champ vidé après ajout", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
+  openNewSetlistEditor(window);
+  const doc = window.document;
+  const search = doc.querySelector("#setlist-song-search");
+  search.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  assert.equal(doc.querySelectorAll("#setlist-entries .sl-entry").length, 1, "Entrée ajoute le 1er résultat");
+  assert.equal(search.value, "", "recherche vidée après ajout");
+  search.value = "beta";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  doc.querySelector("#btn-setlist-add").click();
+  assert.equal(doc.querySelectorAll("#setlist-entries .sl-entry").length, 2, "bouton Ajouter ajoute le 1er résultat filtré");
+  doc.querySelector("#setlist-name").value = "Test";
+  doc.querySelector("#btn-setlist-save").click();
+  assert.deepEqual(storedSetlists(window)[0].entries.map((e) => e.songId), ["s-1", "s-2"]);
+});
+
+test("issue #136 : la liste de résultats est plafonnée à 50", () => {
+  const many = [];
+  for (let i = 0; i < 80; i++) many.push(song({ id: "s-" + i, title: "Morceau " + i, artist: "", key: "", body: "", speed: 1 }));
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify(many) });
+  openNewSetlistEditor(window);
+  const doc = window.document;
+  const search = doc.querySelector("#setlist-song-search");
+  search.value = "morceau";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.equal(doc.querySelectorAll("#setlist-song-results .setlist-result").length, 50, "plafond de 50 résultats");
+});
+
+test("issue #136 : bouton retour dans la vue setlists + état actif du bouton Setlists", () => {
+  const window = loadApp({ [SONGS_KEY]: JSON.stringify(twoSongs()) });
+  const doc = window.document;
+  const grid = doc.querySelector("#song-grid");
+  const section = doc.querySelector("#setlists-section");
+  const btnSetlists = doc.querySelector("#btn-setlists");
+  assert.equal(section.style.display, "none");
+  openSetlistsView(window);
+  assert.notEqual(section.style.display, "none", "vue setlists ouverte");
+  assert.equal(grid.style.display, "none", "grille masquée");
+  assert.ok(btnSetlists.classList.contains("active"), "bouton Setlists marqué actif");
+  doc.querySelector("#btn-setlists-back").click();
+  assert.equal(section.style.display, "none", "retour : section masquée");
+  assert.equal(grid.style.display, "", "retour : grille réaffichée");
+  assert.ok(!btnSetlists.classList.contains("active"), "état actif retiré");
 });
