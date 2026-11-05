@@ -191,6 +191,7 @@ test("style : chaque commande du bandeau mesure au moins 32 px de côté", () =>
     "#speed-down", "#speed-up",
     "#tr-down", "#tr-up",
     "#fs-down", "#fs-up",
+    "#cs-down", "#cs-up",
     "#btn-pin-controls",
   ];
   for (const btn of window.document.querySelectorAll("#countdown-picker button")) {
@@ -214,7 +215,7 @@ test("style : chaque commande du bandeau mesure au moins 32 px de côté", () =>
   window.close();
 });
 
-test("structure : les cinq groupes de commandes sont encadrés avec un libellé", () => {
+test("structure : les six groupes de commandes sont encadrés avec un libellé", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   openFirstSong(window);
 
@@ -237,12 +238,13 @@ test("structure : les cinq groupes de commandes sont encadrés avec un libellé"
   }
 
   const groups = Array.from(window.document.querySelectorAll("#controls .ctrl-group"));
-  assert.equal(groups.length, 5, "cinq boxes de groupe dans le bandeau");
+  assert.equal(groups.length, 6, "six boxes de groupe dans le bandeau");
 
   const expected = [
     { label: "Vitesse", contains: ["#speed-down", "#speed-val", "#speed-up"] },
     { label: "Transpo", contains: ["#tr-down", "#tr-val", "#tr-up"] },
     { label: "Texte", contains: ["#fs-down", "#fs-up"] },
+    { label: "Accords", contains: ["#cs-down", "#cs-up"] },
     { label: "Section", contains: ["#section-prev", "#section-next"] },
     { label: "Décompte", contains: ["#countdown-picker"] },
   ];
