@@ -12,7 +12,7 @@ const html = fs.readFileSync(HTML_PATH, "utf8");
 // Seuil : 4,5:1, identique à scripts/visual/thresholds.json (chrome.minContrast).
 const MIN_CONTRAST = 4.5;
 
-const THEMES = ["spotlight", "guitar-case", "campfire"];
+const THEMES = ["spotlight", "guitar-case", "campfire", "vibe", "daylight"];
 
 function themeVars(theme) {
   const rule = new RegExp('html\\[data-theme="' + theme + '"\\]\\{([^}]*)\\}').exec(html);
@@ -71,7 +71,7 @@ function backgrounds(vars) {
   return { bg: vars["--bg"], panel: vars["--bg-panel"] };
 }
 
-test("contraste : .eyebrow atteint 4,5:1 sur les trois thèmes", () => {
+test("contraste : .eyebrow atteint 4,5:1 sur les cinq thèmes", () => {
   const colorVar = eyebrowColor();
   for (const theme of THEMES) {
     const vars = themeVars(theme);
@@ -88,7 +88,7 @@ test("contraste : .eyebrow atteint 4,5:1 sur les trois thèmes", () => {
   }
 });
 
-test("contraste : .btn.danger atteint 4,5:1 sur les trois thèmes", () => {
+test("contraste : .btn.danger atteint 4,5:1 sur les cinq thèmes", () => {
   const colorVar = dangerColor();
   assert.equal(colorVar, "--danger", ".btn.danger consomme --danger");
   for (const theme of THEMES) {
