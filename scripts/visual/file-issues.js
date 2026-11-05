@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Fileur d'issues du chien de garde visuel (visual-watch.yml) : transforme
+ * Fileur d'issues du Watchdog visuel (visual-watch.yml) : transforme
  * les brouillons de la boucle visuelle (visual-out/issues-drafts/) et le
  * rapport de l'explorateur IA en issues GitHub étiquetées `explorer-proposition`.
  *
@@ -116,7 +116,7 @@ function shortGoal(goal) {
 function buildExplorerIssue(report, date) {
   const title = `${EXPLORER_PREFIX} ${shortGoal(report.goal)} (${date})`;
   const body = [
-    "Rapport d'exploration IA automatique (chien de garde visuel) — consultatif : il informe, il ne décide rien.",
+    "Rapport d'exploration IA automatique (Watchdog visuel) — consultatif : il informe, il ne décide rien.",
     "",
     `Date du run : ${date}. Frictions constatées : ${report.frictions.length}.`,
     "",
