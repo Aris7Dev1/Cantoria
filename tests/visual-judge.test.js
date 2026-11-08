@@ -96,6 +96,7 @@ test("callChat : route, en-têtes, corps et extraction", async () => {
   assert.equal(seen.init.headers.authorization, "Bearer via-passerelle");
   const body = JSON.parse(seen.init.body);
   assert.equal(body.model, "m"); assert.equal(body.temperature, 0);
+  assert.equal(body.top_p, 1, "l'échantillonnage glouton exige top_p = 1 explicite");
   assert.deepEqual(body.response_format, { type: "json_object" });
   assert.equal(out.text, "ok"); assert.equal(out.usage.prompt_tokens, 10);
   await assert.rejects(j.callChat({ baseUrl: "http://gw", apiKey: "k", model: "m", messages: [], fetchImpl: async () => ({ ok: false, status: 429, text: async () => "slow down" }) }), /HTTP 429/);
@@ -127,6 +128,14 @@ test("judgePair : 2 ordres × répétitions, plafond d'appels, erreurs tolérée
   const r3 = await j.judgePair({ imageA: Buffer.from("A"), imageB: Buffer.from("B"), repetitions: 1, call: async () => { throw new Error("boom"); } });
   assert.equal(r3.perPersona[0].verdict, "inconclusive");
   assert.equal(r3.perPersona[0].errors.length, 2);
+
+  /* Un appel en échec ne consomme pas le plafond : seuls les appels aboutis
+     décrémentent budget.remaining, une salve d'erreurs n'affame pas la suite. */
+  const budgetFail = { remaining: 2 };
+  const rFail = await j.judgePair({ imageA: Buffer.from("A"), imageB: Buffer.from("B"), repetitions: 2, call: async () => { throw new Error("HTTP 400"); }, budget: budgetFail });
+  assert.equal(budgetFail.remaining, 2, "aucun appel abouti : plafond intact");
+  assert.equal(rFail.perPersona[0].errors.length, 4, "2 ordres × 2 répétitions en échec, aucun rejet de plafond");
+  assert.ok(!rFail.perPersona[0].errors.some((e) => /plafond/.test(e)));
 
   /* Personas multiples : chaque persona actif = une passe ; inactif = zéro appel. */
   let callsMulti = 0;
