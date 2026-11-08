@@ -3232,7 +3232,11 @@
 
   function songsDirBridge(){
     var b = window.carnetDesktop;
-    return (b && typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
+    /* Pont retenu uniquement sur desktop Electron : le shim Android expose les
+       5 fonctions mais elles rejettent (fonctionnalite desktop uniquement) -
+       sans ce garde, le bouton serait actif et chaque clic echouerait (issue #133). */
+    if(!b || b.isElectron !== true) return null;
+    return (typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
       && typeof b.readSongFile === "function" && typeof b.writeSongFile === "function"
       && typeof b.deleteSongFile === "function") ? b : null;
   }
