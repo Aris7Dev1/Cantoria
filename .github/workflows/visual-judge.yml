@@ -25,7 +25,7 @@ jobs:
   judge:
     name: Juge A/B (personas)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -60,6 +60,9 @@ jobs:
           # Plafond d'appels du juge : 48 couvre le balayage complet des baselines
           # (24 scénarios × 2 ordres) — un changement d'interface n'est plus tronqué.
           JUDGE_MAX_CALLS: "48"
+          # Budget de temps du jugement : le verdict est publié même si tout ne
+          # peut pas être jugé (le pas doit finir avant le timeout du job).
+          JUDGE_MAX_SECONDS: "1200"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
