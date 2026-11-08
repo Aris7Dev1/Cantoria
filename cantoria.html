@@ -176,13 +176,21 @@
   #setlists-section{padding:6px 24px 100px;overflow-y:auto;}
   .setlists-head{display:flex;align-items:center;justify-content:space-between;margin:10px 0 14px;}
   .setlists-head h2{margin:0;font-size:20px;}
+  .lib-actions .btn.active{background:var(--bg-panel-2);border-color:var(--gold);color:var(--ink-bright);}
   #setlist-list{display:flex;flex-direction:column;gap:10px;max-width:720px;}
   .setlist-card{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;}
   .setlist-card .sl-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .setlist-card .sl-meta{color:var(--ink-dim);font-size:13px;white-space:nowrap;}
   .setlist-panel{max-width:680px;width:min(92vw,680px);}
-  .setlist-add-row{display:flex;gap:8px;margin:6px 0 12px;}
-  .setlist-add-row select{flex:1;}
+  .setlist-add-row{display:flex;gap:8px;margin:6px 0 6px;}
+  .setlist-add-row input{flex:1;background:var(--bg-panel);color:var(--ink-bright);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px;}
+  .setlist-results{max-height:190px;overflow-y:auto;margin:0 0 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-panel);display:none;}
+  .setlist-results.show{display:block;}
+  .setlist-result{display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:0;color:var(--ink-bright);font:inherit;font-size:14px;cursor:pointer;border-bottom:1px solid var(--border);}
+  .setlist-result:last-child{border-bottom:0;}
+  .setlist-result:hover,.setlist-result.active{background:var(--bg-panel-2);}
+  .setlist-result .sr-artist{color:var(--ink-dim);font-size:12.5px;margin-left:8px;}
+  .setlist-no-match{padding:10px 12px;color:var(--ink-dim);font-size:13.5px;}
   #setlist-entries{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;margin:8px 0;}
   .sl-entry{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-panel-2);border:1px solid var(--border);border-radius:10px;}
   .sl-entry.dragging{opacity:.45;}
@@ -601,7 +609,12 @@
     <div id="song-grid"><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Amsterdam</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Jacques Brel</div><div class="meta"><span class="badge">Ton. E</span><span class="badge">7 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Cendrillon</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Téléphone</div><div class="meta"><span class="badge">Ton. A</span><span class="badge">9 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Emmenez-moi</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Charles Azenavour</div><div class="meta"><span class="badge">Ton. A</span><span class="badge">10 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Hotel California</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Eagles</div><div class="meta"><span class="badge">Ton. B</span><span class="badge">8 accords</span><span class="badge">×1,25</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">J'ai laissé</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Christophe Maé</div><div class="meta"><span class="badge">Ton. F</span><span class="badge">4 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Je te promets</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Johnny Halliday</div><div class="meta"><span class="badge">Ton. C</span><span class="badge">16 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">La Bohème</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Charles Aznavour</div><div class="meta"><span class="badge">Ton. D</span><span class="badge">10 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">La corrida</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Francis Cabrel</div><div class="meta"><span class="badge">Ton. B</span><span class="badge">8 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">Le sud</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Nino Ferrer</div><div class="meta"><span class="badge">Ton. C</span><span class="badge">17 accords</span><span class="badge">×1</span></div></div><div class="song-card" role="button" tabindex="0"><div class="card-head"><div class="title">The Star-spangled Banner</div><button class="fav-btn" aria-label="Basculer favori" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"></path></svg></button></div><div class="artist">Marvin Gaye</div><div class="meta"><span class="badge">Ton. F</span><span class="badge">14 accords</span><span class="badge">×1</span></div></div></div>
     <div id="setlists-section" style="display:none;">
       <div class="setlists-head">
-        <h2 data-i18n="setlistsTitle">Mes setlists</h2>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn icon ghost" id="btn-setlists-back" data-i18n-aria="setlistsBack" aria-label="Retour aux chansons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+          </button>
+          <h2 data-i18n="setlistsTitle">Mes setlists</h2>
+        </div>
         <button class="btn small primary" id="btn-setlist-new" data-i18n="setlistNew">+ Nouvelle setlist</button>
       </div>
       <div id="setlist-list"></div>
@@ -619,9 +632,10 @@
       </div>
       <div class="field"><label for="setlist-name" data-i18n="setlistName">Nom de la setlist</label><input type="text" id="setlist-name" placeholder="ex. Concert du samedi" data-i18n-ph="setlistNamePh"></div>
       <div class="setlist-add-row">
-        <select id="setlist-song-select"></select>
+        <input type="text" id="setlist-song-search" data-i18n-ph="setlistSearchPh" data-i18n-aria="setlistSearchPh" placeholder="Rechercher une chanson…" autocomplete="off">
         <button class="btn small" id="btn-setlist-add" data-i18n="setlistAdd">Ajouter</button>
       </div>
+      <div id="setlist-song-results" class="setlist-results" role="listbox" aria-label="Résultats"></div>
       <div id="setlist-entries"></div>
       <div class="setlist-foot">
         <button class="btn primary" id="btn-setlist-save" data-i18n="save">Enregistrer</button>
@@ -1075,6 +1089,7 @@
       updateNotAvailable: "Application à jour", updateError: "Mise à jour indisponible",
       updateInstallError: "Impossible d’installer la mise à jour",
       checkUpdate: "Rechercher une mise à jour", installUpdate: "Installer la mise à jour",
+      setlistSearchPh: "Rechercher une chanson…", setlistNoMatch: "Aucune chanson ne correspond", setlistsBack: "Retour aux chansons",
       close: "Fermer", restore: "Restaurer", download: "Télécharger", unreadableContent: "Contenu illisible",
       songsCount: (n) => n + " chanson(s)", versionsKept: (n) => n === 0 ? "Aucune version conservée pour le moment." : n + " version" + (n > 1 ? "s" : "") + " conservée" + (n > 1 ? "s" : "") + " automatiquement (carnet, chansons modifiées).", setlists: "Setlists", setlistsTitle: "Mes setlists",
       setlistNew: "+ Nouvelle setlist", setlistOverlayTitle: "Setlist", setlistNewTitle: "Nouvelle setlist", setlistEditTitle: "Modifier la setlist",
@@ -1182,6 +1197,7 @@
       updateNotAvailable: "Up to date", updateError: "Update unavailable",
       updateInstallError: "Cannot install the update",
       checkUpdate: "Check for updates", installUpdate: "Install update",
+      setlistSearchPh: "Search a song…", setlistNoMatch: "No matching song", setlistsBack: "Back to songs",
       close: "Close", restore: "Restore", download: "Download", unreadableContent: "Unreadable content",
       songsCount: (n) => n + " song(s)", versionsKept: (n) => n === 0 ? "No backup kept yet." : n + " version" + (n > 1 ? "s" : "") + " kept automatically (songbook, edited songs).", setlists: "Setlists", setlistsTitle: "My setlists",
       setlistNew: "+ New setlist", setlistOverlayTitle: "Setlist", setlistNewTitle: "New setlist", setlistEditTitle: "Edit setlist",
@@ -2224,6 +2240,7 @@
       $("#song-grid").style.display = "";
       $(".lib-filters").style.display = "";
     }
+    $("#btn-setlists").classList.toggle("active", setlistsVisible);
     renderSetlists();
   }
 
@@ -2256,16 +2273,51 @@
   /* ---- Éditeur de setlist ---- */
   var draftEntries = [];
 
-  function fillSongSelect(){
-    var sel = $("#setlist-song-select");
-    sel.innerHTML = "";
+  /* Recherche filtrante des chansons (issue #136) : remplace l'ancien <select>
+     ingerable avec des centaines de titres. Filtre sur titre + artiste,
+     insensible a la casse et aux accents, liste plafonnee. */
+  var SONG_RESULTS_MAX = 50;
+  function foldStr(s){
+    return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+  function renderSongResults(){
+    var box = $("#setlist-song-results");
+    var search = $("#setlist-song-search");
+    if(!box || !search) return;
+    var q = foldStr(search.value);
     var sorted = songs.slice().sort(function(a,b){ return (a.title||"").localeCompare(b.title||"", "fr"); });
-    sorted.forEach(function(s){
-      var opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = s.title + (s.artist ? " — " + s.artist : "");
-      sel.appendChild(opt);
+    var matches = sorted.filter(function(s){
+      return !q || foldStr(s.title).indexOf(q) !== -1 || foldStr(s.artist).indexOf(q) !== -1;
     });
+    box.innerHTML = "";
+    box.classList.add("show");
+    if(!matches.length){
+      box.innerHTML = '<div class="setlist-no-match">' + T("setlistNoMatch") + '</div>';
+      return;
+    }
+    matches.slice(0, SONG_RESULTS_MAX).forEach(function(s){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "setlist-result";
+      b.setAttribute("data-song-id", s.id);
+      b.setAttribute("role", "option");
+      b.innerHTML = esc(s.title || T("noTitle")) + (s.artist ? '<span class="sr-artist">' + esc(s.artist) + '</span>' : "");
+      b.addEventListener("click", function(){ addDraftEntry(s.id); });
+      box.appendChild(b);
+    });
+  }
+  function addDraftEntry(songId){
+    var s = songs.find(function(x){ return x.id === songId; });
+    if(!s) return;
+    draftEntries.push({ songId: songId, key: s.key || "", capo: s.capo || "", speed: s.speed || 1 });
+    renderDraftEntries();
+    var search = $("#setlist-song-search");
+    if(search){ search.value = ""; search.focus(); }
+    renderSongResults();
+  }
+  function firstResultSongId(){
+    var b = $("#setlist-song-results .setlist-result");
+    return b ? b.getAttribute("data-song-id") : null;
   }
 
   function openSetlistEditor(id){
@@ -2275,7 +2327,9 @@
     $("#setlist-overlay-title").textContent = sl ? T("setlistEditTitle") : T("setlistNewTitle");
     $("#setlist-name").value = sl ? sl.name : "";
     $("#btn-setlist-delete").style.display = sl ? "" : "none";
-    fillSongSelect();
+    var searchInput = $("#setlist-song-search");
+    if(searchInput) searchInput.value = "";
+    renderSongResults();
     renderDraftEntries();
     $("#setlist-overlay").classList.add("show");
   }
@@ -2344,14 +2398,20 @@
   }
 
   $("#btn-setlists").addEventListener("click", toggleSetlistsView);
+  $("#btn-setlists-back").addEventListener("click", function(){ if(setlistsVisible) toggleSetlistsView(); });
   $("#btn-setlist-new").addEventListener("click", function(){ openSetlistEditor(null); });
   $("#btn-setlist-close").addEventListener("click", function(){ $("#setlist-overlay").classList.remove("show"); });
   $("#btn-setlist-add").addEventListener("click", function(){
-    var songId = $("#setlist-song-select").value;
-    if(!songId) return;
-    var s = songs.find(function(x){ return x.id === songId; });
-    draftEntries.push({ songId: songId, key: (s && s.key) || "", capo: (s && s.capo) || "", speed: (s && s.speed) || 1 });
-    renderDraftEntries();
+    var id = firstResultSongId();
+    if(id) addDraftEntry(id);
+  });
+  $("#setlist-song-search").addEventListener("input", renderSongResults);
+  $("#setlist-song-search").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      e.preventDefault();
+      var id = firstResultSongId();
+      if(id) addDraftEntry(id);
+    }
   });
   $("#btn-setlist-save").addEventListener("click", function(){
     var name = $("#setlist-name").value.trim() || T("setlistUntitled");
@@ -3233,7 +3293,11 @@
 
   function songsDirBridge(){
     var b = window.carnetDesktop;
-    return (b && typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
+    /* Pont retenu uniquement sur desktop Electron : le shim Android expose les
+       5 fonctions mais elles rejettent (fonctionnalite desktop uniquement) -
+       sans ce garde, le bouton serait actif et chaque clic echouerait (issue #133). */
+    if(!b || b.isElectron !== true) return null;
+    return (typeof b.pickSongsDir === "function" && typeof b.listSongsDir === "function"
       && typeof b.readSongFile === "function" && typeof b.writeSongFile === "function"
       && typeof b.deleteSongFile === "function") ? b : null;
   }
