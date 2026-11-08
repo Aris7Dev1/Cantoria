@@ -50,3 +50,30 @@ test("le README pointe vers le site Pages", () => {
   const readme = fs.readFileSync(path.join(ROOT, "README.md"), "utf8");
   assert.ok(readme.includes("https://aris7dev1.github.io/Cantoria/"), "lien Pages dans le README");
 });
+
+/* Issue #138 : le deck publié (docs/presentation) reste autonome : aucune
+   ressource externe chargée, tous les assets embarqués dans le dossier. */
+
+test("issue #138 : le deck n'embarque aucune ressource externe et toutes ses images existent localement", () => {
+  const dir = path.join(ROOT, "docs", "presentation");
+  const html = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+  assert.ok(!/\.\.\//.test(html), "aucun chemin relatif vers l'extérieur (../)");
+  assert.ok(!/@import|url\(\s*['"]?https?:/i.test(html), "pas de police/ressource distante en CSS");
+  assert.ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|navigator\.sendBeacon/.test(html), "aucun appel réseau dans le deck");
+  const srcs = [...html.matchAll(/\ssrc\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(srcs.length > 0, "le deck embarque bien des images locales");
+  for (const s of srcs) {
+    assert.ok(!/^https?:\/\//i.test(s), `src externe interdit: ${s}`);
+    assert.ok(fs.existsSync(path.join(dir, s)), `asset embarqué présent: ${s}`);
+  }
+  const hrefs = [...html.matchAll(/\shref\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+  for (const h of hrefs) {
+    assert.ok(!/^https?:\/\//i.test(h) || h.startsWith("https://github.com/Aris7Dev1/Cantoria"), `lien externe non autorisé: ${h}`);
+  }
+});
+
+test("issue #138 : le deck reste court (5 diapos max)", () => {
+  const html = fs.readFileSync(path.join(ROOT, "docs", "presentation", "index.html"), "utf8");
+  const slides = (html.match(/<section class="slide/g) || []).length;
+  assert.ok(slides >= 3 && slides <= 5, `deck de ${slides} diapos (3 à 5 attendu)`);
+});
