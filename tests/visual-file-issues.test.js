@@ -1,6 +1,6 @@
 "use strict";
 /*
- * Tests du fileur d'issues (scripts/visual/file-issues.js) — chien de garde
+ * Tests du fileur d'issues (scripts/visual/file-issues.js) — Watchdog
  * visuel. `gh` est injecté (deps.runGh) : aucun appel réseau, aucune création
  * réelle, comme le font agent-lib.test.js / agent-runner.test.js avec le
  * faux `gh` des fixtures.
@@ -118,7 +118,7 @@ test("buildExplorerIssue : titre court et daté, corps complet et honnête", () 
   assert.equal(issue.kind, "explorer");
   assert.match(issue.body, /Frictions constatées : 2/);
   assert.match(issue.body, /explorer-proposition/);
-  assert.match(issue.body, /chien de garde visuel/);
+  assert.match(issue.body, /Watchdog visuel/);
   assert.match(issue.body, /agent-ok/); // le rappel « approbation humaine »
 });
 test("planCreations déduplique contre les issues ouvertes (titre normalisé)", () => {
