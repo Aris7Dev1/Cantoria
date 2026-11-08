@@ -315,7 +315,7 @@ function compositeOver(fg, alpha, bg) {
   return fg.map((f, i) => f * alpha + bg[i] * (1 - alpha));
 }
 
-test("les accords du lecteur ont un contraste ≥ 7:1 pour les trois thèmes", () => {
+test("les accords du lecteur ont un contraste ≥ 7:1 pour les cinq thèmes", () => {
   // Le lecteur doit rendre les deux formes d'accords.
   const window = loadApp([{
     id: "s-1", title: "Contraste", artist: "",
@@ -330,7 +330,7 @@ test("les accords du lecteur ont un contraste ≥ 7:1 pour les trois thèmes", (
   const standaloneColor = /color\s*:\s*([^;]+)/.exec(ruleDecl(css, ".seg-chord.standalone"))[1].trim();
   const instrumentalOpacity = parseFloat(/opacity\s*:\s*([\d.]+)/.exec(ruleDecl(css, ".line.instrumental"))[1]);
 
-  for (const theme of ["spotlight", "guitar-case", "campfire"]) {
+  for (const theme of ["spotlight", "guitar-case", "campfire", "vibe", "daylight"]) {
     const vars = themeVars(css, theme);
     // Fonds de la scène : le dégradé radial du body va de --bg-glow (haut) à --bg ;
     // le contrôle retient le pire cas, on teste donc les deux.

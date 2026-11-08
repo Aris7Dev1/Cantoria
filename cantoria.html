@@ -18,14 +18,16 @@
     --chord-ink:#e2a25c; --chord-standalone-ink:#e9ba86;
     --teal:#6faf9e; --danger:#d4796e;
     --bg-glow:#1d212c; --primary-grad-light:#eab578; --primary-ink:#241605;
+    --gold-1:#faf7f5; --gold-2:#f1ebe4; --gold-3:#e8dfd4; --gold-4:#e8d2bb; --gold-5:#e1c6a8; --gold-6:#eaba87; --gold-7:#e6ae71; --gold-8:#e2a25c; --gold-9:#d9852a; --gold-10:#aa671e; --gold-11:#774915; --gold-12:#452a0c;
   }
   html[data-theme="guitar-case"]{
     --bg:#1b2420; --bg-panel:#212b25; --bg-panel-2:#283630; --border:#3a4b40;
     --ink-dim:#7c8d78; --ink-mid:#a6b5a2; --ink-bright:#f1e7d3;
     --gold:#c8964f; --gold-glow:rgba(200,150,79,.42);
-    --chord-ink:#dbbb8d; --chord-standalone-ink:#e6d0b1;
-    --teal:#84a086; --danger:#c97a6b;
+    --chord-ink:#dfc299; --chord-standalone-ink:#ead8bf;
+    --teal:#8fae91; --danger:#c97a6b;
     --bg-glow:#263229; --primary-grad-light:#dcb578; --primary-ink:#2a1b0e;
+    --gold-1:#f9f8f6; --gold-2:#ede9e3; --gold-3:#e2dacf; --gold-4:#ddcdb5; --gold-5:#d3bea0; --gold-6:#d7b27e; --gold-7:#cfa466; --gold-8:#c8964f; --gold-9:#af7d37; --gold-10:#89622b; --gold-11:#64471f; --gold-12:#3e2d13;
   }
   html[data-theme="campfire"]{
     --bg:#17120f; --bg-panel:#1e1712; --bg-panel-2:#261c15; --border:#3c2c20;
@@ -34,6 +36,7 @@
     --chord-ink:#ed9869; --chord-standalone-ink:#f2b38f;
     --teal:#f0aa4e; --danger:#d96a52;
     --bg-glow:#2a1c14; --primary-grad-light:#f0975a; --primary-ink:#2a1006;
+    --gold-1:#faf7f5; --gold-2:#f0e6e0; --gold-3:#e6d4cb; --gold-4:#e7c0ab; --gold-5:#e0ae93; --gold-6:#ed9767; --gold-7:#e9844b; --gold-8:#e6712f; --gold-9:#cc5918; --gold-10:#a04613; --gold-11:#74330e; --gold-12:#492009;
   }
   html[data-theme="vibe"]{
     --font-display:'JetBrains Mono','Cascadia Mono','SFMono-Regular',Consolas,Menlo,monospace;
@@ -45,6 +48,16 @@
     --chord-ink:#ff9a4d; --chord-standalone-ink:#ffb066;
     --teal:#ffd800; --danger:#ff6b4a;
     --bg-glow:#16161b; --primary-grad-light:#ffb066; --primary-ink:#1a0d02;
+    --gold-1:#fbf7f4; --gold-2:#f4e9e1; --gold-3:#eddbcf; --gold-4:#f1cab1; --gold-5:#edbc9b; --gold-6:#ffa970; --gold-7:#ff9957; --gold-8:#ff8a3d; --gold-9:#c74f00; --gold-10:#8c3800; --gold-11:#522000; --gold-12:#3d1800;
+  }
+  html[data-theme="daylight"]{
+    --bg:#f6efe1; --bg-panel:#fbf6ec; --bg-panel-2:#ece1cb; --border:#d9cbae;
+    --ink-dim:#8a7a5a; --ink-mid:#6a5f40; --ink-bright:#3e3721;
+    --gold:#965d18; --gold-glow:rgba(150,93,24,.35);
+    --chord-ink:#663b11; --chord-standalone-ink:#45280b;
+    --teal:#206d61; --danger:#bb3f2c;
+    --bg-glow:#efe4cc; --primary-grad-light:#d9b68c; --primary-ink:#3a2405;
+    --gold-1:#faf8f5; --gold-2:#eae1d6; --gold-3:#dbcbb8; --gold-4:#d9b68c; --gold-5:#cea169; --gold-6:#dd8d2c; --gold-7:#bd751e; --gold-8:#965d18; --gold-9:#825115; --gold-10:#6e4412; --gold-11:#5a380e; --gold-12:#462c0b;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -290,7 +303,7 @@
      ici par le facteur de zoom pour rester constante en px réels. */
   #stage-inner{max-width:min(96vw,1400px);margin:0 auto;font-size:calc(var(--reader-scale, 1) * 1rem / var(--zoom, 1));}
   .section-label{
-    font-family:var(--font-chord);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    font-family:var(--font-chord);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--teal);margin:26px 0 8px;opacity:.85;text-align:center;
   }
   .comment-row{
@@ -301,7 +314,7 @@
     display:flex;flex-wrap:wrap;align-items:flex-end;
     column-gap:.34em;row-gap:.12em;
     width:fit-content;max-width:100%;margin:3px auto;
-    transition:opacity .25s ease;font-size:1.25em;
+    transition:opacity .25s ease,transform .3s ease;font-size:1.25em;
   }
   #stage-inner[data-lyrics-align="left"] .line,
   #stage-inner[data-lyrics-align="left"] .comment-row,
@@ -316,21 +329,36 @@
     0%,100%{text-shadow:0 0 10px var(--gold-glow);}
     50%{text-shadow:0 0 20px var(--gold-glow),0 0 6px var(--gold);}
   }
+  /* Ligne active (design du lecteur) : hiérarchie portée par la taille et
+     la teinte plutôt que par un fond teinté — un fond plus clair derrière
+     les accords ferait chuter le contraste sous le seuil de 7:1. */
+  .line.focus-line{transform:scale(var(--focus-scale,1.06));}
+  .line.focus-line .seg-chord{color:var(--chord-standalone-ink, var(--chord-ink, var(--gold)));}
   .seg{display:inline-flex;flex-direction:column;align-items:flex-start;}
   .seg-chord{
     font-family:var(--font-chord);font-weight:700;color:var(--chord-ink, var(--gold));
-    font-size:.9em;letter-spacing:.01em;white-space:nowrap;
+    font-size:calc(var(--chord-scale, 1) * .9em);letter-spacing:.01em;white-space:nowrap;
     text-shadow:0 0 14px var(--gold-glow);
     line-height:1.15;min-height:1.15em;
   }
   .seg-word{
-    font-family:var(--font-body);line-height:1.5;color:var(--ink-bright);white-space:nowrap;
+    font-family:var(--font-body);font-weight:600;line-height:1.5;color:var(--ink-bright);white-space:nowrap;
   }
   .line.instrumental{gap:.7em;opacity:.88;}
-  .seg-chord.standalone{font-size:1em;line-height:1.3;min-height:0;color:var(--chord-standalone-ink, var(--chord-ink, var(--gold)));}
+  .seg-chord.standalone{font-size:calc(var(--chord-scale, 1) * 1em);line-height:1.3;min-height:0;color:var(--chord-standalone-ink, var(--chord-ink, var(--gold)));}
   .chorus{background:var(--bg-panel-2);border-radius:14px;padding:12px 16px;margin:10px 0;border-left:4px solid var(--gold);}
   .chorus .section-label{position:relative;}
   .verse{margin:10px 0;border-left:4px solid var(--ink-dim);padding:2px 0 2px 14px;opacity:.92;}
+  /* Sections nommées dans la marge (écran ≥ 1000 px, usage concert) : le
+     libellé quitte le flux pour la gouttière gauche ; sous ce seuil
+     (portable étroit, mobile), les libellés restent empilés au-dessus. */
+  @media (min-width:1000px){
+    #stage-inner{padding:0 150px;}
+    .verse,.chorus,.bridge{position:relative;}
+    .verse .section-label,.chorus .section-label,.bridge .section-label{
+      position:absolute;top:2px;left:-136px;width:118px;margin:0;text-align:right;opacity:.9;
+    }
+  }
   .bridge{background:var(--bg-panel-2);border-radius:14px;padding:12px 16px;margin:10px 0;border-left:4px solid var(--teal);}
   html[data-theme="guitar-case"] .song-card:hover{border-style:dashed;}
   html[data-theme="guitar-case"] .badge{border-style:dashed;border-radius:4px;}
@@ -575,6 +603,7 @@
             <button class="swatch" data-theme="guitar-case" data-i18n-aria="themeGuitarCase" data-i18n-title="themeGuitarCase" aria-label="Thème Étui de guitare" title="Étui de guitare" style="background:linear-gradient(135deg,#1b2420 50%,#c8964f 50%);"></button>
             <button class="swatch active" data-theme="campfire" data-i18n-aria="themeCampfire" data-i18n-title="themeCampfire" aria-label="Thème Feu de camp" title="Feu de camp" style="background:linear-gradient(135deg,#17120f 50%,#e6712f 50%);"></button>
             <button class="swatch" data-theme="vibe" data-i18n-aria="themeVibe" data-i18n-title="themeVibe" aria-label="Thème Vibe" title="Vibe" style="background:linear-gradient(135deg,#0d0d0f 50%,#ff8a3d 50%);"></button>
+            <button class="swatch" data-theme="daylight" data-i18n-aria="themeDaylight" data-i18n-title="themeDaylight" aria-label="Thème Plein air" title="Plein air" style="background:linear-gradient(135deg,#f6efe1 50%,#965d18 50%);"></button>
           </div>
           <button class="btn icon ghost" id="btn-help-open" data-i18n-aria="help" data-i18n-title="help" aria-label="Aide et raccourcis clavier" title="Aide et raccourcis clavier">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12" y2="17"></line><circle cx="12" cy="12" r="10"></circle></svg>
@@ -744,6 +773,10 @@
         <div class="ctrl-group stepper">
           <span class="ctrl-group-label" data-i18n="textSize">Texte</span>
           <button id="fs-down" data-i18n-title="textDown" title="Taille des paroles − (Ctrl+↓)">A−</button><button id="fs-up" data-i18n-title="textUp" title="Taille des paroles + (Ctrl+↑)">A+</button>
+        </div>
+        <div class="ctrl-group stepper">
+          <span class="ctrl-group-label" data-i18n="chordSize">Accords</span>
+          <button id="cs-down" data-i18n-title="chordDown" title="Taille des accords −">A−</button><button id="cs-up" data-i18n-title="chordUp" title="Taille des accords +">A+</button>
         </div>
         <div class="ctrl-group">
           <span class="ctrl-group-label" data-i18n="section">Section</span>
@@ -997,6 +1030,7 @@
   var currentCapo = "";
   var setlistPlayback = null; // {setlistId, index} pendant une lecture enchaînée
   var fontScale = 1;
+  var chordScale = 1;
   var chordsVisible = true;
   var zoomFactor = 1;
   var scrolling = false;
@@ -1026,7 +1060,7 @@
       noResult: "Aucun résultat", noResultHint: "Essaie une autre recherche ou désactive le filtre favoris.",
       toggleFav: "Basculer favori",
       settings: "Paramètres", help: "Aide et raccourcis clavier",
-      themeSpotlight: "Sous les projecteurs", themeGuitarCase: "Étui de guitare", themeCampfire: "Feu de camp", themeVibe: "Vibe",
+      themeSpotlight: "Sous les projecteurs", themeGuitarCase: "Étui de guitare", themeCampfire: "Feu de camp", themeVibe: "Vibe", themeDaylight: "Plein air",
       editorNew: "Nouvelle chanson", editorEdit: "Modifier la chanson",
       fieldTitle: "Titre", fieldTitlePh: "Titre de la chanson",
       fieldArtist: "Artiste", fieldArtistPh: "Interprète ou auteur",
@@ -1043,7 +1077,7 @@
       playPause: "Lecture / pause (Espace)",
       speed: "Vitesse", speedDown: "Vitesse inférieure", speedUp: "Vitesse supérieure",
       transpose: "Transpo", transposeDown: "Transposition inférieure", transposeUp: "Transposition supérieure",
-      textSize: "Texte", textDown: "Taille des paroles −", textUp: "Taille des paroles +",
+      textSize: "Texte", textDown: "Taille des paroles −", textUp: "Taille des paroles +", chordSize: "Accords", chordDown: "Taille des accords −", chordUp: "Taille des accords +",
       section: "Section", sectionPrev: "Section précédente", sectionNext: "Section suivante",
       countdown: "Décompte", noCountdown: "Aucun",
       showSecondary: "Afficher les commandes secondaires",
@@ -1134,7 +1168,7 @@
       noResult: "No results", noResultHint: "Try another search or turn off the favorites filter.",
       toggleFav: "Toggle favorite",
       settings: "Settings", help: "Help and keyboard shortcuts",
-      themeSpotlight: "Spotlight", themeGuitarCase: "Guitar case", themeCampfire: "Campfire", themeVibe: "Vibe",
+      themeSpotlight: "Spotlight", themeGuitarCase: "Guitar case", themeCampfire: "Campfire", themeVibe: "Vibe", themeDaylight: "Daylight",
       editorNew: "New song", editorEdit: "Edit song",
       fieldTitle: "Title", fieldTitlePh: "Song title",
       fieldArtist: "Artist", fieldArtistPh: "Performer or author",
@@ -1151,7 +1185,7 @@
       playPause: "Play / pause (Space)",
       speed: "Speed", speedDown: "Slower", speedUp: "Faster",
       transpose: "Transpose", transposeDown: "Transpose down", transposeUp: "Transpose up",
-      textSize: "Text", textDown: "Smaller lyrics", textUp: "Bigger lyrics",
+      textSize: "Text", textDown: "Smaller lyrics", textUp: "Bigger lyrics", chordSize: "Chords", chordDown: "Smaller chords", chordUp: "Bigger chords",
       section: "Section", sectionPrev: "Previous section", sectionNext: "Next section",
       countdown: "Countdown", noCountdown: "None",
       showSecondary: "Show secondary controls",
@@ -2772,7 +2806,9 @@
     currentCapo = (entry && entry.capo) || "";
     transposeSteps = entry && entry.key ? keySteps((songs.find(function(x){ return x.id === id; }) || {}).key, entry.key) : 0;
     fontScale = appSettings.defaultFontScale || 1;
+    chordScale = 1;
     $("#stage-inner").style.setProperty("--reader-scale", fontScale);
+    $("#stage-inner").style.setProperty("--chord-scale", chordScale);
     $("#tr-val").textContent = (transposeSteps>0?"+":"")+transposeSteps;
     var s = songs.find(function(x){ return x.id === id; });
     if(s){
@@ -2969,6 +3005,12 @@
      traîne derrière le nouveau layout. */
   $("#fs-up").addEventListener("click", function(){ fontScale = Math.min(4.4, fontScale + 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
   $("#fs-down").addEventListener("click", function(){ fontScale = Math.max(0.7, fontScale - 0.15); $("#stage-inner").style.setProperty("--reader-scale", fontScale); invalidateSpotlightCache(); });
+
+  /* Taille des accords indépendante des paroles : même logique que A+/A−
+     (bornes haute/basse, géométrie du spotlight invalidée car la hauteur
+     des lignes change avec la taille des accords). */
+  $("#cs-up").addEventListener("click", function(){ chordScale = Math.min(2, chordScale + 0.1); $("#stage-inner").style.setProperty("--chord-scale", chordScale); invalidateSpotlightCache(); });
+  $("#cs-down").addEventListener("click", function(){ chordScale = Math.max(0.6, chordScale - 0.1); $("#stage-inner").style.setProperty("--chord-scale", chordScale); invalidateSpotlightCache(); });
 
   /* Auto-scroll — synced to the browser's actual repaint cycle via requestAnimationFrame
      instead of a fixed-interval timer. setInterval doesn't align with when the browser
