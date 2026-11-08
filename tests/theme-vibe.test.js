@@ -159,10 +159,10 @@ function openPlayer(window, title) {
     "le lecteur doit s'ouvrir");
 }
 
-test("sélecteur : quatre swatchs, le clic sur vibe applique, persiste et active le thème", () => {
+test("sélecteur : cinq swatchs, le clic sur vibe applique, persiste et active le thème", () => {
   const window = loadApp({ [SONGS_KEY]: JSON.stringify([song()]) });
   const swatches = window.document.querySelectorAll(".theme-picker .swatch");
-  assert.equal(swatches.length, 4, "quatre swatchs de thème dans le sélecteur");
+  assert.equal(swatches.length, 5, "cinq swatchs de thème dans le sélecteur");
   const vibe = window.document.querySelector('.theme-picker .swatch[data-theme="vibe"]');
   assert.ok(vibe, "swatch vibe présent");
   vibe.click();

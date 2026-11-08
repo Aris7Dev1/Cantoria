@@ -158,7 +158,10 @@ async function callChat({ baseUrl, apiKey, model, messages, fetchImpl = fetch, t
     const res = await fetchImpl(`${baseUrl.replace(/\/+$/, "")}/v1/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature, response_format: { type: "json_object" } }),
+      /* top_p explicite : l'API exige top_p = 1 en échantillonnage glouton (temperature = 0).
+         Sans valeur explicite, la valeur par défaut appliquée côté serveur fait rejeter
+         la requête (HTTP 400 « top_p must be 1 when using greedy sampling »). */
+      body: JSON.stringify({ model, messages, temperature, top_p: 1, response_format: { type: "json_object" } }),
       signal: ctrl.signal,
     });
     if (!res.ok) {
@@ -193,9 +196,9 @@ async function judgePair({ imageA, imageB, intent, repetitions = 2, baseUrl, api
     for (const order of ["AB", "BA"]) {
       for (let i = 0; i < repetitions; i++) {
         if (budget && budget.remaining <= 0) { errors.push("plafond d'appels atteint"); continue; }
-        if (budget) budget.remaining--;
         try {
           const out = await call({ baseUrl, apiKey, model, messages: buildMessages({ imageA, imageB, order, intent, persona }), fetchImpl });
+          if (budget) budget.remaining--; /* seul un appel abouti consomme le plafond : un appel en échec ne doit pas affamer les scénarios suivants */
           if (out.usage) { usage.prompt_tokens += out.usage.prompt_tokens || 0; usage.completion_tokens += out.usage.completion_tokens || 0; }
           const verdict = parseVerdict(out.text);
           if (!verdict) errors.push(`réponse invalide (${order}, essai ${i + 1})`);

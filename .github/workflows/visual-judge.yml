@@ -25,16 +25,16 @@ jobs:
   judge:
     name: Juge A/B (personas)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0   # origine/baselines nécessaires aux comparaisons
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -57,6 +57,12 @@ jobs:
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           MISTRAL_BASE_URL: https://api.mistral.ai   # CI uniquement : le dev local passe par la passerelle
+          # Plafond d'appels du juge : 48 couvre le balayage complet des baselines
+          # (24 scénarios × 2 ordres) — un changement d'interface n'est plus tronqué.
+          JUDGE_MAX_CALLS: "48"
+          # Budget de temps du jugement : le verdict est publié même si tout ne
+          # peut pas être jugé (le pas doit finir avant le timeout du job).
+          JUDGE_MAX_SECONDS: "1200"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -68,6 +74,11 @@ jobs:
           fi
         # Le pas ne fait jamais échouer la PR : le verdict est consultatif.
 
+      # Correction : mapper le secret dans env pour que la condition voie
+      # la valeur réelle — sans mapping, env.MISTRAL_API_KEY est toujours
+      # vide et l'avertissement s'affichait même clé présente.
       - name: Avertissement si clé absente
         if: env.MISTRAL_API_KEY == ''
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: echo "::warning::MISTRAL_API_KEY absente des secrets — le juge ne peut pas tourner. Ajoutez-la dans Settings → Secrets and variables → Actions."

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chemins exposés au FileProvider (issue #57) : uniquement l'APK de mise à
+     jour téléchargé dans le stockage privé. Aucun autre répertoire n'est
+     partageable — l'installateur système ne lit que ce fichier. -->
+<paths>
+    <files-path name="updates" path="updates/" />
+</paths>

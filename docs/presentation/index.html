@@ -3,534 +3,210 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Cantoria — Le carnet de chants qui défile tout seul</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" />
+<meta name="description" content="Cantoria — carnet de paroles et d'accords à défilement automatique, 100 % hors-ligne, pour chanter en jouant de la guitare." />
+<title>Cantoria — Le carnet de chants du guitariste</title>
 <style>
-  :root {
-    --bg: #0b1220;
-    --bg2: #10233f;
-    --panel: rgba(255,255,255,.055);
-    --line: rgba(255,255,255,.12);
-    --text: #eaf0f9;
-    --muted: #9fb0c8;
-    --amber: #fbbf24;
-    --amber2: #f59e0b;
-    --teal: #2dd4bf;
-    font-family: "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  :root{
+    --bg:#17120f; --bg2:#1e1712; --panel:#261c15; --line:#3c2c20;
+    --dim:#8a7566; --mid:#b8a28e; --ink:#f5ddc9; --gold:#e6712f; --gold2:#f2a35e;
+    --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
-
-  .deck { position: fixed; inset: 0; }
-  .slide {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    padding: 6vh 7vw;
-    opacity: 0; visibility: hidden;
-    transition: opacity .55s ease, visibility .55s;
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;}
+  a{color:var(--gold2);}
+  .deck{position:fixed;inset:0;}
+  .slide{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:7vh 7vw;opacity:0;visibility:hidden;transition:opacity .5s ease,visibility .5s;
     background:
-      radial-gradient(1100px 600px at 85% -10%, rgba(45,212,191,.10), transparent 60%),
-      radial-gradient(900px 700px at -10% 110%, rgba(251,191,36,.08), transparent 55%),
-      linear-gradient(135deg, var(--bg) 0%, var(--bg2) 100%);
+      radial-gradient(900px 520px at 88% -12%, rgba(230,113,47,.14), transparent 60%),
+      radial-gradient(760px 620px at -12% 112%, rgba(242,163,94,.08), transparent 55%),
+      linear-gradient(150deg, var(--bg) 0%, var(--bg2) 100%);
   }
-  .slide.active { opacity: 1; visibility: visible; z-index: 2; }
-
-  .wrap { width: min(1180px, 100%); display: flex; gap: 5vw; align-items: center; }
-  .wrap.reverse { flex-direction: row-reverse; }
-  .col { flex: 1 1 0; min-width: 0; }
-  .art { flex: 1.05 1 0; }
-  .art svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 18px 40px rgba(0,0,0,.45)); }
-  .art img.feat {
-    width: 100%; display: block; border-radius: 24px;
-    box-shadow: 0 24px 60px rgba(0,0,0,.5);
-    border: 1px solid rgba(255,255,255,.14);
+  .slide.active{opacity:1;visibility:visible;z-index:2;}
+  .wrap{width:min(1120px,100%);display:flex;gap:5vw;align-items:center;}
+  .col{flex:1 1 0;min-width:0;}
+  .eyebrow{color:var(--gold2);font-weight:700;letter-spacing:.26em;font-size:clamp(11px,1.2vw,14px);text-transform:uppercase;margin-bottom:16px;}
+  h1{font-family:var(--serif);font-size:clamp(34px,4.8vw,62px);line-height:1.08;font-weight:700;letter-spacing:-.01em;}
+  h1 em,h2 em{font-style:normal;color:var(--gold);}
+  h2{font-family:var(--serif);font-size:clamp(26px,3.4vw,44px);line-height:1.14;font-weight:700;margin-bottom:18px;}
+  .lead{font-size:clamp(15px,1.6vw,19px);color:var(--mid);line-height:1.65;max-width:56ch;}
+  .lead strong{color:var(--ink);}
+  .lead + .lead{margin-top:12px;}
+  .center .wrap{flex-direction:column;text-align:center;gap:0;}
+  .center .lead{margin:0 auto;}
+  .logo{width:clamp(84px,10vw,128px);height:auto;border-radius:22%;box-shadow:0 18px 50px rgba(0,0,0,.55);margin-bottom:26px;}
+  .cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px;justify-content:center;}
+  .cta.left{justify-content:flex-start;}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;
+    padding:13px 26px;border-radius:999px;font-size:clamp(14px,1.4vw,17px);transition:all .2s;
   }
-  .duo { display: flex; gap: 20px; align-items: flex-end; justify-content: center; }
-  .duo .desk { width: 64%; }
-  .duo .mob { width: 26%; }
-  .duo img { width: 100%; display: block; border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.14); }
-  .duo p { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
-
-  .eyebrow { color: var(--teal); font-weight: 700; letter-spacing: .28em; font-size: clamp(11px, 1.3vw, 15px); text-transform: uppercase; margin-bottom: 18px; }
-  h1 { font-size: clamp(34px, 4.6vw, 64px); line-height: 1.08; font-weight: 800; letter-spacing: -.01em; }
-  h2 { font-size: clamp(26px, 3.4vw, 46px); line-height: 1.12; font-weight: 800; margin-bottom: 20px; }
-  h2 em, h1 em { font-style: normal; color: var(--amber); }
-  .lead { font-size: clamp(15px, 1.7vw, 20px); color: var(--muted); line-height: 1.65; max-width: 54ch; }
-  .lead strong { color: var(--text); }
-  .lead + .lead { margin-top: 12px; }
-
-  .cards { display: grid; gap: 16px; margin-top: 28px; }
-  .cards.c3 { grid-template-columns: repeat(3, 1fr); }
-  .cards.c1 { grid-template-columns: 1fr; max-width: 640px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; }
-  .card .n {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px; border-radius: 999px; margin-bottom: 12px;
-    background: linear-gradient(135deg, var(--amber), var(--amber2));
-    color: #1c1917; font-weight: 800; font-size: 15px;
-  }
-  .card h3 { font-size: clamp(15px, 1.5vw, 19px); margin-bottom: 6px; }
-  .card p { font-size: clamp(13px, 1.25vw, 15.5px); color: var(--muted); line-height: 1.55; }
-
-  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
-  .pill {
-    border: 1px solid rgba(45,212,191,.55); color: var(--teal);
-    border-radius: 999px; padding: 7px 16px; font-size: clamp(12px, 1.2vw, 14.5px); font-weight: 600;
-  }
-  .pill.gold { border-color: rgba(251,191,36,.6); color: var(--amber); }
-
-  .quote {
-    margin-top: 30px; padding: 18px 22px; border-left: 3px solid var(--amber);
-    background: rgba(251,191,36,.07); border-radius: 0 14px 14px 0;
-    font-size: clamp(15px, 1.6vw, 19px); font-weight: 600; color: #fde9b8;
-  }
-
-  .center { text-align: center; }
-  .center .wrap { flex-direction: column; gap: 0; text-align: center; }
-  .center .art { max-width: 880px; width: 100%; margin-top: 4vh; }
-  .center .lead { margin: 0 auto; }
-
-  .hint { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 13px; opacity: .75; letter-spacing: .04em; }
-
-  .progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--amber), var(--teal)); width: 0; z-index: 10; transition: width .4s ease; }
-  .dots { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 9px; z-index: 10; }
-  .dot { width: 9px; height: 9px; border-radius: 999px; background: rgba(255,255,255,.22); cursor: pointer; transition: all .3s; }
-  .dot.on { background: var(--amber); width: 26px; }
-  .navbtns { position: fixed; bottom: 18px; right: 22px; display: flex; gap: 10px; z-index: 10; }
-  .navbtn {
-    width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line);
-    background: rgba(13,22,38,.8); color: var(--text); font-size: 18px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: all .2s;
-  }
-  .navbtn:hover { border-color: var(--amber); color: var(--amber); }
-  .counter { position: fixed; bottom: 28px; left: 24px; color: var(--muted); font-size: 13px; z-index: 10; font-variant-numeric: tabular-nums; }
-  .counter b { color: var(--text); }
-
-  .rise { opacity: 0; transform: translateY(18px); }
-  .active .rise { animation: up .7s cubic-bezier(.2,.7,.3,1) forwards; }
-  .active .d1 { animation-delay: .08s } .active .d2 { animation-delay: .18s }
-  .active .d3 { animation-delay: .28s } .active .d4 { animation-delay: .38s }
-  .active .d5 { animation-delay: .5s }
-  @keyframes up { to { opacity: 1; transform: none; } }
-  .active .artfade { animation: af .9s ease forwards; opacity: 0; }
-  @keyframes af { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-
-  @media (max-width: 900px) {
-    .wrap, .wrap.reverse { flex-direction: column; gap: 3vh; }
-    .cards.c3 { grid-template-columns: 1fr; }
-    .art { width: 92%; flex: none; }
-    .duo .desk { width: 80%; } .duo .mob { width: 34%; }
-    .slide { padding: 4vh 6vw; overflow-y: auto; align-items: flex-start; }
+  .btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1c1108;box-shadow:0 10px 30px rgba(230,113,47,.35);}
+  .btn.primary:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(230,113,47,.45);}
+  .btn.ghost{border:1px solid var(--line);color:var(--ink);background:rgba(38,28,21,.6);}
+  .btn.ghost:hover{border-color:var(--gold);color:var(--gold2);}
+  .pills{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
+  .center .pills{justify-content:center;}
+  .pill{border:1px solid rgba(230,113,47,.5);color:var(--gold2);border-radius:999px;padding:7px 16px;font-size:clamp(12px,1.2vw,14px);font-weight:600;}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:26px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px;}
+  .card .ico{font-size:22px;margin-bottom:10px;}
+  .card h3{font-family:var(--serif);font-size:clamp(16px,1.6vw,20px);margin-bottom:6px;}
+  .card p{font-size:clamp(13px,1.25vw,15px);color:var(--mid);line-height:1.55;}
+  .duo{display:flex;gap:22px;align-items:flex-end;justify-content:center;width:100%;}
+  .duo figure{margin:0;}
+  .duo .desk{width:62%;}
+  .duo .mob{width:24%;}
+  .duo img{width:100%;display:block;border-radius:16px;border:1px solid var(--line);box-shadow:0 20px 55px rgba(0,0,0,.5);}
+  .duo figcaption{text-align:center;color:var(--dim);font-size:12.5px;margin-top:10px;}
+  .hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:var(--dim);font-size:13px;opacity:.8;letter-spacing:.04em;}
+  .progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2));width:0;z-index:10;transition:width .4s ease;}
+  .dots{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:9px;z-index:10;}
+  .dot{width:9px;height:9px;border-radius:999px;background:rgba(245,221,201,.22);cursor:pointer;transition:all .3s;border:0;}
+  .dot.on{background:var(--gold);width:26px;}
+  .navbtns{position:fixed;bottom:16px;right:20px;display:flex;gap:10px;z-index:10;}
+  .navbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:rgba(23,18,15,.85);color:var(--ink);font-size:17px;cursor:pointer;transition:all .2s;}
+  .navbtn:hover{border-color:var(--gold);color:var(--gold2);}
+  .counter{position:fixed;bottom:28px;left:24px;color:var(--dim);font-size:13px;z-index:10;font-variant-numeric:tabular-nums;}
+  .counter b{color:var(--ink);}
+  .foot{margin-top:26px;color:var(--dim);font-size:13px;}
+  .rise{opacity:0;transform:translateY(18px);}
+  .active .rise{animation:up .7s cubic-bezier(.2,.7,.3,1) forwards;}
+  .active .d1{animation-delay:.06s}.active .d2{animation-delay:.16s}.active .d3{animation-delay:.26s}.active .d4{animation-delay:.36s}.active .d5{animation-delay:.46s}
+  @keyframes up{to{opacity:1;transform:none;}}
+  @media (max-width:880px){
+    .wrap{flex-direction:column;gap:3vh;}
+    .cards{grid-template-columns:1fr;}
+    .duo .desk{width:70%;}.duo .mob{width:28%;}
+    .hint{display:none;}
   }
 </style>
 </head>
 <body>
 <div class="progress" id="progress"></div>
-<div class="deck" id="deck">
+<div class="counter"><b id="cur">1</b> / <span id="tot">5</span></div>
 
-  <!-- 1 - COUVERTURE -->
+<main class="deck" id="deck">
+
+  <!-- 1 · Hero -->
   <section class="slide center active">
     <div class="wrap">
-      <div class="eyebrow rise">Cantoria · v1.4</div>
-      <h1 class="rise d1">Le carnet de chants<br />qui <em>défile tout seul</em>.</h1>
-      <p class="lead rise d2" style="margin-top:22px">Vos chansons, sur tous vos écrans.<br /><strong>Même au milieu de nulle part.</strong></p>
-      <div class="art artfade">
-        <img class="feat" src="../../assets/illustrations/banniere-campfire.jpg" alt="Guitariste au coin du feu, entouré d'amis : l'écran défile tout seul"  onerror="this.closest('.art').style.display='none'" />
-      </div>
-    </div>
-    <div class="hint">→ Flèches ou clic pour avancer</div>
-  </section>
-
-  <!-- 2 - BIVOUAC -->
-  <section class="slide">
-    <div class="wrap">
-      <div class="art artfade">
-        <svg viewBox="0 0 900 540" role="img" aria-label="Bivouac sous les étoiles, sans réseau, la musique continue">
-          <defs>
-            <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#14273f"/>
-            </linearGradient>
-            <radialGradient id="fg2" cx=".5" cy=".5" r=".5">
-              <stop offset="0" stop-color="#fbbf24" stop-opacity=".5"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <rect width="900" height="540" rx="28" fill="url(#sky2)"/>
-          <g fill="#e8f0ff">
-            <circle cx="80" cy="70" r="1.8" opacity=".9"/><circle cx="210" cy="45" r="1.3" opacity=".6"/>
-            <circle cx="330" cy="90" r="2" opacity=".85"/><circle cx="470" cy="50" r="1.4" opacity=".7"/>
-            <circle cx="610" cy="95" r="1.7" opacity=".8"/><circle cx="760" cy="55" r="1.3" opacity=".6"/>
-            <circle cx="840" cy="100" r="1.9" opacity=".9"/><circle cx="130" cy="140" r="1.2" opacity=".5"/>
-            <circle cx="540" cy="140" r="1.2" opacity=".5"/><circle cx="700" cy="150" r="1.5" opacity=".65"/>
-          </g>
-          <polygon points="0,360 160,260 300,340 430,270 560,355 720,280 900,365 900,540 0,540" fill="#132540"/>
-          <rect y="450" width="900" height="90" fill="#0a1424"/>
-          <g fill="#081020">
-            <polygon points="740,450 775,372 810,450"/><polygon points="764,450 796,386 828,450"/>
-          </g>
-          <g>
-            <rect x="90" y="90" width="150" height="66" rx="16" fill="#0d1a30" stroke="#26375a" stroke-width="2"/>
-            <g fill="#3a4f79">
-              <rect x="112" y="126" width="9" height="16" rx="3"/>
-              <rect x="127" y="118" width="9" height="24" rx="3"/>
-              <rect x="142" y="108" width="9" height="34" rx="3"/>
-              <rect x="157" y="100" width="9" height="42" rx="3" opacity=".45"/>
-            </g>
-            <line x1="176" y1="104" x2="216" y2="146" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
-            <line x1="216" y1="104" x2="176" y2="146" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
-          </g>
-          <g>
-            <polygon points="360,430 470,290 580,430" fill="#1b2f52"/>
-            <polygon points="360,430 470,290 470,430" fill="#22406e" opacity=".55"/>
-            <polygon points="440,430 470,352 500,430" fill="#0b1220"/>
-            <line x1="360" y1="430" x2="580" y2="430" stroke="#0a1424" stroke-width="4"/>
-          </g>
-          <ellipse cx="660" cy="440" rx="120" ry="60" fill="url(#fg2)"/>
-          <g>
-            <rect x="622" y="428" width="78" height="11" rx="5" fill="#3a2a18" transform="rotate(12 661 433)"/>
-            <rect x="622" y="428" width="78" height="11" rx="5" fill="#4a3520" transform="rotate(-12 661 433)"/>
-            <path d="M645 430 q15 -46 17 -68 q2 22 19 68 z" fill="#fbbf24"/>
-            <path d="M654 430 q8 -30 9 -46 q2 16 14 46 z" fill="#fff7d6"/>
-          </g>
-          <rect x="712" y="418" width="130" height="17" rx="8" fill="#3a2a18"/>
-          <g fill="#060d1a">
-            <circle cx="790" cy="330" r="19"/>
-            <path d="M774 352 q14 -9 30 0 l9 56 q-25 9 -50 0 z"/>
-          </g>
-          <g>
-            <ellipse cx="765" cy="396" rx="40" ry="29" transform="rotate(-22 765 396)" fill="#8a5a2b" stroke="#5c3a1c" stroke-width="3"/>
-            <circle cx="755" cy="384" r="7" fill="#0b1220" transform="rotate(-22 755 384)"/>
-          </g>
-          <g transform="rotate(8 700 392)">
-            <rect x="678" y="352" width="46" height="82" rx="8" fill="#020617" stroke="#42557e" stroke-width="2"/>
-            <rect x="683" y="358" width="36" height="70" rx="5" fill="url(#fg2)"/>
-            <g stroke="#8a5a10" stroke-width="2.6" stroke-linecap="round" opacity=".9">
-              <line x1="687" y1="368" x2="714" y2="368"/><line x1="687" y1="378" x2="711" y2="378"/>
-              <line x1="687" y1="388" x2="714" y2="388"/><line x1="687" y1="398" x2="712" y2="398"/>
-              <line x1="687" y1="408" x2="714" y2="408"/>
-            </g>
-            <rect x="686" y="385" width="31" height="6" rx="3" fill="#fff7d6" opacity=".9"/>
-          </g>
-          <g fill="#fde68a">
-            <g opacity=".85"><circle cx="845" cy="300" r="6"/><rect x="849.5" y="268" width="3.2" height="34" rx="1.5"/><path d="M849.5 268 q12 3 14 14 q-7 -7 -14 -5.5 z"/></g>
-          </g>
-        </svg>
-      </div>
-      <div class="col">
-        <div class="eyebrow rise">Scène 1 · Le bivouac</div>
-        <h2 class="rise d1">Vous êtes en bivouac.<br /><em>Aucun réseau.</em></h2>
-        <p class="lead rise d2">Pas de barres, pas de Wi-Fi. Votre téléphone cherche désespérément un signal… <strong>et alors ?</strong></p>
-        <p class="lead rise d3">Vos chansons sont déjà dans votre poche. Cantoria ne dépend d'aucun réseau, d'aucun compte, d'aucun nuage. Vous allumez, vous chantez.</p>
-        <div class="quote rise d4">Zéro réseau. Zéro compte. Zéro compromis.</div>
+      <img class="logo rise d1" src="logo.svg" alt="Logo Cantoria" />
+      <h1 class="rise d2">Le carnet de chants<br />qui <em>défile tout seul</em></h1>
+      <p class="lead rise d3">Paroles et accords à défilement automatique, <strong>100 % hors-ligne</strong> — pour chanter en jouant de la guitare, les mains occupées.</p>
+      <div class="cta rise d4">
+        <a class="btn primary" href="https://github.com/Aris7Dev1/Cantoria/releases">↓ Télécharger</a>
+        <a class="btn ghost" href="https://github.com/Aris7Dev1/Cantoria">Voir le dépôt</a>
       </div>
     </div>
   </section>
 
-  <!-- 3 - LE PROBLEME -->
+  <!-- 2 · La promesse -->
   <section class="slide">
     <div class="wrap">
       <div class="col">
-        <div class="eyebrow rise">Scène 2 · Sur scène comme au salon</div>
-        <h2 class="rise d1">Quand vous chantez,<br />vos mains ont <em>mieux à faire</em></h2>
-        <p class="lead rise d2">Tourner une page, dérouler un PDF à la main, chercher ses paroles en plein morceau : c'est fini. Cantoria s'occupe de l'affichage, <strong>vous vous occupez de la musique</strong>.</p>
-        <div class="cards c1">
-          <div class="card rise d3"><span class="n">1</span><h3>Ça défile tout seul</h3><p>Le défilement démarre en même temps que vous, à votre tempo. Ensuite vous ne touchez plus à rien.</p></div>
-          <div class="card rise d4"><span class="n">2</span><h3>Ça se lit à un mètre</h3><p>Gros texte, fort contraste, écran qui reste allumé : lisible posé sur l'ampli ou sur un pupitre.</p></div>
-        </div>
-      </div>
-      <div class="art artfade">
-        <img class="feat" src="../../assets/illustrations/banniere-scene.jpg" alt="Sur scène : le public écoute, le téléphone sur le pied de micro défile les paroles"  onerror="this.closest('.art').style.display='none'" />
-      </div>
-    </div>
-  </section>
-
-  <!-- 4 - MULTI-OS avec captures -->
-  <section class="slide">
-    <div class="wrap reverse">
-      <div class="art artfade">
-        <div class="duo">
-          <div class="desk">
-            <img src="../../visual-baseline/campfire/library.png" alt="Cantoria sur ordinateur — bibliothèque, thème campfire" />
-            <p>Bibliothèque — desktop</p>
-          </div>
-          <div class="mob">
-            <img src="../../visual-baseline/campfire-mobile/player-portrait.png" alt="Cantoria sur Android — lecteur de scène en portrait" />
-            <p>Lecteur — Android</p>
-          </div>
-        </div>
-      </div>
-      <div class="col">
-        <div class="eyebrow rise">Une seule app</div>
-        <h2 class="rise d1">Le même carnet,<br /><em>sur tous vos écrans</em></h2>
-        <p class="lead rise d2">Votre ordinateur du salon, le portable de la voiture, la tablette du canapé, le téléphone dans la poche. <strong>Un seul carnet, la même présentation, partout.</strong></p>
-        <p class="lead rise d3">Vous ajoutez une chanson le matin sur l'ordi, vous la chantez le soir au coin du feu sur le téléphone. Simple comme bonjour.</p>
+        <div class="eyebrow rise d1">La promesse</div>
+        <h2 class="rise d2">Ouvre une chanson,<br /><em>lance le défilement,</em> joue.</h2>
+        <p class="lead rise d3">Plus besoin de tourner les pages au milieu d'un morceau. Le texte avance à <strong>ta vitesse</strong>, assez grand pour être lu de la scène, avec les accords juste au-dessus des paroles.</p>
         <div class="pills rise d4">
-          <span class="pill">Ordinateur — Windows, macOS, Linux</span>
-          <span class="pill">Portable &amp; tablette — Android</span>
-          <span class="pill">Chromebook — ChromeOS</span>
+          <span class="pill">Défilement auto réglable</span>
+          <span class="pill">Transposition en direct</span>
+          <span class="pill">Raccourcis clavier</span>
+          <span class="pill">Setlists de concert</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 5 - CONCU POUR JOUER -->
+  <!-- 3 · Fonctionnalités -->
   <section class="slide">
-    <div class="wrap">
-      <div class="col">
-        <div class="eyebrow rise">Pensé pour les musiciens</div>
-        <h2 class="rise d1">Conçu pour jouer <em>en vrai</em></h2>
-        <p class="lead rise d2">Pas une visionneuse de PDF. Un vrai lecteur de chansons, pensé pour le feu de camp comme pour la petite scène.</p>
-        <div class="cards c3">
-          <div class="card rise d3"><h3>⏩ À votre tempo</h3><p>Défilement automatique réglable du très lent au très rapide, avec décompte au lancement. Vous ne touchez plus à rien.</p></div>
-          <div class="card rise d4"><h3>Transposez en deux gestes</h3><p>Une voix qui monte, une tonalité qui baisse ? Les accords et les diagrammes suivent, les paroles restent.</p></div>
-          <div class="card rise d5"><h3>Quatre ambiances nocturnes</h3><p>campfire, vibe, spotlight, guitar-case : des couleurs chaudes et sombres qui n'éblouissent pas.</p></div>
-        </div>
-        <div class="pills rise d5">
-          <span class="pill gold">Favoris</span>
-          <span class="pill gold">Recherche</span>
-          <span class="pill gold">Écran maintenu allumé</span>
-          <span class="pill gold">Tout en français</span>
-        </div>
+    <div class="wrap" style="flex-direction:column;align-items:stretch;">
+      <div style="text-align:center;">
+        <div class="eyebrow rise d1">Fonctionnalités</div>
+        <h2 class="rise d2">Tout pour le <em>live</em>, rien de superflu</h2>
       </div>
-      <div class="art artfade">
-        <svg viewBox="0 0 760 560" role="img" aria-label="Un grand téléphone affiche les paroles qui défilent, avec les accords">
-          <defs>
-            <linearGradient id="scr5" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
-            </linearGradient>
-            <radialGradient id="gl5" cx=".5" cy=".5" r=".5">
-              <stop offset="0" stop-color="#fbbf24" stop-opacity=".4"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <ellipse cx="380" cy="290" rx="330" ry="260" fill="url(#gl5)"/>
-          <g transform="rotate(-3 380 280)">
-            <rect x="270" y="70" width="220" height="420" rx="34" fill="#020617" stroke="#42557e" stroke-width="3"/>
-            <rect x="284" y="102" width="192" height="356" rx="18" fill="url(#scr5)"/>
-            <rect x="330" y="84" width="100" height="8" rx="4" fill="#42557e"/>
-            <g stroke="#7a4a05" stroke-width="7" stroke-linecap="round">
-              <line x1="300" y1="130" x2="460" y2="130"/><line x1="300" y1="158" x2="450" y2="158"/>
-              <line x1="300" y1="186" x2="460" y2="186"/><line x1="300" y1="214" x2="444" y2="214"/>
-              <line x1="300" y1="242" x2="460" y2="242"/><line x1="300" y1="270" x2="452" y2="270"/>
-              <line x1="300" y1="298" x2="460" y2="298"/><line x1="300" y1="326" x2="446" y2="326"/>
-              <line x1="300" y1="354" x2="460" y2="354"/><line x1="300" y1="382" x2="450" y2="382"/>
-              <line x1="300" y1="410" x2="460" y2="410"/><line x1="300" y1="438" x2="440" y2="438"/>
-            </g>
-            <rect x="292" y="236" width="176" height="16" rx="8" fill="#fff7d6" opacity=".9"/>
-            <g stroke="#7a4a05" stroke-width="6" stroke-linecap="round" opacity=".8">
-              <line x1="492" y1="360" x2="492" y2="420"/>
-              <path d="M478 406 l14 18 l14 -18" fill="none"/>
-            </g>
-          </g>
-          <g fill="#2dd4bf" opacity=".9">
-            <text x="130" y="150" font-size="30" font-weight="700" font-family="Georgia, serif">Am</text>
-            <text x="600" y="200" font-size="26" font-weight="700" font-family="Georgia, serif">F</text>
-            <text x="120" y="440" font-size="26" font-weight="700" font-family="Georgia, serif">C</text>
-            <text x="590" y="470" font-size="28" font-weight="700" font-family="Georgia, serif">G</text>
-          </g>
-          <g fill="#fde68a">
-            <g opacity=".7"><circle cx="160" cy="290" r="7"/><rect x="165.5" y="252" width="3.5" height="42" rx="1.6"/><path d="M165.5 252 q14 4 16 16 q-8 -8 -16 -6 z"/></g>
-            <g opacity=".5"><circle cx="600" cy="330" r="6"/><rect x="604.5" y="298" width="3.2" height="36" rx="1.5"/><path d="M604.5 298 q12 3 14 14 q-7 -7 -14 -5 z"/></g>
-          </g>
-        </svg>
+      <div class="cards rise d3">
+        <div class="card"><div class="ico">▶️</div><h3>Lecteur à défilement</h3><p>Vitesse, taille du texte, décompte et surbrillance de la ligne en cours — pilotés au clavier, sans toucher la souris.</p></div>
+        <div class="card"><div class="ico">🎸</div><h3>Accords &amp; transposition</h3><p>Format ChordPro, diagrammes d'accords, capo et transposition d'un demi-ton en direct pendant le morceau.</p></div>
+        <div class="card"><div class="ico">📋</div><h3>Setlists</h3><p>Enchaîne tes chansons en concert, avec un réglage par entrée, et un seul geste pour passer à la suivante.</p></div>
+        <div class="card"><div class="ico">🔒</div><h3>Hors-ligne, local d'abord</h3><p>Aucun compte, aucun cloud : tes chansons restent sur ta machine, avec copies de secours automatiques.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- 6 - VOS CHANSONS -->
-  <section class="slide">
-    <div class="wrap reverse">
-      <div class="art artfade">
-        <svg viewBox="0 0 900 540" role="img" aria-label="Un coffre ouvert d'où s'envolent des notes de musique">
-          <defs>
-            <radialGradient id="gl6" cx=".5" cy=".5" r=".5">
-              <stop offset="0" stop-color="#fbbf24" stop-opacity=".6"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <ellipse cx="450" cy="330" rx="300" ry="200" fill="url(#gl6)"/>
-          <g>
-            <path d="M230 250 q0 -80 220 -80 q220 0 220 80 l0 14 l-440 0 z" fill="#7a4f26"/>
-            <path d="M230 250 q0 -80 220 -80 q220 0 220 80 l0 14 l-440 0 z" fill="none" stroke="#5c3a1c" stroke-width="4"/>
-            <rect x="220" y="264" width="460" height="170" rx="16" fill="#8a5a2b" stroke="#5c3a1c" stroke-width="4"/>
-            <rect x="220" y="316" width="460" height="16" fill="#5c3a1c" opacity=".85"/>
-            <rect x="300" y="240" width="18" height="194" fill="#fbbf24" opacity=".28"/>
-            <rect x="582" y="240" width="18" height="194" fill="#fbbf24" opacity=".28"/>
-            <rect x="424" y="300" width="52" height="52" rx="10" fill="#eab308" stroke="#a16207" stroke-width="3"/>
-            <circle cx="450" cy="322" r="6" fill="#3a2a10"/>
-            <rect x="446" y="322" width="8" height="20" rx="3" fill="#3a2a10"/>
-          </g>
-          <g transform="rotate(-6 450 250)">
-            <rect x="380" y="196" width="140" height="104" rx="10" fill="#fde68a" stroke="#b45309" stroke-width="3"/>
-            <line x1="450" y1="200" x2="450" y2="296" stroke="#b45309" stroke-width="3"/>
-            <g stroke="#b45309" stroke-width="3" stroke-linecap="round">
-              <line x1="390" y1="218" x2="442" y2="218"/><line x1="458" y1="218" x2="510" y2="218"/>
-              <line x1="390" y1="236" x2="442" y2="236"/><line x1="458" y1="236" x2="510" y2="236"/>
-              <line x1="390" y1="254" x2="442" y2="254"/><line x1="458" y1="254" x2="510" y2="254"/>
-              <line x1="390" y1="272" x2="442" y2="272"/><line x1="458" y1="272" x2="510" y2="272"/>
-            </g>
-          </g>
-          <g fill="#fde68a">
-            <g opacity="1"><circle cx="560" cy="170" r="9"/><rect x="567" y="122" width="4.5" height="52" rx="2"/><path d="M567 122 q18 5 20 20 q-10 -10 -20 -7 z"/></g>
-            <g opacity=".75"><circle cx="640" cy="120" r="7"/><rect x="645.5" y="82" width="3.5" height="42" rx="1.6"/><path d="M645.5 82 q14 4 16 16 q-8 -8 -16 -6 z"/></g>
-            <g opacity=".5"><circle cx="710" cy="80" r="5.5"/><rect x="714" y="50" width="3" height="33" rx="1.4"/><path d="M714 50 q11 3 13 13 q-7 -7 -13 -5 z"/></g>
-            <g opacity=".6"><circle cx="330" cy="150" r="7"/><rect x="335.5" y="112" width="3.5" height="42" rx="1.6"/><path d="M335.5 112 q14 4 16 16 q-8 -8 -16 -6 z"/></g>
-            <g opacity=".4"><circle cx="250" cy="100" r="5.5"/><rect x="254" y="70" width="3" height="33" rx="1.4"/><path d="M254 70 q11 3 13 13 q-7 -7 -13 -5 z"/></g>
-          </g>
-          <text x="450" y="500" text-anchor="middle" font-size="22" fill="#9fb0c8" font-family="Georgia, serif" font-style="italic">votre bibliothèque, votre maison</text>
-        </svg>
-      </div>
-      <div class="col">
-        <div class="eyebrow rise">Vos chansons, votre maison</div>
-        <h2 class="rise d1">Vos chansons restent <em>chez vous</em></h2>
-        <p class="lead rise d2">Pas de compte à créer. Pas de nuage. <strong>Rien ne quitte votre appareil</strong> — Cantoria fonctionne comme un carnet papier, en mieux : il ne s'abîme pas, ne se perd pas.</p>
-        <p class="lead rise d3">Et le jour où vous changez de téléphone ou d'ordinateur : vous exportez tout votre carnet dans un seul fichier, et vous le réimportez où vous voulez. Vos chansons vous suivent, <strong>sans dépendre de personne</strong>.</p>
-        <div class="cards c1">
-          <div class="card rise d4"><h3>Sauvegarde discrète</h3><p>Une copie de secours est faite automatiquement au moindre souci. Une règle guide tout le projet : ne jamais perdre les chansons de l'utilisateur.</p></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 7 - TELECHARGEMENT -->
-  <section class="slide">
-    <div class="wrap">
-      <div class="col">
-        <div class="eyebrow rise">Prêt en trois minutes</div>
-        <h2 class="rise d1">Téléchargez, importez, <em>chantez</em></h2>
-        <div class="cards c1">
-          <div class="card rise d2"><span class="n">1</span><h3>Téléchargez Cantoria — c'est gratuit</h3><p>Pour votre ordinateur (Windows, macOS, Linux), votre téléphone ou votre tablette Android, ou votre Chromebook. En français, sans publicité, sans abonnement.</p></div>
-          <div class="card rise d3"><span class="n">2</span><h3>Importez vos chansons</h3><p>Vos fichiers texte ou vos chansons au format ChordPro arrivent en quelques secondes. Favoris, recherche, tout est prêt.</p></div>
-          <div class="card rise d4"><span class="n">3</span><h3>Posez l'écran, jouez, chantez</h3><p>Le défilement fait le reste. Du salon au bivouac, sans jamais demander le moindre réseau.</p></div>
-        </div>
-      </div>
-      <div class="art artfade">
-        <svg viewBox="0 0 760 560" role="img" aria-label="Une guitare et un téléphone qui invitent au téléchargement">
-          <defs>
-            <radialGradient id="gl7" cx=".5" cy=".5" r=".5">
-              <stop offset="0" stop-color="#fbbf24" stop-opacity=".35"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="scr7" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
-            </linearGradient>
-          </defs>
-          <ellipse cx="380" cy="300" rx="340" ry="270" fill="url(#gl7)"/>
-          <g transform="rotate(18 380 300)">
-            <rect x="356" y="60" width="26" height="250" rx="6" fill="#5c3a1c"/>
-            <rect x="368" y="30" width="10" height="36" rx="4" fill="#26375a"/>
-            <ellipse cx="372" cy="388" rx="120" ry="150" fill="#8a5a2b" stroke="#5c3a1c" stroke-width="4"/>
-            <ellipse cx="372" cy="388" rx="120" ry="150" fill="none" stroke="#a97c3f" stroke-width="2" opacity=".5"/>
-            <circle cx="372" cy="388" r="42" fill="#0b1220"/>
-            <circle cx="372" cy="388" r="16" fill="#fde68a" opacity=".9"/>
-            <g stroke="#fde68a" stroke-width="1.6" opacity=".7">
-              <line x1="372" y1="270" x2="372" y2="505"/><line x1="342" y1="285" x2="402" y2="492"/>
-              <line x1="317" y1="315" x2="427" y2="462"/><line x1="300" y1="355" x2="444" y2="422"/>
-            </g>
-          </g>
-          <g transform="rotate(-6 590 260)">
-            <rect x="540" y="160" width="100" height="200" rx="18" fill="#020617" stroke="#42557e" stroke-width="3"/>
-            <rect x="550" y="172" width="80" height="176" rx="10" fill="url(#scr7)"/>
-            <g stroke="#7a4a05" stroke-width="5" stroke-linecap="round">
-              <line x1="560" y1="188" x2="620" y2="188"/><line x1="560" y1="204" x2="614" y2="204"/>
-              <line x1="560" y1="220" x2="620" y2="220"/><line x1="560" y1="236" x2="612" y2="236"/>
-            </g>
-            <g stroke="#7a4a05" stroke-width="7" stroke-linecap="round" opacity=".9">
-              <line x1="590" y1="256" x2="590" y2="316"/>
-              <path d="M574 302 l16 22 l16 -22" fill="none"/>
-            </g>
-          </g>
-          <g fill="#fde68a">
-            <g opacity=".8"><circle cx="150" cy="150" r="8"/><rect x="156.5" y="108" width="4" height="48" rx="1.8"/><path d="M156.5 108 q16 4 18 18 q-9 -9 -18 -7 z"/></g>
-            <g opacity=".5"><circle cx="110" cy="420" r="6"/><rect x="114" y="388" width="3.2" height="38" rx="1.5"/><path d="M114 388 q13 3 15 13 q-8 -7 -15 -5 z"/></g>
-          </g>
-        </svg>
-      </div>
-    </div>
-  </section>
-
-  <!-- 8 - FIN -->
+  <!-- 4 · Plateformes -->
   <section class="slide center">
     <div class="wrap">
-      <svg class="rise" viewBox="0 0 1024 1024" width="110" height="110" aria-hidden="true">
-        <defs>
-          <linearGradient id="lgfin" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/>
-          </linearGradient>
-        </defs>
-        <circle cx="512" cy="530" r="260" fill="none" stroke="url(#lgfin)" stroke-width="108" stroke-linecap="round" stroke-dasharray="1306 328"/>
-        <circle cx="512" cy="530" r="88" fill="#fff7ed"/>
-        <g stroke="#5c3a1c" stroke-width="7">
-          <line x1="473" y1="569" x2="551" y2="491"/>
-          <line x1="487" y1="583" x2="565" y2="505"/>
-        </g>
-        <g transform="translate(690 392) rotate(-45)">
-          <rect x="-10" y="-29" width="170" height="58" rx="29" fill="#fff7ed"/>
-          <g stroke="#b45309" stroke-width="5">
-            <line x1="45" y1="-29" x2="45" y2="29"/>
-            <line x1="85" y1="-29" x2="85" y2="29"/>
-            <line x1="125" y1="-29" x2="125" y2="29"/>
-          </g>
-          <circle cx="65" cy="0" r="9" fill="#2dd4bf"/>
-        </g>
-      </svg>
-      <h1 class="rise d1" style="margin-top:26px">La musique s'affiche.<br /><em>Vous jouez.</em></h1>
-      <p class="lead rise d2" style="margin-top:22px">Cantoria — le carnet de chants hors-ligne, multi-écrans, gratuit et libre.</p>
-      <div class="pills rise d3" style="justify-content:center">
-        <span class="pill gold">github.com/Aris7Dev1/Cantoria</span>
-        <span class="pill">Windows · macOS · Linux · Android · ChromeOS</span>
+      <div class="eyebrow rise d1" style="margin-bottom:8px;">Desktop &amp; mobile</div>
+      <h2 class="rise d2">Windows · macOS · Linux · <em>Android</em></h2>
+      <div class="duo rise d3" style="margin-top:3vh;">
+        <figure class="desk"><img src="screenshot-desktop.png" alt="Cantoria sur ordinateur — bibliothèque de chansons, thème campfire" /><figcaption>Le carnet, sur ordinateur</figcaption></figure>
+        <figure class="mob"><img src="screenshot-android.png" alt="Cantoria sur Android — lecteur en portrait" /><figcaption>Le lecteur, sur Android</figcaption></figure>
       </div>
-      <p class="lead rise d4" style="margin-top:34px;opacity:.7">Version 1.4 · Logiciel libre (MIT) · Fait avec ❤️ pour les feux de camp</p>
     </div>
   </section>
 
-</div>
+  <!-- 5 · Télécharger -->
+  <section class="slide center">
+    <div class="wrap">
+      <div class="eyebrow rise d1">Télécharger</div>
+      <h2 class="rise d2">Prêt à <em>jouer</em> ?</h2>
+      <p class="lead rise d3">Installeurs Windows / macOS / Linux et APK Android sur la <strong>dernière release</strong>. Gratuit, open source (MIT), sans compte.</p>
+      <div class="cta rise d4">
+        <a class="btn primary" href="https://github.com/Aris7Dev1/Cantoria/releases">↓ Dernière release</a>
+        <a class="btn ghost" href="https://github.com/Aris7Dev1/Cantoria">Code source</a>
+        <a class="btn ghost" href="https://github.com/Aris7Dev1/Cantoria/issues">Signaler un bug</a>
+      </div>
+      <p class="foot rise d5">Hors-ligne · Données locales · Licence MIT — <a href="https://github.com/Aris7Dev1/Cantoria/blob/main/README.md">en savoir plus</a></p>
+    </div>
+  </section>
+
+</main>
 
 <div class="dots" id="dots"></div>
-<div class="counter" id="counter"></div>
 <div class="navbtns">
-  <button class="navbtn" id="prev" title="Précédent">←</button>
-  <button class="navbtn" id="next" title="Suivant">→</button>
+  <button class="navbtn" id="prev" aria-label="Diapo précédente">←</button>
+  <button class="navbtn" id="next" aria-label="Diapo suivante">→</button>
 </div>
+<div class="hint">← → ou clic pour naviguer</div>
 
 <script>
-  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
-  var dots = document.getElementById('dots');
-  var progress = document.getElementById('progress');
-  var counter = document.getElementById('counter');
+(function(){
+  "use strict";
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var dotsBox = document.getElementById("dots");
+  var cur = document.getElementById("cur");
+  var progress = document.getElementById("progress");
+  document.getElementById("tot").textContent = String(slides.length);
   var i = 0;
-  slides.forEach(function (_, k) {
-    var d = document.createElement('div');
-    d.className = 'dot' + (k === 0 ? ' on' : '');
-    d.addEventListener('click', function () { go(k); });
-    dots.appendChild(d);
+  slides.forEach(function(_, k){
+    var d = document.createElement("button");
+    d.className = "dot";
+    d.setAttribute("aria-label", "Diapo " + (k + 1));
+    d.addEventListener("click", function(){ go(k); });
+    dotsBox.appendChild(d);
   });
-  function go(n) {
-    if (n < 0 || n >= slides.length) return;
-    slides[i].classList.remove('active');
-    dots.children[i].classList.remove('on');
-    i = n;
-    slides[i].classList.add('active');
-    dots.children[i].classList.add('on');
-    progress.style.width = (100 * (i + 1) / slides.length) + '%';
-    counter.innerHTML = '<b>' + String(i + 1).padStart(2, '0') + '</b> / ' + String(slides.length).padStart(2, '0');
+  var dots = Array.prototype.slice.call(dotsBox.children);
+  function go(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle("active", k === i); });
+    dots.forEach(function(d, k){ d.classList.toggle("on", k === i); });
+    cur.textContent = String(i + 1);
+    progress.style.width = ((i + 1) / slides.length * 100) + "%";
   }
+  document.getElementById("next").addEventListener("click", function(){ go(i + 1); });
+  document.getElementById("prev").addEventListener("click", function(){ go(i - 1); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "ArrowRight" || e.key === "PageDown" || e.key === " "){ e.preventDefault(); go(i + 1); }
+    else if(e.key === "ArrowLeft" || e.key === "PageUp"){ e.preventDefault(); go(i - 1); }
+    else if(e.key === "Home"){ go(0); }
+    else if(e.key === "End"){ go(slides.length - 1); }
+  });
   go(0);
-  document.getElementById('next').addEventListener('click', function () { go(i + 1); });
-  document.getElementById('prev').addEventListener('click', function () { go(i - 1); });
-  document.addEventListener('keydown', function (e) {
-    if (['ArrowRight', 'PageDown', ' ', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); go(i + 1); }
-    if (['ArrowLeft', 'PageUp'].indexOf(e.key) >= 0) { e.preventDefault(); go(i - 1); }
-    if (e.key === 'Home') go(0);
-    if (e.key === 'End') go(slides.length - 1);
-  });
-  document.getElementById('deck').addEventListener('click', function (e) {
-    if (e.target.closest('.navbtn') || e.target.closest('.dot')) return;
-    go(i + 1);
-  });
-  var sx = null;
-  document.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
-  document.addEventListener('touchend', function (e) {
-    if (sx === null) return;
-    var dx = e.changedTouches[0].clientX - sx;
-    if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
-    sx = null;
-  }, { passive: true });
+})();
 </script>
 </body>
 </html>

@@ -81,6 +81,10 @@ class CantoriaBridge(private val activity: Activity) {
 
     @Volatile var onUpdateAvailable: ((version: String, apkUrl: String) -> Unit)? = null
 
+    // Cast sûr vers MainActivity : le pont n'est installé que par elle
+    // (installBridge), jamais par une autre Activity.
+    private val mainActivity: MainActivity? get() = activity as? MainActivity
+
     @JavascriptInterface
     fun checkNow(): Boolean {
         val cb = onUpdateAvailable
@@ -88,6 +92,53 @@ class CantoriaBridge(private val activity: Activity) {
         // Le MainActivity enregistre le callback ; ici on ne fait que
         // signaler qu'une demande manuelle est possible.
         return true
+    }
+
+    // ---- Mises à jour : téléchargement et installation (issue #57) ----
+    // Le bandeau de cantoria.html propose « Redémarrer » une fois l'APK
+    // téléchargé ; le natif pilote réseau + installateur système. La WebView
+    // reste à zéro appel réseau (VISION n°2), elle ne fournit que la
+    // version/URL déjà remontées par le checker natif.
+
+    @JavascriptInterface
+    fun downloadUpdate(version: String, apkUrl: String): Boolean {
+        val main = mainActivity ?: return false
+        if (version.toByteArray(Charsets.UTF_8).size > 128) return false
+        if (apkUrl.toByteArray(Charsets.UTF_8).size > 2048) return false
+        main.runOnUiThread { main.downloadUpdate(version, apkUrl) }
+        return true
+    }
+
+    @JavascriptInterface
+    fun installUpdate(): Boolean {
+        val main = mainActivity ?: return false
+        main.runOnUiThread { main.installUpdate() }
+        return true
+    }
+
+    @JavascriptInterface
+    fun hasDownloadedUpdate(): Boolean = mainActivity?.hasPendingApk() ?: false
+
+    // Canal sideload (décision post-1.6.0) : le bandeau de mise à jour propose
+    // le téléchargement de l'APK depuis GitHub Releases dans le NAVIGATEUR
+    // externe — jamais dans la WebView (§4.5 : aucune navigation externe).
+    // L'URL est restreinte côté natif, même si elle provient déjà de l'API
+    // GitHub remontée par le checker : le pont ne fait jamais confiance à la
+    // chaîne fournie par la page.
+
+    @JavascriptInterface
+    fun openExternal(url: String): Boolean {
+        if (url.toByteArray(Charsets.UTF_8).size > 2048) return false
+        val main = mainActivity ?: return false
+        if (!isAllowedExternalUrl(url)) return false
+        main.runOnUiThread { main.openInBrowser(url) }
+        return true
+    }
+
+    private fun isAllowedExternalUrl(url: String): Boolean {
+        return (url.startsWith("https://github.com/") ||
+            url.startsWith("https://objects.githubusercontent.com/") ||
+            url.startsWith("https://release-assets.githubusercontent.com/"))
     }
 
     // ---- Écran (équivalent powerSaveBlocker du desktop) ----

@@ -46,4 +46,33 @@ contextBridge.exposeInMainWorld("carnetDesktop", Object.freeze({
   onUpdateNotAvailable: (callback) => subscribe("update:not-available", callback),
   onUpdateCancelled: (callback) => subscribe("update:cancelled", callback),
   onUpdateError: (callback) => subscribe("update:error", callback),
+  // Dossier de chansons (issue #93) : stockage optionnel en fichiers ChordPro.
+  pickSongsDir: () => ipcRenderer.invoke("songsdir:pick"),
+  listSongsDir: (dirPath) => {
+    if (typeof dirPath !== "string" || !dirPath) {
+      return Promise.reject(new TypeError("Le chemin du dossier doit être une chaîne non vide."));
+    }
+    return ipcRenderer.invoke("songsdir:list", dirPath);
+  },
+  readSongFile: (dirPath, name) => {
+    if (typeof dirPath !== "string" || !dirPath || typeof name !== "string" || !name) {
+      return Promise.reject(new TypeError("Chemin et nom de fichier requis."));
+    }
+    return ipcRenderer.invoke("songsdir:read", dirPath, name);
+  },
+  writeSongFile: (dirPath, name, content) => {
+    if (typeof dirPath !== "string" || !dirPath || typeof name !== "string" || !name) {
+      return Promise.reject(new TypeError("Chemin et nom de fichier requis."));
+    }
+    if (typeof content !== "string") {
+      return Promise.reject(new TypeError("Le contenu doit être une chaîne."));
+    }
+    return ipcRenderer.invoke("songsdir:write", dirPath, name, content);
+  },
+  deleteSongFile: (dirPath, name) => {
+    if (typeof dirPath !== "string" || !dirPath || typeof name !== "string" || !name) {
+      return Promise.reject(new TypeError("Chemin et nom de fichier requis."));
+    }
+    return ipcRenderer.invoke("songsdir:delete", dirPath, name);
+  },
 }));

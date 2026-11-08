@@ -52,6 +52,7 @@ Tu travailles dans un conteneur de développement (`.devcontainer/`, Linux, util
 ## Règles de travail
 
 - **Une tâche = une branche = une pull request.** Ne jamais pousser sur `main`, ne jamais fusionner.
+- **Lis les consignes AVANT d'agir.** Tout agent IA intervenant sur ce dépôt (lancé par le runner ou non) doit d'abord lire `VISION.md`, ce fichier, puis les documents applicables à sa tâche : `.github/pull_request_template.md` (rédaction des PR), `docs/procedure-release.md` (préparation des releases), `docs/agent/README.md` (workflow agent). « Je ne savais pas » n'est pas une excuse : les consignes sont dans le dépôt, c'est le premier endroit où regarder.
 - **Une branche mergée est close.** Ne plus jamais y pousser : un correctif post-merge part d'une nouvelle branche depuis `main`. Avant tout push de correctif, vérifier que le commit visé est bien dans `main` (`git merge-base --is-ancestor <commit> origin/main`). Leçons des merges #63 et #68 : deux correctifs poussés sur des branches déjà mergées n'ont jamais atteint `main` et ont créé des bugs silencieux (bloc stockage perdu, fixtures perdues).
 - Reste dans le périmètre de l'issue. Pas de refactoring non demandé, pas de renommage de masse.
 - **Tout comportement modifié ou corrigé est couvert par un test.** Un test qu'on affaiblit pour le faire passer est un échec, pas une réussite.
@@ -113,4 +114,5 @@ Ne jamais commiter le résultat de `npm run prepare:release` : il réécrit `pac
 2. `npm run check` et `npm test` passent.
 3. Un test couvre le comportement ajouté ou corrigé.
 4. Les principes de `VISION.md` sont respectés (données préservées, zéro réseau côté interface).
-5. La description de la pull request explique le changement, les tests ajoutés et les risques.
+5. La description de la pull request suit **le gabarit `.github/pull_request_template.md`** (sections et ordre du gabarit : Résumé, Checklist de relecture, Risques et points d'attention) — jamais un format maison. Le Résumé explique le changement et le pourquoi, lie l'issue (`Closes #N`), la Checklist est renseignée honnêtement (cochée = vérifiée, pas présumée), les Risques disent ce qu'un relecteur doit regarder de près.
+6. Pour une **préparation de release** : suivre `docs/procedure-release.md` à la lettre — le bump de version part d'une PR dédiée (`npm version` + `npm install --package-lock-only`), la source de vérité est le champ `version` de `package.json`, `main` doit être vert avant le tag, et **un tag publié ne se déplace jamais** (une release publiée = une version semver définitive ; une re-publication exige une nouvelle version).

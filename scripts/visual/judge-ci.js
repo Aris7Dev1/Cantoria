@@ -6,16 +6,36 @@
  *
  * Consultatif : aucune sortie non nulle sur verdict défavorable.
  * Plafond d'appels : JUDGE_MAX_CALLS (défaut 10) partagé entre personas.
+ * Budget de temps : JUDGE_MAX_SECONDS (défaut 1200) — au-delà, les scénarios
+ * restants sont marqués « temps de jugement écoulé » et le verdict part quand
+ * même (le job GitHub Actions ne doit plus mourir en emportant le verdict).
  */
 const fs = require("node:fs");
 const path = require("node:path");
 const { judgePair, loadPersonas } = require("./judge");
+const { decodePng, diffImages } = require("./png");
 
 const ROOT = path.join(__dirname, "..", "..");
 const OUT = process.env.JUDGE_OUT_DIR || path.join(ROOT, "visual-out", "pr", "current");
 const BASE = process.env.JUDGE_BASE_DIR || path.join(ROOT, "visual-baseline");
 const PERSONAS_PATH = path.join(__dirname, "personas.json");
 const MAX_CALLS = parseInt(process.env.JUDGE_MAX_CALLS || "10", 10);
+const MAX_SECONDS = parseInt(process.env.JUDGE_MAX_SECONDS || "1200", 10);
+
+/* Deux captures peuvent différer octet à octet (filtres PNG, dérive du rendu
+   sous le seuil de tolérance) sans différence visible : le ré-encodage et
+   l'anticrénelage ne doivent pas coûter d'appels au modèle.
+   Octets égaux => identique ; sinon comparaison pixel à pixel à la tolérance
+   de rendu du dépôt : aucun pixel au-delà de la tolérance => identique.
+   PNG illisible => on ne saute jamais le jugement. */
+function visuallyIdentical(imageA, imageB) {
+  if (Buffer.compare(imageA, imageB) === 0) return true;
+  try {
+    return diffImages(decodePng(imageA), decodePng(imageB)).changedPixels === 0;
+  } catch (e) {
+    return false;
+  }
+}
 
 /* ⚠️ Ce script est l'orchestrateur CI (workflow visual-judge.yml) : la clé
    vient de secrets.MISTRAL_API_KEY sur un runner GitHub. Dans le conteneur de
@@ -24,7 +44,7 @@ const MAX_CALLS = parseInt(process.env.JUDGE_MAX_CALLS || "10", 10);
    Le test devcontainer-security vérifie cette séparation. */
 const BASE_URL = process.env.MISTRAL_BASE_URL || "";
 const API_KEY = process.env.MISTRAL_API_KEY || "";
-const MODEL = process.env.MISTRAL_JUDGE_MODEL || "mistral-small-latest";
+const MODEL = process.env.MISTRAL_JUDGE_MODEL || "mistral-large-4-0";
 
 function main() {
   if (!API_KEY || !BASE_URL) {
@@ -33,6 +53,7 @@ function main() {
   }
   const personas = loadPersonas(PERSONAS_PATH);
   const budget = { remaining: MAX_CALLS };
+  const deadline = Date.now() + MAX_SECONDS * 1000;
   const lines = ["## Verdict du juge visuel (A/B par personas)", ""];
   lines.push(`Personas actifs : ${personas.filter((p) => p.actif).map((p) => p.id).join(", ") || "aucun"}`);
   lines.push(`Plafond d'appels : ${MAX_CALLS}` + (budget.remaining < MAX_CALLS ? " (partiellement consommé)" : ""));
@@ -53,8 +74,12 @@ function main() {
         if (!fs.existsSync(baseline)) continue; // pas de référence : pas de jugement
         const imageB = fs.readFileSync(path.join(dir, f)); // courant
         const imageA = fs.readFileSync(baseline);          // référence
-        if (imageB.equals(imageA)) {
+        if (visuallyIdentical(imageA, imageB)) {
           lines.push(`- **${theme}/${scenario}** : identique à la référence.`);
+          continue;
+        }
+        if (Date.now() > deadline) {
+          lines.push(`- **${theme}/${scenario}** : temps de jugement écoulé — non jugé.`);
           continue;
         }
         if (budget.remaining <= 0) {
@@ -99,4 +124,7 @@ function main() {
   });
 }
 
-main();
+/* Orchestrateur CLI : ne s'exécute que lancé directement, pas au require (tests). */
+if (require.main === module) main();
+
+module.exports = { visuallyIdentical };

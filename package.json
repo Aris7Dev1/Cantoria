@@ -1,6 +1,6 @@
 {
   "name": "cantoria",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "description": "Cantoria — lecteur et gestionnaire de chansons hors-ligne",
   "author": "Cantoria <Aris7Dev1@users.noreply.github.com>",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "android:install": "node scripts/android/install.js"
   },
   "devDependencies": {
-    "electron": "44.4.3",
+    "electron": "44.9.1",
     "electron-builder": "26.16.1",
     "jsdom": "29.1.1",
     "playwright-core": "1.56.0"

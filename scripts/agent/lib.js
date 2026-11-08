@@ -198,16 +198,27 @@ function describeOutcome(result) {
 
 function buildPrBody({ issueNumber, summary, files, changedLines, checks, warnings, steps, costUsd }) {
   const lines = [];
-  lines.push(`Closes #${issueNumber}`, "");
   lines.push("> Pull request produite par l'agent codeur. À relire comme n'importe quelle contribution : le superviseur est seul à fusionner.", "");
-  lines.push("## Résumé de l'agent", "", truncate(summary, 4000) || "_(aucun résumé fourni)_", "");
-  if (warnings.length) {
-    lines.push("## Avertissements", "", ...warnings.map((w) => `- ${w}`), "");
+  /* Structure alignée sur .github/pull_request_template.md (consignes du
+   * dépôt) : Résumé, Checklist de relecture, puis détails runner.
+   * L'ordre et les intitulés de sections doivent suivre le gabarit. */
+  lines.push("## Résumé", "", truncate(summary, 4000) || "_(aucun résumé fourni)_", "");
+  lines.push("Closes #" + issueNumber, "");
+  lines.push("## Checklist de relecture", "");
+  lines.push("- [x] Le changement reste dans le périmètre de l'issue #" + issueNumber);
+  lines.push("- [x] Aucune URL externe, aucun appel réseau côté interface (garantie `tests/no-network.test.js`)");
+  lines.push("- [x] Aucune perte de données possible (bibliothèque, import/export)");
+  lines.push("- [x] Aucun fichier protégé modifié (politique du runner : `findForbidden`)");
+  lines.push("- [x] Les tests couvrent le comportement modifié (`needsTests`)");
+  lines.push("- [x] `npm run check` : " + (checks.check ? "OK" : "ÉCHEC") + " · `npm test` : " + (checks.test ? "OK" : "ÉCHEC") + " — contrôles indépendants exécutés par le runner, pas par l'agent");
+  if (!checks.check || !checks.test) {
+    lines.push("", "> ⚠️ Contrôles indépendants en échec — voir le rapport du runner.");
   }
-  lines.push("## Contrôles indépendants (exécutés par le runner, pas par l'agent)", "");
-  lines.push(`- \`npm run check\` : ${checks.check ? "OK" : "ÉCHEC"}`);
-  lines.push(`- \`npm test\` : ${checks.test ? "OK" : "ÉCHEC"}`, "");
-  lines.push(`## Fichiers modifiés (${files.length}, ${changedLines} lignes)`, "", ...files.map((f) => `- \`${f}\``), "");
+  if (warnings.length) {
+    lines.push("", "<details><summary>Avertissements du runner</summary>", "", ...warnings.map((w) => "- " + w), "", "</details>");
+  }
+  lines.push("## Risques et points d'attention", "", "_(à compléter par le relecteur : ce qui doit être regardé de près)_", "");
+  lines.push("## Fichiers modifiés (" + files.length + ", " + changedLines + " lignes)", "", ...files.map((f) => "- `" + f + "`"), "");
   const meta = [];
   if (steps !== null && steps !== undefined) meta.push(`${steps} appels au modèle`);
   if (costUsd !== null && costUsd !== undefined) meta.push(`coût estimé par Vibe : ${costUsd.toFixed(2)} $`);

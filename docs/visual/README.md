@@ -12,7 +12,7 @@ Electron réel sous Xvfb ──▶ captures fixes (4 scénarios × 3 thèmes)
 visual-out/report.md  ·  visual-out/issues-drafts/*.md  (brouillons non approuvés)
 ```
 
-La boucle elle-même ne crée rien sur GitHub, aucun code n'est modifié, aucune issue n'est labellisée : **tu lis, tu décides**. (Le chien de garde, plus bas, est l'étape qui file ensuite les brouillons en issues.)
+La boucle elle-même ne crée rien sur GitHub, aucun code n'est modifié, aucune issue n'est labellisée : **tu lis, tu décides**. (Le Watchdog, plus bas, est l'étape qui file ensuite les brouillons en issues.)
 
 ## Utilisation
 
@@ -25,7 +25,7 @@ npm run visual -- --update-baseline          # adopte les captures courantes com
 npm run visual -- --judge --intent="agrandir les accords du lecteur"   # + juge A/B via la passerelle
 ```
 
-Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player` · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4` · `--strict` (code 1 s'il y a des erreurs).
+Options : `--engine=electron|chromium` · `--themes=campfire,spotlight` · `--scenarios=library,player` · `--out=visual-out` · `--baseline=visual-baseline` · `--repetitions=2` (par ordre) · `--max-judge-calls=24` · `--judge-model=mistral-large-4-0` · `--strict` (code 1 s'il y a des erreurs).
 
 Sorties : `visual-out/current/<thème>/<scénario>.png`, `visual-out/diff/…` (pixels modifiés en rose), `report.md`, `report.json`, `issues-drafts/`.
 
@@ -54,9 +54,9 @@ Les scénarios (`scenarios.js`) agissent par de vrais clics : bibliothèque, éd
 - Il n'est appelé que sur les captures dont plus de 2 % des pixels ont changé, dans la limite de `--max-judge-calls`. Il passe par la passerelle (`GATEWAY_URL`, clé factice) : la vraie clé Mistral ne quitte pas la passerelle.
 - Son avis est **consultatif** : il ne bloque rien. Un verdict « la référence est meilleure » génère un brouillon de régression, à vérifier sur la capture.
 
-## Chien de garde hebdomadaire (visual-watch.yml)
+## Watchdog hebdomadaire (visual-watch.yml)
 
-Le workflow `Visual watch` tourne chaque lundi 07:00 UTC sur `main` (et à la
+Le workflow `Visual watchdog` tourne chaque lundi 07:00 UTC sur `main` (et à la
 demande, avec dry-run possible) :
 
 ```
@@ -71,20 +71,28 @@ fileur — scripts/visual/file-issues.js
    - un seul rapport d'exploration ouvert par but (contre-pression)
    - le label `agent-ok` est REFUSÉ : l'approbation reste humaine
         ▼
+rapport de run (GITHUB_STEP_SUMMARY, page « Summary » du run)
+   - brouillons, but tiré, étapes/appels, frictions ou « néant », résultat du fileur
+   - répond toujours, même sans rien à filer
+        ▼
 ton triage : relire, éditer, poser `agent-ok` → l'agent codeur prend le relais
 ```
 
 Le juge A/B reste hors de cette passe (coût) : il garde sa place sur les PR.
 Sans `MISTRAL_API_KEY`, l'explorateur est ignoré et la boucle déterministe
-tourne quand même.
+tourne quand même. Chaque run publie en outre un **rapport de run** dans le
+résumé GitHub du run (`GITHUB_STEP_SUMMARY`) : sans lui, une exploration sans
+friction et un échec silencieux de l'explorateur seraient indiscernables —
+le rapport distingue les trois cas (explorateur désactivé, rapport absent,
+rapport complet) et reprend le log du fileur.
 
 ## Limites à connaître
 
 - **Électron, Playwright et le juge n'ont pas été éprouvés dans ton conteneur Docker.** Ici : Electron 44.4.3 réel sous Xvfb piloté par `playwright-core` 1.56.0, 12 captures identiques d'une exécution à l'autre. Pas de démon Docker pour tester l'image `dev`.
-- **Le juge n'a jamais parlé au vrai Mistral** : testé avec un faux modèle uniquement. À vérifier chez toi : que `mistral-large-4` accepte les images (`image_url` en data URL), `response_format: json_object`, et la qualité de ses verdicts. Commence par `--repetitions=1` sur une seule paire ; surveille le coût dans ta console.
+- **Le juge n'a jamais parlé au vrai Mistral** : testé avec un faux modèle uniquement. À vérifier chez toi : que `mistral-large-4-0` accepte les images (`image_url` en data URL), `response_format: json_object`, et la qualité de ses verdicts. Commence par `--repetitions=1` sur une seule paire ; surveille le coût dans ta console.
 - **Les références dépendent des polices** de la machine : génère-les dans le conteneur, compare-les dans le conteneur. Une référence créée sous Windows ne servira à rien ici.
 - **Scènes statiques** : pas de défilement en cours, pas de décompte, pas de bandeau de mise à jour. Ajouter un scénario = ajouter un objet dans `scenarios.js`.
-- **La boucle est fermée par le chien de garde** (`.github/workflows/visual-watch.yml`, voir ci-dessus) : les brouillons et rapports deviennent des issues `explorer-proposition` à relire, éditer et approuver (label `agent-ok`) par toi. Les garde-fous prévus (3 cycles maximum, arrêt sur régression, pas de cycle si les tests échouent) viendront quand tu auras vu quelques rapports réels.
+- **La boucle est fermée par le Watchdog** (`.github/workflows/visual-watch.yml`, voir ci-dessus) : les brouillons et rapports deviennent des issues `explorer-proposition` à relire, éditer et approuver (label `agent-ok`) par toi. Les garde-fous prévus (3 cycles maximum, arrêt sur régression, pas de cycle si les tests échouent) viendront quand tu auras vu quelques rapports réels.
 - **La déduplication du fileur se fait par titre normalisé** : une issue ouverte que tu renommes peut être re-filée au run suivant — regarde les titres lors du triage.
 - Les contrôles mesurent ce qu'ils savent mesurer. Un écran peut respecter tous les seuils et rester laid ou confus ; un seuil franchi ne remplace pas ton œil.
 - **Zone protégée** : `scripts/visual/` et `visual-baseline/` ne peuvent pas être modifiés par l'agent (le runner refuse).

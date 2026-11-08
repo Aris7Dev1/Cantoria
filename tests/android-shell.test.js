@@ -45,13 +45,15 @@ test("le pont natif Kotlin couvre les méthodes critiques du shim", () => {
   });
 });
 
-test("le manifest Android ne déclare que la permission INTERNET justifiée", () => {
+test("le manifest Android ne déclare que les permissions justifiées", () => {
   const manifest = read("app/src/main/AndroidManifest.xml");
   const perms = [...manifest.matchAll(/<uses-permission android:name="([^"]+)"\s*\/>/g)].map((m) => m[1]);
-  assert.deepEqual(perms, ["android.permission.INTERNET"],
-    "seule INTERNET (UpdateChecker, issue #57) : le stockage privé + SAF n'exigent rien");
+  assert.deepEqual(perms, ["android.permission.INTERNET", "android.permission.REQUEST_INSTALL_PACKAGES"],
+    "INTERNET (UpdateChecker, issue #57) + REQUEST_INSTALL_PACKAGES (installation sideload de la mise à jour, validation superviseur) ; le stockage privé + SAF n'exigent rien");
   assert.ok(/exception r\u00e9seau de VISION/.test(manifest),
-    "la permission est justifiée par l'exception réseau de VISION");
+    "la permission INTERNET est justifiée par l'exception réseau de VISION");
+  assert.ok(/REQUEST_INSTALL_PACKAGES/.test(manifest) && /sideload/.test(manifest),
+    "la permission d'installation est justifiée (issue #57, volet installation)");
 });
 
 test("la sécurité WebView suit §4.5 du document Android", () => {
@@ -82,6 +84,8 @@ test("cantoria.html n'est pas dupliqué à la main : copié au build", () => {
   const gradle = read("app/build.gradle");
   assert.ok(/from rootProject\.file\('\.\.\/cantoria\.html'\)/.test(gradle),
     "le build copie cantoria.html depuis la racine (source de vérité unique)");
+  assert.ok(/preBuild\.dependsOn copyCantoriaHtml/.test(gradle),
+    "la copie est branchée sur preBuild (le pattern mergeAssetsProvider.doLast était non fiable : APK embarquant un HTML périmé)");
   /* On vérifie l'état VERSIONNÉ (git ls-files), pas la présence physique :
      un poste de dev qui a déjà lancé android:install possède la copie de build
      sur son disque — c'est normal, elle ne doit juste pas être commitée. */
@@ -137,6 +141,59 @@ test("la permission INTERNET est déclarée et justifiée (exception réseau uni
     "justification documentée dans le manifest");
 });
 
+test("le téléchargement APK natif est borné et écrit atomiquement", () => {
+  const downloader = read("app/src/main/java/fr/cantoria/app/ApkDownloader.kt");
+  assert.ok(/class ApkDownloader/.test(downloader), "téléchargeur APK dédié");
+  assert.ok(/isAllowedUrl/.test(downloader) && /https:\/\/github\.com/.test(downloader),
+    "URL restreinte à GitHub Releases en HTTPS");
+  assert.ok(/MAX_APK_BYTES/.test(downloader), "taille de téléchargement bornée");
+  assert.ok(/\.tmp/.test(downloader) && /renameTo/.test(downloader),
+    "écriture atomique : l'APK final n'existe que complet (principe n°1 VISION)");
+});
+
+test("le pont Kotlin expose le téléchargement et l'installation de la mise à jour", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  ["downloadUpdate", "installUpdate"].forEach((name) => {
+    assert.ok(new RegExp(`@JavascriptInterface[\\s\\S]*?fun ${name}\\(`).test(bridge),
+      `le pont Kotlin doit exposer ${name}`);
+  });
+  assert.ok(/2048/.test(bridge), "l'URL de téléchargement est bornée en taille");
+});
+
+test("le shim Android relaie la mise \u00e0 jour disponible sans t\u00e9l\u00e9chargement in-app (canal sideload)", () => {
+  const shim = read("app/src/main/assets/android-shim.js");
+  assert.ok(!/android-update-available[\s\S]{0,400}downloadUpdate\(/.test(shim),
+    "la disponibilit\u00e9 d'une mise \u00e0 jour ne d\u00e9clenche PLUS le t\u00e9l\u00e9chargement natif (d\u00e9cision post-1.6.0 : lien navigateur)");
+  assert.ok(/installUpdate[\s\S]{0,200}sideload-link/.test(shim),
+    "installUpdate du contrat reste pr\u00e9sent mais inactif (canal sideload)");
+  assert.ok(/openExternal[\s\S]{0,300}native\.openExternal/.test(shim),
+    "openExternal du contrat ouvre l'URL via le pont natif");
+});
+
+test("l'ouverture du lien de mise \u00e0 jour est restreinte aux domaines GitHub", () => {
+  const bridge = read("app/src/main/java/fr/cantoria/app/CantoriaBridge.kt");
+  assert.ok(/fun openExternal\(/.test(bridge), "le pont expose openExternal");
+  assert.ok(/isAllowedExternalUrl/.test(bridge) && /https:\/\/github\.com/.test(bridge),
+    "URL valid\u00e9 c\u00f4t\u00e9 natif : HTTPS + domaines GitHub uniquement");
+  assert.ok(/2048/.test(bridge), "taille d'URL born\u00e9e");
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/fun openInBrowser\(/.test(main) && /ACTION_VIEW/.test(main),
+    "le navigateur externe est lanc\u00e9 par intent, jamais la WebView");
+});
+
+test("l'installation passe par FileProvider avec les chemins restreints aux APK", () => {
+  const manifest = read("app/src/main/AndroidManifest.xml");
+  assert.ok(/androidx\.core\.content\.FileProvider/.test(manifest), "FileProvider déclaré");
+  assert.ok(/\$\{applicationId\}\.fileprovider/.test(manifest), "autorité par applicationId");
+  const paths = read("app/src/main/res/xml/file_paths.xml");
+  assert.ok(paths.includes('path="updates/"'), "seul filesDir/updates est partagé");
+  assert.ok(!/external/i.test(paths), "aucun chemin externe exposé");
+  const main = read("app/src/main/java/fr/cantoria/app/MainActivity.kt");
+  assert.ok(/package-archive/.test(main), "intent d'installation sur l'APK");
+  assert.ok(/ACTION_MANAGE_UNKNOWN_APP_SOURCES/.test(main) && /canRequestPackageInstalls/.test(main),
+    "la permission O+ est vérifiée et demandée via les réglages système");
+});
+
 test("la WebView reste à zéro appel réseau (pas de fetch dans le HTML ni le shim)", () => {
   const html = fs.readFileSync(path.join(ROOT, "cantoria.html"), "utf8");
   const script = /<script>([\s\S]*)<\/script>/.exec(html)[1];
@@ -170,6 +227,38 @@ test("la release attache l'APK nommé d'après la version de package.json", () =
   assert.ok(/needs: \[build, android\]/.test(build),
     "la release attend l'APK Android en même temps que le desktop");
   assert.ok(/assembleRelease/.test(build), "APK release (signé debug faute de keystore)");
+});
+
+/* Signature release de l'APK (keystore superviseur) : le keystore vient des
+   secrets CI ou d'un fichier local, JAMAIS du dépôt, et le repli debug reste
+   explicite. */
+test("le build release signe avec un keystore externe, jamais committé", () => {
+  const gradle = read("app/build.gradle");
+  assert.ok(/signingConfigs\s*\{\s*release\s*\{/.test(gradle), "signingConfig release déclaré");
+  assert.ok(/keystoreFile/.test(gradle) && /signingConfig signingConfigs\.release/.test(gradle),
+    "le release utilise le signingConfig release quand un keystore est trouvé");
+  assert.ok(/AVERTISSEMENT[\s\S]*signingConfig signingConfigs\.debug/.test(gradle),
+    "sans keystore, repli explicite sur la clé debug avec avertissement");
+  assert.ok(!/storePassword\s+["'][^"']+["']/.test(gradle),
+    "aucun mot de passe en clair dans le build.gradle (env/property uniquement)");
+  const gitignore = fs.readFileSync(path.join(ROOT, "android", ".gitignore"), "utf8");
+  assert.ok(/\*\.jks/.test(gitignore) && /\*\.keystore/.test(gitignore),
+    "*.jks et *.keystore gitignorés : aucun keystore dans le dépôt");
+});
+
+test("la CI restaure le keystore depuis les secrets avant assembleRelease", () => {
+  const build = fs.readFileSync(path.join(ROOT, ".github/workflows/build.yml"), "utf8");
+  assert.ok(/secrets\.ANDROID_KEYSTORE/.test(build), "secret ANDROID_KEYSTORE (base64) utilisé");
+  assert.ok(/base64 -d > app\/build\/keystore\/cantoria-release\.jks/.test(build),
+    "keystore restauré dans app/build (gitignoré), jamais à la racine du dépôt");
+  assert.ok(/ANDROID_KEYSTORE_PASSWORD: \$\{\{ secrets\.ANDROID_KEYSTORE_PASSWORD/.test(build) &&
+            /ANDROID_KEY_ALIAS: \$\{\{ secrets\.ANDROID_KEY_ALIAS/.test(build) &&
+            /ANDROID_KEY_PASSWORD: \$\{\{ secrets\.ANDROID_KEY_PASSWORD/.test(build),
+    "mots de passe/alias passés au job Gradle via env depuis les secrets");
+  const restoreIdx = build.indexOf("Restore release keystore");
+  const gradleIdx = build.indexOf("assembleRelease");
+  assert.ok(restoreIdx !== -1 && gradleIdx !== -1 && restoreIdx < gradleIdx,
+    "la restauration du keystore précède assembleRelease");
 });
 
 /* Régression du crash de compilation Kotlin en CI : un seul companion

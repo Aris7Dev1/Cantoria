@@ -370,6 +370,88 @@ function registerIpc() {
     });
     return { installed: true };
   });
+  /* Dossier de chansons (issue #93) : stockage optionnel en fichiers ChordPro
+     (.cho/.crd/.pro/.txt), un fichier par chanson. Le dossier appartient à
+     l'utilisateur : on n'écrit JAMAIS en dehors du dossier choisi, et chaque
+     écriture de chanson passe par un fichier temporaire renommé (atomique).
+     Aucun accès réseau, aucun chemin imposé. */
+  const SONG_FILE_EXT = [".cho", ".crd", ".pro", ".txt"];
+  const MAX_SONG_BYTES = 5 * 1024 * 1024; // 5 Mo par fichier chanson
+
+  function isSafeSongFileName(name) {
+    return typeof name === "string"
+      && name.length > 0 && name.length <= 200
+      && !name.includes("/") && !name.includes("\\") && name !== "." && name !== ".."
+      && SONG_FILE_EXT.includes(path.extname(name).toLowerCase());
+  }
+
+  ipcMain.handle("songsdir:pick", async (event) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: "Choisir le dossier de chansons",
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (result.canceled || !result.filePaths.length) return { canceled: true };
+    return { canceled: false, dirPath: result.filePaths[0] };
+  });
+
+  ipcMain.handle("songsdir:list", async (event, dirPath) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    if (typeof dirPath !== "string" || !dirPath) throw new Error("Chemin invalide.");
+    let entries;
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true });
+    } catch {
+      return { files: [] };
+    }
+    const files = [];
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      if (!SONG_FILE_EXT.includes(path.extname(entry.name).toLowerCase())) continue;
+      try {
+        const stat = await fs.stat(path.join(dirPath, entry.name));
+        if (stat.size <= MAX_SONG_BYTES) files.push({ name: entry.name, size: stat.size });
+      } catch { /* fichier illisible : ignoré, jamais bloquant */ }
+    }
+    files.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    return { files };
+  });
+
+  ipcMain.handle("songsdir:read", async (event, dirPath, name) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    if (typeof dirPath !== "string" || !dirPath || !isSafeSongFileName(name)) throw new Error("Chemin invalide.");
+    const filePath = path.join(dirPath, name);
+    if (!filePath.startsWith(path.resolve(dirPath) + path.sep)) throw new Error("Chemin hors dossier.");
+    const stat = await fs.stat(filePath);
+    if (!stat.isFile() || stat.size > MAX_SONG_BYTES) throw new Error("Fichier invalide ou trop volumineux.");
+    const content = await fs.readFile(filePath, "utf8");
+    return { name, content };
+  });
+
+  ipcMain.handle("songsdir:write", async (event, dirPath, name, content) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    if (typeof dirPath !== "string" || !dirPath || !isSafeSongFileName(name)) throw new Error("Chemin invalide.");
+    if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > MAX_SONG_BYTES) {
+      throw new Error("Contenu invalide ou trop volumineux.");
+    }
+    const filePath = path.join(dirPath, name);
+    if (!filePath.startsWith(path.resolve(dirPath) + path.sep)) throw new Error("Chemin hors dossier.");
+    await fs.mkdir(dirPath, { recursive: true });
+    // Écriture atomique : fichier temporaire puis renommage.
+    const tmpPath = filePath + ".tmp-" + Date.now();
+    await fs.writeFile(tmpPath, content, { encoding: "utf8", mode: 0o600 });
+    await fs.rename(tmpPath, filePath);
+    return { saved: true };
+  });
+
+  ipcMain.handle("songsdir:delete", async (event, dirPath, name) => {
+    if (!isAuthorizedSender(event)) throw new Error("Renderer non autorisé.");
+    if (typeof dirPath !== "string" || !dirPath || !isSafeSongFileName(name)) throw new Error("Chemin invalide.");
+    const filePath = path.join(dirPath, name);
+    if (!filePath.startsWith(path.resolve(dirPath) + path.sep)) throw new Error("Chemin hors dossier.");
+    await fs.rm(filePath, { force: true });
+    return { deleted: true };
+  });
 }
 
 app.name = APP_NAME;

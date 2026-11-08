@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // Générateur d'icônes Cantoria — pur Node.js (stdlib uniquement, aucune dépendance).
-// Re-génère assets/icon.png (Linux), assets/icon.ico (Windows) et assets/icon.icns (macOS)
-// à partir de la géométrie vectorielle du logo (assets/logo/cantoria.svg).
+// Re-génère assets/icon.png (Linux), assets/icon.ico (Windows), assets/icon.icns (macOS)
+// et les icônes du launcher Android (android/app/src/main/res/mipmap-*) à partir
+// de la géométrie vectorielle du logo (assets/logo/cantoria.svg).
 //
 // Usage : node scripts/design/generate-icons.js [--out <répertoire>] [--preview]
-//   --out     répertoire cible (défaut : assets/ à la racine du dépôt)
+//   --out     répertoire cible des icônes desktop (défaut : assets/ à la racine)
 //   --preview écrit aussi icon-preview-1024.png pour contrôle visuel
+// Les icônes Android sont toujours écrites dans android/app/src/main/res
+// (chemin fixe du projet, indépendant de --out).
 "use strict";
 
 const fs = require("node:fs");
@@ -186,6 +189,142 @@ function renderIcon(size) {
   return px;
 }
 
+// ── Android : icônes du launcher (coquille WebView, minSdk 26) ────────────
+// Depuis la même géométrie que le desktop, quatre familles :
+//   1. ic_launcher.png / ic_launcher_round.png (legacy, 5 densités) : fond
+//      plein cadre (carré ou cercle) + motif à l'échelle d'origine ;
+//   2. ic_launcher_background.png : dégradé plein cadre (calque fond) ;
+//   3. ic_launcher_foreground.png : motif seul, réduit et centré pour rester
+//      dans la zone sûre des masques (cercle de 66 dp sur 108) — le manche
+//      de guitare dépasse sinon du cercle rogné par les launchers ;
+//   4. mipmap-anydpi-v26/ic_launcher{,_round}.xml : icône adaptative.
+// minSdk 26 ⇒ le XML adaptatif couvre toute la plage supportée ; les PNG
+// legacy restent en filet de sécurité (tests de cohérence de la coquille).
+const ANDROID_RES = path.join(__dirname, "..", "..", "android", "app", "src", "main", "res");
+const ANDROID_DENSITIES = [
+  ["mdpi", 48, 108], ["hdpi", 72, 162], ["xhdpi", 96, 216],
+  ["xxhdpi", 144, 324], ["xxxhdpi", 192, 432],
+];
+const SAFE_SCALE = 0.77; // le manche (point le plus excentré, ~402/512) tient dans 66/108
+
+function renderAndroidIcon(size, mode) {
+  // mode : "square" | "round" (legacy plein cadre) | "background" | "foreground"
+  const k = 1024 / size;
+  const w = size, h = size;
+  const px = new Uint8Array(w * h * 4);
+  const gradFond = (X, Y) =>
+    lerpC(COL.fondHaut, COL.fondBas, clamp01((X + Y - 84) / 1880));
+  const gradRing = (Y) =>
+    lerpC(COL.ringHaut, COL.ringBas, clamp01((Y - 216) / 628));
+  const aa = (d) => clamp01(0.5 - d / k);
+  const RAD = Math.PI / 180;
+
+  for (let y = 0; y < h; y++) {
+    const Y = ((y + 0.5) * 1024) / size;
+    for (let x = 0; x < w; x++) {
+      const X = ((x + 0.5) * 1024) / size;
+      // Échantillonnage du motif : réduit vers la zone sûre en mode calque
+      const mX = mode === "foreground" ? 512 + (X - 512) / SAFE_SCALE : X;
+      const mY = mode === "foreground" ? 512 + (Y - 512) / SAFE_SCALE : Y;
+      let R = 0, Gc = 0, B = 0, A = 0;
+
+      // Fond
+      if (mode === "square" || mode === "background") {
+        const c = gradFond(X, Y);
+        R = c[0]; Gc = c[1]; B = c[2]; A = 255;
+      } else if (mode === "round") {
+        const a = aa(Math.hypot(X - 512, Y - 512) - 512);
+        if (a > 0) {
+          const c = gradFond(X, Y);
+          R = c[0] * a; Gc = c[1] * a; B = c[2] * a; A = a;
+        }
+      }
+
+      // Motif (couches 2-7 de renderIcon, échantillonnées en mX/mY)
+      if (mode !== "background") {
+        const rdx = mX - G.ring.cx, rdy = mY - G.ring.cy;
+        const rr = rdx * rdx + rdy * rdy;
+        const ringOuter = G.ring.radius + G.ring.half + 2;
+        if (rr <= ringOuter * ringOuter) {
+          const rad = Math.sqrt(rr);
+          let cov = 0;
+          const dAnn = Math.abs(rad - G.ring.radius) - G.ring.half;
+          if (dAnn < 0.5 * k) {
+            const ang = Math.atan2(rdy, rdx) / RAD;
+            const inGap = ang > G.ring.gapA && ang < G.ring.gapB;
+            if (!inGap) cov = aa(dAnn);
+          }
+          const dC1 = Math.hypot(mX - G.cap1.x, mY - G.cap1.y) - G.cap1.r;
+          const dC2 = Math.hypot(mX - G.cap2.x, mY - G.cap2.y) - G.cap2.r;
+          cov = Math.max(cov, aa(dC1), aa(dC2));
+          if (cov > 0) {
+            const c = gradRing(mY);
+            R = c[0] * cov + R * (1 - cov);
+            Gc = c[1] * cov + Gc * (1 - cov);
+            B = c[2] * cov + B * (1 - cov);
+            A = cov + A * (1 - cov);
+          }
+        }
+
+        const dHole = Math.hypot(mX - G.hole.cx, mY - G.hole.cy) - G.hole.r;
+        let a = aa(dHole);
+        if (a > 0) {
+          R = COL.creme[0] * a + R * (1 - a);
+          Gc = COL.creme[1] * a + Gc * (1 - a);
+          B = COL.creme[2] * a + B * (1 - a);
+          A = a + A * (1 - a);
+        }
+
+        for (const s of G.strings) {
+          a = aa(segDist(mX, mY, s.ax, s.ay, s.bx, s.by) - G.stringHalf);
+          if (a > 0) {
+            R = COL.cordes[0] * a + R * (1 - a);
+            Gc = COL.cordes[1] * a + Gc * (1 - a);
+            B = COL.cordes[2] * a + B * (1 - a);
+            A = a + A * (1 - a);
+          }
+        }
+
+        const gdx = mX - G.fretOrigin.x, gdy = mY - G.fretOrigin.y;
+        if (gdx > -60 && gdx < 160 && gdy > -150 && gdy < 60) {
+          const lx = G.fretC * gdx - G.fretC * gdy;
+          const ly = G.fretC * gdx + G.fretC * gdy;
+          a = aa(segDist(lx, ly, G.board.ax, G.board.ay, G.board.bx, G.board.by) - G.board.r);
+          if (a > 0) {
+            R = COL.creme[0] * a + R * (1 - a);
+            Gc = COL.creme[1] * a + Gc * (1 - a);
+            B = COL.creme[2] * a + B * (1 - a);
+            A = a + A * (1 - a);
+          }
+          for (const fx of G.frets) {
+            a = aa(segDist(lx, ly, fx, -G.fretHalfY, fx, G.fretHalfY) - G.fretHalfW);
+            if (a > 0) {
+              R = COL.frettes[0] * a + R * (1 - a);
+              Gc = COL.frettes[1] * a + Gc * (1 - a);
+              B = COL.frettes[2] * a + B * (1 - a);
+              A = a + A * (1 - a);
+            }
+          }
+          a = aa(Math.hypot(lx - G.dot.cx, ly - G.dot.cy) - G.dot.r);
+          if (a > 0) {
+            R = COL.teal[0] * a + R * (1 - a);
+            Gc = COL.teal[1] * a + Gc * (1 - a);
+            B = COL.teal[2] * a + B * (1 - a);
+            A = a + A * (1 - a);
+          }
+        }
+      }
+
+      const o = (y * w + x) * 4;
+      px[o] = Math.round(clamp01(R / 255) * 255);
+      px[o + 1] = Math.round(clamp01(Gc / 255) * 255);
+      px[o + 2] = Math.round(clamp01(B / 255) * 255);
+      px[o + 3] = Math.round(clamp01(A) * 255);
+    }
+  }
+  return px;
+}
+
 // ── Encodeur PNG (RGBA 8 bits) ───────────────────────────────────────────
 const CRC_TABLE = (() => {
   const t = new Int32Array(256);
@@ -297,4 +436,40 @@ for (const f of ["icon.png", "icon.ico", "icon.icns", ...(PREVIEW ? ["icon-previ
   const p = path.join(OUT_DIR, f);
   console.log(f.padEnd(24), fs.statSync(p).size, "octets");
 }
+
+// ── Android : mipmap (legacy + adaptatif) ────────────────────────────────
+const androidFiles = [];
+for (const [dpi, legacySize, layerSize] of ANDROID_DENSITIES) {
+  const dir = path.join(ANDROID_RES, "mipmap-" + dpi);
+  fs.mkdirSync(dir, { recursive: true });
+  const outputs = [
+    ["ic_launcher.png", renderAndroidIcon(legacySize, "square"), legacySize],
+    ["ic_launcher_round.png", renderAndroidIcon(legacySize, "round"), legacySize],
+    ["ic_launcher_background.png", renderAndroidIcon(layerSize, "background"), layerSize],
+    ["ic_launcher_foreground.png", renderAndroidIcon(layerSize, "foreground"), layerSize],
+  ];
+  for (const [name, px, s] of outputs) {
+    fs.writeFileSync(path.join(dir, name), encodePNG(px, s, s));
+    androidFiles.push("mipmap-" + dpi + "/" + name);
+  }
+}
+const anydpiDir = path.join(ANDROID_RES, "mipmap-anydpi-v26");
+fs.mkdirSync(anydpiDir, { recursive: true });
+const ADAPTIVE_XML = [
+  '<?xml version="1.0" encoding="utf-8"?>',
+  "<!-- Généré par scripts/design/generate-icons.js — ne pas éditer à la main. -->",
+  '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">',
+  '    <background android:drawable="@mipmap/ic_launcher_background"/>',
+  '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>',
+  "</adaptive-icon>",
+  "",
+].join("\n");
+fs.writeFileSync(path.join(anydpiDir, "ic_launcher.xml"), ADAPTIVE_XML);
+fs.writeFileSync(path.join(anydpiDir, "ic_launcher_round.xml"), ADAPTIVE_XML);
+androidFiles.push("mipmap-anydpi-v26/ic_launcher.xml", "mipmap-anydpi-v26/ic_launcher_round.xml");
+for (const f of androidFiles) {
+  const p = path.join(ANDROID_RES, f);
+  console.log(f.padEnd(44), fs.statSync(p).size, "octets");
+}
+
 console.log("Généré en", Date.now() - t0, "ms");
