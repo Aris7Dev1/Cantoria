@@ -1,6 +1,6 @@
-name: Visual watch
+name: Visual watchdog
 
-# Chien de garde visuel : détection AUTOMATIQUE des problèmes d'interface.
+# Watchdog visuel : détection AUTOMATIQUE des problèmes d'interface.
 # Chaque lundi sur main (et à la demande) :
 #   1. boucle visuelle déterministe (captures Chromium + contrôles + comparaison
 #      aux baselines du dépôt) — zéro appel IA, brouillons prêts à relire ;
@@ -8,7 +8,12 @@ name: Visual watch
 #      plafonds habituels (40 actions / 30 appels, mistral-large-4-0) ;
 #   3. fileur (scripts/visual/file-issues.js) : brouillons + rapport deviennent
 #      des issues GitHub label `explorer-proposition` — JAMAIS `agent-ok` :
-#      l'approbation reste un geste humain du superviseur.
+#      l'approbation reste un geste humain du superviseur ;
+#   4. rapport de run systématique (GITHUB_STEP_SUMMARY) : brouillons, but tiré,
+#      étapes/appels, frictions ou « néant », résultat du fileur. Même sans
+#      rien à filer, le run laisse une trace lisible — sinon une exploration
+#      sans friction et un échec silencieux de l'explorateur sont
+#      indiscernables.
 #
 # Suite de la note de visual-explorer.yml (« le passage en automatique sera une
 # décision post-observation ») : observé via les dispatchs manuels, appliqué ici
@@ -48,7 +53,7 @@ concurrency:
 
 jobs:
   watch:
-    name: Chien de garde visuel
+    name: Watchdog visuel
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -97,13 +102,67 @@ jobs:
       - name: Créer le label explorateur-proposition (idempotent)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh label create explorer-proposition --color FBCA04 --description "Proposition automatique du chien de garde visuel — à relire avant approbation" || true
+        run: |
+          gh label create explorer-proposition --color FBCA04 --description "Proposition automatique du Watchdog visuel — à relire avant approbation" || true
+          gh label edit explorer-proposition --description "Proposition automatique du Watchdog visuel — à relire avant approbation" || true
 
       - name: Filer les issues (brouillons + exploration)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -o pipefail
           ARGS="--drafts=visual-out/issues-drafts --explorer=rapport-exploration.md --label=explorer-proposition"
           ARGS="$ARGS --max=${{ inputs.max_issues || '5' }}"
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
-          node scripts/visual/file-issues.js $ARGS
+          node scripts/visual/file-issues.js $ARGS | tee visual-out/fileur.log
+
+      # Rapport de run : répond TOUJOURS (if: always()), même quand il n'y a
+      # rien à filer. Écrit dans GITHUB_STEP_SUMMARY — la page « Summary »
+      # du run — sans nouvelle permission et sans artefact (quota du plan
+      # free). Sans lui, une exploration sans friction et un échec
+      # silencieux de l'explorateur sont indiscernables.
+      - name: Rapport de run (résumé Watchdog)
+        if: always()
+        run: |
+          {
+            echo "## Rapport Watchdog — $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "### Boucle déterministe"
+            DRAFTS=$(ls visual-out/issues-drafts/*.md 2>/dev/null | wc -l)
+            echo "- Brouillons générés : $DRAFTS"
+            echo ""
+            echo "<details><summary>Rapport de la boucle (visual-out/report.md)</summary>"
+            echo ""
+            cat visual-out/report.md 2>/dev/null || echo "_rapport absent (voir le log de la boucle)_"
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "### Explorateur IA"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.run_explorer }}" = "false" ]; then
+              echo "- Désactivé sur ce run (dispatch : run_explorer=false)."
+            elif [ ! -s rapport-exploration.md ]; then
+              echo "- Rapport absent ou vide : clé MISTRAL_API_KEY manquante ou échec silencieux (l'explorateur ne fait jamais échouer le run) — voir l'avertissement du run."
+            else
+              BUT=$(grep -m1 '^But :' rapport-exploration.md || true)
+              [ -n "$BUT" ] || BUT="But : (ligne absente du rapport)"
+              PARCOURS=$(grep -m1 '^### Parcours' rapport-exploration.md | sed 's/^### //' || true)
+              [ -n "$PARCOURS" ] || PARCOURS="Parcours : (ligne absente du rapport)"
+              FRICTIONS=$(awk '/^### Frictions constatées/{f=1;next} f==1 && (/^#{1,3} / || /^\*Rapport/){f=0} f==1 && /^[-*] /{n++} END{print n+0}' rapport-exploration.md)
+              echo "- $BUT"
+              echo "- $PARCOURS"
+              echo "- Frictions : $FRICTIONS"
+              echo ""
+              echo "<details><summary>Rapport d'exploration complet</summary>"
+              echo ""
+              cat rapport-exploration.md
+              echo ""
+              echo "</details>"
+            fi
+            echo ""
+            echo "### Fileur"
+            if [ -f visual-out/fileur.log ]; then
+              sed 's/^/- /' visual-out/fileur.log
+            else
+              echo "- Non exécuté (voir les étapes précédentes)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
