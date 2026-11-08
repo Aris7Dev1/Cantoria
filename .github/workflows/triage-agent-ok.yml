@@ -1,0 +1,50 @@
+name: Cantoria — triage agent-ok
+
+# Triage d'entrée du runner agent : réagit quand le label `agent-ok` est posé
+# sur une issue. Le déclencheur filtre déjà (issues + labeled + label agent-ok) ;
+# le garde-fou ci-dessous refait ce tri identique en défense et ignore tout
+# événement non conforme. Aucune écriture vers GitHub, aucun secret, aucune
+# dépendance : la sortie est purement textuelle (journal + résultat du run).
+#
+# ⚠️ Zone superviseur.
+
+on:
+  issues:
+    types: [labeled]
+    labels: [agent-ok]
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    name: Triage agent-ok
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      resume: ${{ steps.resume.outputs.resume }}
+
+    steps:
+      # Garde-fou défensif, identique au filtre du déclencheur.
+      - name: Garde-fou défensif
+        id: garde
+        if: ${{ github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'agent-ok' }}
+        run: echo "conforme=true" >> "$GITHUB_OUTPUT"
+
+      - name: Événement non conforme ignoré
+        if: ${{ github.event_name != 'issues' || github.event.action != 'labeled' || github.event.label.name != 'agent-ok' }}
+        run: echo "Événement non conforme — ignoré."
+
+      # Extraction depuis le corps de l'événement : numéro, titre, URL html.
+      # Les valeurs passent par l'env (jamais interpolées dans le script).
+      - name: Produire le résumé de l'issue
+        id: resume
+        if: steps.garde.outputs.conforme == 'true'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+        run: |
+          RESUME="Issue prête pour le runner — #${ISSUE_NUMBER} : ${ISSUE_TITLE} (${ISSUE_URL})"
+          echo "$RESUME"
+          echo "resume=${RESUME}" >> "$GITHUB_OUTPUT"
