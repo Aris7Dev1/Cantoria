@@ -691,6 +691,14 @@
         <div class="field"><label data-i18n="fieldKey">Tonalité</label><input type="text" id="f-key" data-i18n-ph="fieldKeyPh" placeholder="ex. G"></div>
         <div class="field"><label data-i18n="fieldCapo">Capo</label><input type="text" id="f-capo" data-i18n-ph="fieldCapoPh" placeholder="ex. 2"></div>
       </div>
+      <div class="row-fields">
+        <div class="field"><label data-i18n="fieldDuration">Durée cible (optionnel)</label><input type="text" id="f-duration" data-i18n-ph="fieldDurationPh" placeholder="ex. 3:24" inputmode="text"></div>
+        <div class="field"><label data-i18n="calibratedField">Défilement calibré</label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+            <input type="checkbox" id="f-calibrated"> <span data-i18n="calibratedOptIn">Calibrer la vitesse sur la durée cible</span>
+          </label>
+        </div>
+      </div>
       <div class="field">
         <label data-i18n="fieldBody">Paroles &amp; accords (format ChordPro)</label>
         <div class="section-tools">
@@ -760,6 +768,7 @@
         <div class="ctrl-group stepper" id="speed-stepper">
           <span class="ctrl-group-label" data-i18n="speed">Vitesse</span>
           <button id="speed-down" data-i18n-aria="speedDown" data-i18n-title="speedDown" aria-label="Vitesse inférieure" title="Vitesse − (Ctrl+←)">−</button><span class="val" id="speed-val">×1</span><button id="speed-up" data-i18n-aria="speedUp" data-i18n-title="speedUp" aria-label="Vitesse supérieure" title="Vitesse + (Ctrl+→)">+</button>
+          <button id="btn-calibrated" class="btn small ghost" aria-pressed="false" aria-label="Défilement calibré" title="Défilement calibré sur la durée cible de la chanson (si définie)" data-i18n-aria="btnCalibrated" data-i18n-title="btnCalibrated">cal.</button>
         </div>
         <button class="btn icon ghost" id="btn-toggle-secondary" data-i18n-aria="showSecondary" data-i18n-title="showSecondary" aria-label="Afficher les commandes secondaires" aria-expanded="false" title="Commandes secondaires (transposition, texte, section, décompte)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -1034,6 +1043,7 @@
   var chordsVisible = true;
   var zoomFactor = 1;
   var scrolling = false;
+  var calibratedMode = false;
   var scrollRAF = null;
   var scrollPos = 0;
 
@@ -1065,6 +1075,9 @@
       fieldTitle: "Titre", fieldTitlePh: "Titre de la chanson",
       fieldArtist: "Artiste", fieldArtistPh: "Interprète ou auteur",
       fieldKey: "Tonalité", fieldKeyPh: "ex. G", fieldCapo: "Capo", fieldCapoPh: "ex. 2",
+      fieldDuration: "Durée cible (optionnel)", fieldDurationPh: "ex. 3:24", calibratedField: "Défilement calibré", calibratedOptIn: "Calibrer la vitesse sur la durée cible",
+      btnCalibrated: "Défilement calibré sur la durée cible de la chanson (si définie)", calibratedTitleOn: (d) => "Défilement calibré sur la durée cible (" + d + ")", calibratedTitleOff: "Définis d'abord une durée cible dans l'éditeur de la chanson",
+      toastCalibratedOn: (d) => "Défilement calibré sur " + d, toastCalibratedOff: "Mode vitesse manuel",
       fieldBody: "Paroles & accords (format ChordPro)",
       bodyPh: "[G]Voici les paroles [C]avec les accords entre crochets",
       markVerse: "Couplet", markChorus: "Refrain", markBridge: "Pont",
@@ -1173,6 +1186,9 @@
       fieldTitle: "Title", fieldTitlePh: "Song title",
       fieldArtist: "Artist", fieldArtistPh: "Performer or author",
       fieldKey: "Key", fieldKeyPh: "e.g. G", fieldCapo: "Capo", fieldCapoPh: "e.g. 2",
+      fieldDuration: "Target duration (optional)", fieldDurationPh: "e.g. 3:24", calibratedField: "Calibrated scroll", calibratedOptIn: "Calibrate speed on the target duration",
+      btnCalibrated: "Calibrated scroll over the song's target duration (if set)", calibratedTitleOn: (d) => "Calibrated scroll over the target duration (" + d + ")", calibratedTitleOff: "Set a target duration in the song editor first",
+      toastCalibratedOn: (d) => "Calibrated scroll over " + d, toastCalibratedOff: "Manual speed mode",
       fieldBody: "Lyrics & chords (ChordPro format)",
       bodyPh: "[G]Here are the lyrics [C]with chords in brackets",
       markVerse: "Verse", markChorus: "Chorus", markBridge: "Bridge",
@@ -1329,7 +1345,12 @@
       favori: typeof raw.favori === "boolean" ? raw.favori : false,
       addedAt: Number.isFinite(raw.addedAt) ? raw.addedAt : Date.now(),
       lastOpenedAt: Number.isFinite(raw.lastOpenedAt) ? raw.lastOpenedAt : null,
-      speed: Number.isFinite(raw.speed) && raw.speed > 0 ? raw.speed : 1
+      speed: Number.isFinite(raw.speed) && raw.speed > 0 ? raw.speed : 1,
+      /* Issue #94 : durée cible optionnelle (secondes) pour un défilement
+         calibré. null = mode manuel (comportement historique). */
+      targetDurationSec: Number.isFinite(raw.targetDurationSec) && raw.targetDurationSec > 0 ? raw.targetDurationSec : null,
+      /* Mode calibré opt-in par chanson (défaut : manuel, non-régression). */
+      calibrated: raw.calibrated === true
     };
   }
 
@@ -1405,6 +1426,39 @@
     if(d > 6) d -= 12;
     if(d < -6) d += 12;
     return d;
+  }
+
+  /* Issue #94 : parse "mm:ss" (ou "ss") en secondes ; renvoie null si invalide. */
+  function parseDuration(text){
+    if(!text) return null;
+    var m = /^(\d{1,3}):([0-5]?\d)$/.exec(String(text).trim());
+    if(m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    if(/^\d{1,4}$/.test(String(text).trim())){
+      var v = parseInt(text, 10);
+      return v > 0 ? v : null;
+    }
+    return null;
+  }
+
+  function formatDuration(sec){
+    if(!Number.isFinite(sec) || sec <= 0) return "";
+    var m = Math.floor(sec / 60), s = Math.round(sec % 60);
+    return m + ":" + String(s).padStart(2, "0");
+  }
+
+  /* Issue #94 : vitesse de défilement calibrée (px/s) pour finir à la fin
+     de la chanson au bout de la durée cible : distance réelle à parcourir
+     (hauteur défilante - hauteur visible) divisée par la durée cible. */
+  function calibratedSpeedPxPerSec(targetSec, stage){
+    if(!Number.isFinite(targetSec) || targetSec <= 0 || !stage) return null;
+    var max = stage.scrollHeight - stage.clientHeight;
+    if(max <= 0) return null;
+    return max / targetSec;
+  }
+
+  /* Facteur manuel équivalent à une vitesse calibrée (pour l'affichage). */
+  function equivalentSpeedFactor(pxPerSec){
+    return pxPerSec / (BASE_SPEED * (appSettings.defaultFontScale || 1) / zoomFactor);
   }
 
   var storageAlertShown = false;
@@ -2532,6 +2586,8 @@
     $("#f-artist").value = s ? s.artist : "";
     $("#f-key").value = s ? s.key : "";
     $("#f-capo").value = s ? s.capo : "";
+    $("#f-duration").value = s && s.targetDurationSec ? formatDuration(s.targetDurationSec) : "";
+    $("#f-calibrated").checked = !!(s && s.calibrated);
     $("#f-body").value = s ? s.body : "";
     $("#btn-delete").style.display = s ? "inline-flex" : "none";
     editorBaseline = baselineFromSong(s);
@@ -2641,7 +2697,9 @@
       artist: $("#f-artist").value.trim(),
       key: $("#f-key").value.trim(),
       capo: $("#f-capo").value.trim(),
-      body: $("#f-body").value
+      body: $("#f-body").value,
+      targetDurationSec: parseDuration($("#f-duration").value),
+      calibrated: $("#f-calibrated").checked
     };
     if(editingId){
       var s = songs.find(function(x){ return x.id === editingId; });
@@ -2657,6 +2715,8 @@
       data.addedAt = Date.now();
       data.lastOpenedAt = null;
       data.speed = 1;
+      if(data.targetDurationSec === null) delete data.targetDurationSec;
+      if(!data.calibrated) delete data.calibrated;
       songs.push(data);
       saveSongs();
       toast(T("toastAdded"));
@@ -2816,6 +2876,7 @@
       saveSongs();
     }
     speedMultiplier = (entry && Number.isFinite(entry.speed) && entry.speed > 0) ? entry.speed : ((s && s.speed) || 1);
+    calibratedMode = !!(s && s.calibrated && s.targetDurationSec);
     updateSpeedStepper();
     selectedCountdown = appSettings.defaultCountdown || 0;
     chordsVisible = appSettings.chordsVisible !== false;
@@ -2825,6 +2886,7 @@
       b.classList.toggle("active", parseInt(b.getAttribute("data-seconds"),10) === selectedCountdown);
     });
     renderPlayer();
+    updateSpeedStepper();
     updateFavButton();
     showView("player");
     stopScroll();
@@ -2838,7 +2900,7 @@
      telle quelle et les boutons rejoignent le palier immédiatement supérieur/inférieur. */
   var SPEED_STEPS = [0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   function formatSpeed(v){
-    return "×" + String(v).replace(".", ",");
+    return "×" + String(Math.round(v * 100) / 100).replace(".", ",");
   }
   function nextSpeedStep(v, direction){
     var found = null;
@@ -2849,11 +2911,28 @@
     return found;
   }
   function updateSpeedStepper(){
-    $("#speed-val").textContent = formatSpeed(speedMultiplier);
+    var shown = speedMultiplier;
+    if(calibratedMode){
+      var px = calibratedSpeedPxPerSec(currentSong() && currentSong().targetDurationSec, $("#stage"));
+      if(px) shown = equivalentSpeedFactor(px);
+    }
+    $("#speed-val").textContent = formatSpeed(shown) + (calibratedMode ? " (cal.)" : "");
     $("#speed-down").disabled = nextSpeedStep(speedMultiplier, -1) === null;
     $("#speed-up").disabled = nextSpeedStep(speedMultiplier, 1) === null;
+    var calBtn = $("#btn-calibrated");
+    if(calBtn){
+      var s = currentSong();
+      var available = !!(s && s.targetDurationSec);
+      calBtn.disabled = !available;
+      calBtn.classList.toggle("active", calibratedMode);
+      calBtn.setAttribute("aria-pressed", calibratedMode ? "true" : "false");
+      calBtn.title = available
+        ? T("calibratedTitleOn")(formatDuration(s.targetDurationSec))
+        : T("calibratedTitleOff");
+    }
   }
   function setSpeed(v){
+    calibratedMode = false;
     speedMultiplier = v;
     var s = currentSong();
     if(s){
@@ -2866,6 +2945,20 @@
   $("#speed-up").addEventListener("click", function(){
     var next = nextSpeedStep(speedMultiplier, 1);
     if(next !== null) setSpeed(next);
+  });
+  $("#btn-calibrated").addEventListener("click", function(){
+    var s = currentSong();
+    if(!s || !s.targetDurationSec) return;
+    calibratedMode = !calibratedMode;
+    if(calibratedMode){
+      /* Le réglage persistant de la chanson devient calibré (opt-in). */
+      s.calibrated = true;
+      saveSongs();
+    }
+    updateSpeedStepper();
+    toast(calibratedMode
+      ? T("toastCalibratedOn")(formatDuration(s.targetDurationSec))
+      : T("toastCalibratedOff"));
   });
   $("#speed-down").addEventListener("click", function(){
     var prev = nextSpeedStep(speedMultiplier, -1);
@@ -3030,8 +3123,11 @@
     /* Le zoom de rendu grossit le layout : les paroles étant compensées (taille
        constante en px), on divise par le facteur de zoom pour garder un rythme
        constant en lignes/seconde. */
-    var speed = BASE_SPEED * speedMultiplier * fontScale / zoomFactor;
     var max = stage.scrollHeight - stage.clientHeight;
+    /* Mode calibré (issue #94) : vitesse exacte pour finir à la durée cible. */
+    var speed = calibratedMode
+      ? (calibratedSpeedPxPerSec(currentSong() && currentSong().targetDurationSec, stage) || BASE_SPEED * speedMultiplier * fontScale / zoomFactor)
+      : BASE_SPEED * speedMultiplier * fontScale / zoomFactor;
     scrollPos += speed * dt;
     if(scrollPos >= max - 0.5){
       stage.scrollTop = max;
