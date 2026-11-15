@@ -4,7 +4,9 @@ name: Visual baselines
 # libère le poste local du problème de montage read-only et garantit des
 # références produites dans un environnement reproductible.
 #   - workflow_dispatch avec scenarios : regénérer + COMMITTER + pousser
-#     (usage : après un changement UI validé)
+#     sur la branche dédiée visual/regen-baselines, puis ouvrir une pull
+#     request vers main (le ruleset de main exige une pull request, même
+#     pour github-actions[bot]) (usage : après un changement UI validé)
 #   - workflow_dispatch sans scenarios : contrôle seul, artefact rapport
 #   - pull_request : contrôle de non-régression sur les captures
 #     (jamais de commit automatique sur une PR)
@@ -94,8 +96,30 @@ jobs:
           else
             git add visual-baseline
             git commit -m "Baselines visuelles régénérées en CI (${{ github.event.inputs.scenarios || 'tous scénarios' }})"
-            git push
+            # main exige une pull request (ruleset sans contournement, même
+            # pour github-actions[bot]) : la régénération atterrit sur une
+            # branche dédiée, écrasée à chaque dispatch. Un échec de push
+            # échoue explicitement le job — aucun échec silencieux.
+            git push --force origin HEAD:refs/heads/visual/regen-baselines
           fi
+
+      - name: Ouvrir la pull request de régénération (dispatch uniquement)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Rien à proposer sans branche poussée (aucun changement de baseline).
+          if ! git ls-remote --exit-code --heads origin visual/regen-baselines >/dev/null 2>&1; then
+            echo "Aucune branche de régénération : rien à proposer."
+            exit 0
+          fi
+          if gh pr list --repo "$GITHUB_REPOSITORY" --head visual/regen-baselines --state open --json number | grep -q number; then
+            echo "Une pull request de régénération est déjà ouverte."
+            exit 0
+          fi
+          gh pr create --base main --head visual/regen-baselines \
+            --title "Baselines visuelles régénérées en CI" \
+            --body "Régénération automatique des baselines visuelles (dispatch manuel du workflow « Visual baselines »). Les changements atterrissent par pull request : le ruleset de main exige une revue humaine. Une PR créée avec GITHUB_TOKEN ne déclenche pas les workflows pull_request (limite anti-récursion GitHub) : fermer puis rouvrir cette PR lance le contrôle CI. Fusion : geste du superviseur."
 
       # pull_request uniquement : vérifier qu'aucune baseline n'est SUPPRIMÉE
       # (garde contre le piège EPERM : des D sur visual-baseline = échec)
