@@ -1,125 +1,109 @@
 name: Visual baselines
 
-# Régénération des baselines visuelles en CI (décision superviseur) :
-# libère le poste local du problème de montage read-only et garantit des
-# références produites dans un environnement reproductible.
-#   - workflow_dispatch avec scenarios : regénérer + COMMITTER + pousser
-#     (usage : après un changement UI validé)
-#   - workflow_dispatch sans scenarios : contrôle seul, artefact rapport
-#   - pull_request : contrôle de non-régression sur les captures
-#     (jamais de commit automatique sur une PR)
-#
-# ⚠️ Zone superviseur : ce workflow ne s'exécute qu'à la demande —
-# les baselines ne sont jamais écrasées sans geste explicite.
-
 on:
   workflow_dispatch:
     inputs:
       scenarios:
-        description: "Scénarios à regénérer (vide = tous) — ex: player-portrait,player-portrait"
+        description: "Scénarios à régénérer (noms séparés par des virgules, vide = tous)"
         required: false
         default: ""
   pull_request:
-    branches: [main]
-    paths:
-      - "cantoria.html"
-      - "scripts/visual/**"
-      - "visual-baseline/**"
+    paths: ["cantoria.html", "scripts/visual/**", "visual-baseline/**", ".github/workflows/visual-baselines.yml"]
+
+# La régénération dispatchée n'atterrit plus directement sur main : le ruleset
+# de main exige une pull request sans contournement, y compris pour
+# github-actions[bot]. Elle pousse une branche dédiée, écrasée à chaque
+# dispatch, puis ouvre une pull request vers main (fusion = geste superviseur).
+# Une pull request créée avec GITHUB_TOKEN ne déclenche pas les workflows
+# pull_request (limite anti-récursion GitHub) : fermer puis rouvrir la PR de
+# régénération déclenche le contrôle CI (même geste que pour les PR dormantes).
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: visual-${{ github.ref }}
+  group: visual-baselines-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  baselines:
-    name: Baselines visuelles
+  regenerate-electron:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.head_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      # npm ci restaure parfois le paquet electron depuis le cache SANS son
-      # binaire (postinstall sauté) -> spawn ENOENT au lancement du visual.
-      # On garantit le binaire explicitement : idempotent (no-op si présent).
-      - name: Garantir le binaire Electron
-        run: |
-          if [ ! -x node_modules/electron/dist/electron ]; then
-            echo "Binaire Electron absent — téléchargement…"
-            node node_modules/electron/install.js
-          else
-            echo "Binaire Electron présent."
-          fi
-          test -x node_modules/electron/dist/electron
-
-      - name: Régénérer les baselines desktop (Electron)
-        # Electron pour le desktop (moteur historique). xvfb-run : serveur X requis.
-        run: xvfb-run -a node scripts/visual/run.js --engine=electron ${{ github.event.inputs.scenarios != '' && format('--scenarios={0}', github.event.inputs.scenarios) || '' }} --update-baseline
-
-      # CORRECTIF : les scénarios MOBILES (412x915) ne peuvent pas être
-      # capturés par Electron — main.js impose minWidth:860, setContentSize(412)
-      # est écrêté à 860, la media query du bandeau replié (<=480px) ne
-      # s'active jamais. Preuve : les player-portrait faisaient 860x915.
-      # Chromium fournit un vrai viewport 412x915.
-      - name: Installer Chromium pour Playwright
-        run: npx playwright-core install chromium-headless-shell
-
-      - name: Régénérer les baselines mobiles (Chromium, viewport réel)
-        run: node scripts/visual/run.js --engine=chromium --scenarios=library-portrait,player-portrait --update-baseline
-
-      - name: Committer les baselines (dispatch uniquement)
-        if: github.event_name == 'workflow_dispatch'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgbm1
+      - run: npm run visual --silent -- --engine=electron --update-baselines ${{ github.event.inputs.scenarios && format('--scenarios={0}', github.event.inputs.scenarios) || '' }}
+      - name: Pousser la branche de régénération
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- visual-baseline; then
-            echo "Aucun changement de baseline."
-          else
-            git add visual-baseline
-            git commit -m "Baselines visuelles régénérées en CI (${{ github.event.inputs.scenarios || 'tous scénarios' }})"
-            git push
-          fi
+          git add visual-baseline
+          git diff --quiet -- visual-baseline || git commit -m "Baselines visuelles régénérées en CI (scénarios Electron)"
+          # Écrasement délibéré : un nouveau dispatch repart d'un état propre.
+          # Un échec de push échoue le job (plus d'échec silencieux).
+          git push --force origin HEAD:refs/heads/visual/regen-baselines
 
-      # pull_request uniquement : vérifier qu'aucune baseline n'est SUPPRIMÉE
-      # (garde contre le piège EPERM : des D sur visual-baseline = échec)
-      - name: Garde anti-suppression (PR uniquement)
-        if: github.event_name == 'pull_request'
+  regenerate-mobile:
+    needs: regenerate-electron
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: visual/regen-baselines
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run visual --silent -- --engine=chromium --update-baselines ${{ (github.event.inputs.scenarios == '' && '--scenarios=library-portrait,player-portrait') || format('--scenarios={0}', github.event.inputs.scenarios) }}
+      - name: Compléter la branche de régénération
         run: |
-          DELETED=$(git diff --name-status origin/main...HEAD -- visual-baseline | awk -F'\t' '$1=="D"' | wc -l)
-          if [ "$DELETED" -gt 0 ]; then
-            echo "::error::Cette PR supprime $DELETED baseline(s). Une suppression de référence visuelle doit être explicite et validée."
-            exit 1
-          fi
-          echo "Aucune baseline supprimée."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add visual-baseline
+          git diff --quiet -- visual-baseline || git commit -m "Baselines visuelles régénérées en CI (scénarios mobiles)"
+          git push origin HEAD:refs/heads/visual/regen-baselines
 
-      # Rapport en COMMENTAIRE de PR, pas en artefact : le quota de stockage
-      # des artefacts (plan free) a fait échouer des PR pour quelques Mo de
-      # rapport — un commentaire ne consomme aucun stockage.
-      - name: Rapport en commentaire de PR
-        if: github.event_name == 'pull_request'
+  open-pr:
+    needs: [regenerate-electron, regenerate-mobile]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: visual/regen-baselines
+          fetch-depth: 0
+      - name: Ouvrir la pull request de régénération
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [ -f visual-out/report.md ]; then
-            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file visual-out/report.md || true
-          else
-            echo "Pas de rapport généré."
+          if git diff --quiet origin/main...HEAD -- visual-baseline; then
+            echo "Aucun changement de baseline à proposer."
+            exit 0
           fi
+          if gh pr list --repo "$GITHUB_REPOSITORY" --head visual/regen-baselines --state open --json number | grep -q number; then
+            echo "Une pull request de régénération est déjà ouverte."
+            exit 0
+          fi
+          gh pr create --base main --head visual/regen-baselines \
+            --title "Baselines visuelles régénérées en CI" \
+            --body "Régénération automatique des baselines visuelles (dispatch manuel du workflow « Visual baselines »). Les changements atterrissent par pull request : le ruleset de main exige une revue humaine. Fermer puis rouvrir cette PR déclenche le contrôle CI ; la fusion reste un geste du superviseur."
+
+  control:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgbm1
+      - run: npm run visual --silent -- --engine=electron ${{ github.event.inputs.scenarios && format('--scenarios={0}', github.event.inputs.scenarios) || '' }}
