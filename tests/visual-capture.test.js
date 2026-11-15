@@ -25,7 +25,10 @@ test("capture réelle : scénarios sur le vrai HTML, état fixe, capture déterm
   const run = async (dir) => captureAll({ engine: "chromium", repoRoot: root, outDir: dir, themes: ["campfire"], scenarios, thresholds });
   const d1 = fs.mkdtempSync(path.join(os.tmpdir(), "vc1-")), d2 = fs.mkdtempSync(path.join(os.tmpdir(), "vc2-"));
   const r1 = await run(d1), r2 = await run(d2);
-  assert.deepEqual(r1.map((r) => r.scenario), ["library", "editor", "player", "settings"]);
+  /* Liste attendue en parité avec scripts/visual/scenarios.js — portraits
+     compris (issue #55). L'ordre compte : captureAll rend les scénarios
+     dans l'ordre de définition. */
+  assert.deepEqual(r1.map((r) => r.scenario), ["library", "editor", "player", "library-portrait", "player-portrait", "settings"]);
   for (let i = 0; i < r1.length; i++) {
     assert.ok(fs.statSync(r1[i].png).size > 1000, `${r1[i].scenario} : capture non vide`);
     assert.ok(fs.readFileSync(r1[i].png).equals(fs.readFileSync(r2[i].png)), `${r1[i].scenario} : deux captures identiques`);
@@ -52,5 +55,7 @@ test("collectMetrics détecte une régression réelle (police réduite, ligne co
     const worst = (list) => Math.min(...list.filter((v) => v.rule === "font-size" && v.selector === "span.seg-word").map((v) => v.value), Infinity);
     assert.ok(worst(after) <= 9.01, "la police de 9 px doit être vue");
     assert.ok(after.some((v) => v.rule === "overflow" && v.severity === "error") || worst(after) < worst(before));
-  } finally { await browser.close(); }
+  } finally {
+    await browser.close();
+  }
 });
